@@ -19,7 +19,7 @@ Principe directeur : **tout est gratuit, sans carte bancaire, sans compte tiers 
 | Secours recherche | Collage d'un lien de partage Google Maps | Couvre le cas « magasin absent d'OSM » (magasin récent) |
 | Base de données | Neon Postgres via Vercel Marketplace (offre gratuite, sans CB) | Voie recommandée Vercel, env vars auto-provisionnées |
 | Auth admin | Mot de passe partagé (env var) + cookie de session longue durée | Un seul admin ; un service d'auth serait du sur-équipement |
-| Note | Sur 10, par pas de 0,5 (ex. 8,5) | Simple, expressif, aligné sur le contrôle de saisie en demi-cookies |
+| Note | Sur 5, par pas de 0,5 (ex. 4,5) | Simple, expressif, aligné sur le contrôle de saisie en demi-cookies |
 | Modèle | Un magasin = une note + un avis | Choix explicite de simplicité ; pas de multi-cookies ni d'historique |
 | Langues | Interface bilingue FR/EN (toggle client) ; avis affichés dans leur langue d'écriture | Pas de traduction automatique |
 | Photos | Hors scope v1 | Ajout possible plus tard (Vercel Blob) sans casser le modèle |
@@ -53,7 +53,7 @@ Table `shops` (Neon Postgres) :
 | `address` | texte | adresse affichée |
 | `lat`, `lng` | décimaux | position du marqueur |
 | `google_maps_url` | texte | lien fiche Google — construit depuis nom+adresse (`google.com/maps/search/?api=1&query=…`), ou exact si issu d'un lien collé ; modifiable à la main |
-| `rating` | décimal, 0–10, pas de 0,5 | la note |
+| `rating` | décimal, 0–5, pas de 0,5 | la note |
 | `review` | texte | l'avis, langue libre |
 | `created_at`, `updated_at` | horodatages | technique |
 
@@ -81,7 +81,7 @@ Accès : mot de passe unique (env var, comparaison côté serveur), session via 
 ### Flux d'ajout (pensé non-développeur, anti-abandon)
 
 1. **Chercher** : champ unique, suggestions à la frappe via Photon (nom + rue), priorisées autour de Montréal. Tap sur une suggestion → nom, adresse, position remplis + confirmation sur mini-carte (« C'est bien ici ? », point ajustable par glissement).
-2. **Noter** : contrôle ludique — rangée de 10 cookies, tap sur un demi-cookie possible (pas de 0,5).
+2. **Noter** : contrôle ludique — rangée de 5 cookies, tap sur un demi-cookie possible (pas de 0,5).
 3. **Avis** puis Enregistrer → visible immédiatement sur la carte.
 
 ### Secours (jamais bloquée)
@@ -105,7 +105,7 @@ Sous le formulaire : liste des magasins (nom, note) avec modifier / supprimer (c
 - **Lien Google illisible** (format changeant, non documenté) → message clair + bascule vers placement manuel.
 - **Tuiles OpenFreeMap indisponibles** → URL du style de carte configurable (env var) pour basculer vers un fournisseur de secours sans redéploiement de code.
 - **Base injoignable** → page publique : message sympathique ; admin : erreur explicite, saisie non perdue.
-- **Validation serveur** : note bornée 0–10, champs requis, position dans un rayon plausible autour de Montréal (garde-fou contre les mauvaises sélections).
+- **Validation serveur** : note bornée 0–5, champs requis, position dans un rayon plausible autour de Montréal (garde-fou contre les mauvaises sélections).
 
 ## Tests
 
