@@ -95,7 +95,7 @@ export function RasterMap({
           const btn = document.createElement('button')
           btn.className = 'cmtl-geolocate leaflet-bar'
           btn.setAttribute('aria-label', 'Me localiser')
-          btn.textContent = '◎'
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
           btn.onclick = () =>
             navigator.geolocation?.getCurrentPosition((pos) =>
               map?.setView([pos.coords.latitude, pos.coords.longitude], Math.max(map.getZoom(), 14))

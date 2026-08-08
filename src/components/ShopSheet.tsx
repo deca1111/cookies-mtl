@@ -5,6 +5,7 @@ import type { Shop } from '@/lib/shops'
 import { appleMapsUrl, geoUri, googleDirectionsUrl } from '@/lib/nav-links'
 import { useLang } from './LangProvider'
 import { RatingCookies } from './RatingCookies'
+import { IconClose, IconExternal } from './icons'
 
 function platform(): 'android' | 'ios' | 'desktop' {
   if (typeof navigator === 'undefined') return 'desktop'
@@ -61,7 +62,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
         onClick={onClose}
         className="absolute right-3 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-2)] hover:text-[color:var(--text-strong)] sm:top-3"
       >
-        ✕
+        <IconClose size={20} />
       </button>
 
       {/* Scrollable region: `touch-pan-y` + `overscroll-contain` keep vertical drags native
@@ -110,7 +111,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
             rel="noopener noreferrer"
             className="ml-auto py-2.5 text-[13px] text-[color:var(--text-muted)] underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)] hover:underline"
           >
-            {t('googleListing')} ↗
+            <span className="inline-flex items-center gap-1">{t('googleListing')} <IconExternal size={13} /></span>
           </a>
         </div>
 
