@@ -1,12 +1,17 @@
 // scripts/render-tiles.mjs — génère la pyramide raster des deux thèmes depuis le
-// style de prod épuré, et (avec --upload) la pousse sur Vercel Blob.
+// style de prod épuré, directement dans public/tiles/ (committée avec le code,
+// servie par le CDN Vercel comme asset statique — zéro service externe).
 //
-// Usage :  node scripts/render-tiles.mjs [--themes=light,dark] [--zooms=11-16] [--upload]
-// Prérequis : Google Chrome installé ; pour --upload, BLOB_READ_WRITE_TOKEN dans
-// l'environnement (vercel env pull .env.local puis charger la variable).
+// Usage :  node scripts/render-tiles.mjs [--themes=light,dark] [--zooms=11-16]
+// Prérequis : Google Chrome installé.
 // À relancer uniquement quand la palette, le filtre de couches ou le fond OSM
-// changent — bumper alors PATH_VERSION pour invalider le CDN et mettre à jour
-// NEXT_PUBLIC_TILES_BASE_URL si le store change.
+// changent — bumper alors PATH_VERSION (ici ET dans src/lib/tile-math.ts +
+// src/components/RasterMap.tsx) pour invalider les caches, puis committer les
+// tuiles régénérées.
+//
+// Pourquoi pas Vercel Blob : une pyramide = ~10 000 fichiers, et Blob n'a pas
+// d'upload groupé — une opération facturable par tuile a explosé le quota gratuit
+// d'opérations dès le premier upload (store suspendu, 2026-08-08).
 //
 // Pièges maplibre-gl 6.x (appris sur la démo du 2026-08-08) : ESM-only sans export
 // default (`import * as`) ; preserveDrawingBuffer DOIT passer par
@@ -23,7 +28,7 @@ import sharp from 'sharp'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const WORK = join(ROOT, '.tiles-work')
-const OUT = join(ROOT, '.tiles-out')
+const OUT = join(ROOT, 'public')
 const PATH_VERSION = 'v1'
 const BBOX = { west: -73.75, east: -73.45, south: 45.4, north: 45.62 }
 // Dalles de 8x8 tuiles (2048 px) : les étiquettes ne peuvent se couper qu'aux
@@ -35,10 +40,6 @@ const args = new Map(process.argv.slice(2).map((a) => a.split('=')))
 const THEMES = (args.get('--themes') ?? 'light,dark').split(',')
 const [zMin, zMax] = (args.get('--zooms') ?? '11-16').split('-').map(Number)
 const ZOOMS = Array.from({ length: zMax - zMin + 1 }, (_, i) => zMin + i)
-const UPLOAD = args.has('--upload') || args.has('--upload-only')
-// Reprise d'un upload interrompu (rate-limit…) sans re-rendre : les tuiles de
-// .tiles-out sont réutilisées telles quelles, l'overwrite Blob est idempotent.
-const UPLOAD_ONLY = args.has('--upload-only')
 
 // -- même formule que src/lib/tile-math.ts (copie assumée : script Node pur) --
 const lon2x = (lon, z) => ((lon + 180) / 360) * 2 ** z
@@ -46,7 +47,6 @@ const lat2y = (lat, z) => ((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Ma
 const x2lon = (x, z) => (x / 2 ** z) * 360 - 180
 const y2lat = (y, z) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / 2 ** z))) * 180) / Math.PI
 
-if (!UPLOAD_ONLY) {
 // 1. bundle du vrai code de style (source unique de vérité — buildMapStyle)
 mkdirSync(WORK, { recursive: true })
 await build({
@@ -169,56 +169,6 @@ for (const theme of THEMES) {
 const errors = await page.evaluate('window.__tileErrors || 0')
 await browser.close()
 server.close()
-console.log(`RENDU TERMINÉ: ${total} tuiles, ${errors} erreurs de rendu`)
+console.log(`RENDU TERMINÉ: ${total} tuiles écrites dans public/tiles, ${errors} erreurs de rendu`)
 if (errors > 0) process.exit(1)
-}
-
-// 6. upload Blob (optionnel)
-if (UPLOAD) {
-  const { put } = await import('@vercel/blob')
-  const { readdirSync, statSync } = await import('node:fs')
-  const files = []
-  const walk = (dir) => {
-    for (const e of readdirSync(dir)) {
-      const p = join(dir, e)
-      if (statSync(p).isDirectory()) walk(p)
-      else files.push(p)
-    }
-  }
-  walk(join(OUT, 'tiles'))
-  console.log(`upload de ${files.length} tuiles vers Vercel Blob…`)
-  let uploaded = 0
-  // 6 en parallèle + backoff : l'API Blob rate-limite (constaté à ~1500 puts à 12
-  // de concurrence) et renvoie retryAfter — on le respecte au lieu d'abandonner.
-  const CONCURRENCY = 6
-  async function putWithRetry(pathname, body, opts) {
-    for (let attempt = 1; ; attempt++) {
-      try {
-        return await put(pathname, body, opts)
-      } catch (e) {
-        if (attempt >= 6) throw e
-        const wait = (e?.retryAfter ? e.retryAfter * 1000 : 2000 * attempt) + Math.floor(Math.random() * 500)
-        console.log(`  ${e?.name ?? 'erreur'} sur ${pathname} — pause ${Math.round(wait / 1000)}s, retry ${attempt}/5`)
-        await new Promise((ok) => setTimeout(ok, wait))
-      }
-    }
-  }
-  const queue = [...files]
-  await Promise.all(
-    Array.from({ length: CONCURRENCY }, async () => {
-      for (let f = queue.shift(); f; f = queue.shift()) {
-        const pathname = f.slice(OUT.length + 1).replaceAll('\\', '/')
-        await putWithRetry(pathname, readFileSync(f), {
-          access: 'public',
-          addRandomSuffix: false,
-          allowOverwrite: true,
-          cacheControlMaxAge: 31536000, // chemins stables versionnés par PATH_VERSION
-          contentType: 'image/webp',
-        })
-        uploaded++
-        if (uploaded % 500 === 0) console.log(`  ${uploaded}/${files.length}`)
-      }
-    })
-  )
-  console.log(`UPLOAD TERMINÉ: ${uploaded} tuiles`)
-}
+console.log('Penser à committer public/tiles avec le changement de style correspondant.')

@@ -47,6 +47,5 @@ next-env.d.ts
 /public/maplibre-gl-worker.js
 /public/maplibre-gl-shared.mjs
 
-# Sorties du pipeline de tuiles (scripts/render-tiles.mjs)
-.tiles-out/
+# Dossier de travail du pipeline de tuiles (scripts/render-tiles.mjs)
 .tiles-work/

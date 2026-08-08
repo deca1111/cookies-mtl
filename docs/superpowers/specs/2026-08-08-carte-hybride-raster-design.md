@@ -25,7 +25,11 @@ fallback = un second renderer (Leaflet) + des tuiles images.
 4. **Détection instantanée** qui ne gêne jamais l'utilisateur : la panne WebGL n'est subie
    qu'une seule fois par appareil (mémorisation), jamais d'écran d'erreur si Leaflet peut
    prendre le relais.
-5. **Hébergement des tuiles : Vercel Blob public** (repo léger, CDN, inclus plan Hobby).
+5. **Hébergement des tuiles : `public/tiles` dans le repo** (assets statiques, CDN
+   Vercel, versionnées avec le style). *Amendement du 2026-08-08 : le choix initial
+   Vercel Blob a été abandonné à l'implémentation — ~10 000 tuiles = autant
+   d'opérations facturables par upload, quota gratuit d'opérations explosé dès la
+   première pyramide (store suspendu). Constat validé avec Léo.*
 6. Écartés : MapLibre Native (site web, pas d'app), tout-raster pour tous (sacrifierait le
    rendu vectoriel de la majorité saine), 3D (non utilisé).
 
