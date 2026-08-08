@@ -33,15 +33,30 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     initialSlug ? (shops.find((s) => s.slug === initialSlug) ?? null) : null
   )
   const [mapError, setMapError] = useState(false)
+  // Round 2 — footprint reduction: bumped by the retry button on the error screen, mirroring
+  // AdminApp's draftSession pattern. It's the main effect's only dependency, so bumping it
+  // re-runs the whole effect — cleanup tears down whatever's left, then the effect body
+  // starts over with fresh closured counters (failureCount, rebuildCount, etc. are `let`s
+  // local to the effect, so a re-run gets a clean budget for free) and calls init() again.
+  const [mapSession, setMapSession] = useState(0)
   const { t, lang, setLang } = useLang()
 
-  // Kept in sync below so the mount-only effect (deps: []) can read the CURRENT selected
+  // Kept in sync below so the map effect (deps: [mapSession]) can read the CURRENT selected
   // shop when rebuilding the map after a WebGL context loss, instead of the stale value
   // it originally closed over.
   const selectedRef = useRef(selected)
   useEffect(() => {
     selectedRef.current = selected
   }, [selected])
+
+  // Round 2 — footprint reduction: lets the error screen's retry button get back to a live
+  // map without a full page reload. Clearing mapError here makes the overlay disappear
+  // immediately (init() would also clear it on success, but that's async); bumping
+  // mapSession re-runs the main effect with a fresh rebuild/failure budget.
+  const retry = () => {
+    setMapError(false)
+    setMapSession((s) => s + 1)
+  }
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -195,14 +210,20 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       mapRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [mapSession])
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
       <div ref={containerRef} className="h-full w-full" />
       {mapError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--bg)] p-8 text-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-[color:var(--bg)] p-8 text-center">
           <p className="max-w-xs text-[15px] leading-relaxed text-[color:var(--text-body)]">{t('mapUnavailable')}</p>
+          <button
+            onClick={retry}
+            className="rounded-full bg-[color:var(--btn-bg)] px-5 py-2.5 text-[14px] font-medium text-[color:var(--btn-text)] transition-colors hover:bg-[color:var(--btn-bg-hover)]"
+          >
+            {t('retry')}
+          </button>
         </div>
       )}
       <button

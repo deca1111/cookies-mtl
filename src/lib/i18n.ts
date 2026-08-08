@@ -12,6 +12,7 @@ export const dict = {
     mapUnavailable: 'La carte fait une pause cookie. Réessaie dans un instant !',
     linkCopied: 'Lien copié ✓',
     close: 'Fermer',
+    retry: 'Réessayer',
   },
   en: {
     directions: 'Directions',
@@ -24,6 +25,7 @@ export const dict = {
     mapUnavailable: 'The map is on a cookie break. Try again in a moment!',
     linkCopied: 'Link copied ✓',
     close: 'Close',
+    retry: 'Retry',
   },
 } as const satisfies Record<Lang, Record<string, string>>
 

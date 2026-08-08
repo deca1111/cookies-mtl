@@ -1,5 +1,5 @@
 import { expect, test, vi, beforeEach, afterEach } from 'vitest'
-import { act, cleanup, render, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 
 // Task 17b bug 1 (public map death on mobile): mobile browsers can lose the map's WebGL
 // context (backgrounded tab reclaimed by the OS, or the mobile context cap). MapLibre
@@ -359,4 +359,53 @@ test('caps the map pixelRatio at 2 even when devicePixelRatio reports 3 (iPhone 
   } finally {
     Object.defineProperty(window, 'devicePixelRatio', { value: originalDpr, configurable: true })
   }
+})
+
+// The retry button on the error screen (added alongside the pixelRatio cap): once the
+// per-mount rebuild cap is exhausted and the error screen shows, the user has no way back to
+// a live map short of a full page reload. Clicking « Réessayer » should reset the rebuild/
+// failure counters (fresh closures, via a mapSession bump mirroring AdminApp's draftSession
+// pattern) and re-run init(), constructing a brand new map.
+
+test('clicking the retry button on the error screen resets the rebuild budget and builds a fresh map', async () => {
+  const { container } = render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+
+  vi.useFakeTimers()
+  try {
+    // Exhaust the per-mount rebuild cap exactly like the capping test above: 5 successful
+    // loss->rebuild cycles, then a 6th loss trips MAX_REBUILDS_PER_MOUNT and shows the error
+    // screen instead of rebuilding.
+    for (let i = 0; i < 5; i++) {
+      expect(handlers.webglcontextlost).toBeTypeOf('function')
+      act(() => {
+        handlers.webglcontextlost()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+    }
+    act(() => {
+      handlers.webglcontextlost()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    expect(mapConstructor).toHaveBeenCalledTimes(6)
+    expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
+  } finally {
+    vi.useRealTimers()
+  }
+
+  const retryButton = container.querySelector('.absolute.inset-0 button')
+  expect(retryButton).not.toBeNull()
+
+  fireEvent.click(retryButton as HTMLButtonElement)
+
+  // The error screen clears immediately, and a fresh init() builds a 7th map — proving the
+  // rebuild/failure counters were reset (a stale, exhausted counter would have shown the
+  // error screen again instead of rebuilding).
+  expect(container.querySelector('.absolute.inset-0')).toBeNull()
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(7))
 })
