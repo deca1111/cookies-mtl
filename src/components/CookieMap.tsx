@@ -101,6 +101,13 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           center: selectedRef.current ? [selectedRef.current.lng, selectedRef.current.lat] : MTL_CENTER,
           zoom: selectedRef.current ? 15 : 12,
           attributionControl: { compact: true },
+          // Round 2 — footprint reduction (iPhone incident): rendering at devicePixelRatio 3
+          // (real value on modern iPhones) roughly triples the GPU memory footprint of a
+          // devicePixelRatio-1 canvas vs. capping at 2. That extra memory pressure is the
+          // prime hypothesis for the repeated webglcontextlost losses on the user's iPhone.
+          // Standard MapLibre mitigation: cap the render pixel ratio at 2 — still crisp on
+          // retina screens, without the devicePixelRatio-3 memory cost.
+          pixelRatio: Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2),
         })
         mapRef.current = map
         failureCount = 0

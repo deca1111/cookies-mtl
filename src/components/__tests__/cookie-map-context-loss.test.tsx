@@ -337,3 +337,26 @@ test('counts failure retries against the rebuild cap — cap is shared, not sepa
     vi.useRealTimers()
   }
 })
+
+// Round 2 — footprint reduction (iPhone incident, see
+// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 2 — footprint
+// reduction"): the damping/cap fix above stops the rebuild loop from running away, but the
+// user's iPhone still lost the WebGL context repeatedly during active use — consistent with
+// GPU memory pressure from rendering at devicePixelRatio 3 (a real iPhone value) exceeding iOS
+// Safari's tolerance. Standard MapLibre mitigation: cap the render pixel ratio at 2. This test
+// pins that the Map constructor never receives a pixelRatio above 2, even when
+// window.devicePixelRatio reports 3.
+
+test('caps the map pixelRatio at 2 even when devicePixelRatio reports 3 (iPhone GPU memory footprint)', async () => {
+  const originalDpr = window.devicePixelRatio
+  Object.defineProperty(window, 'devicePixelRatio', { value: 3, configurable: true })
+  try {
+    render(<CookieMap shops={[]} />)
+    await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+
+    const options = mapConstructor.mock.calls[0][0] as { pixelRatio?: number }
+    expect(options.pixelRatio).toBe(2)
+  } finally {
+    Object.defineProperty(window, 'devicePixelRatio', { value: originalDpr, configurable: true })
+  }
+})

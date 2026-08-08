@@ -65,6 +65,10 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       center: [draft.lng, draft.lat],
       zoom: 16,
       attributionControl: { compact: true },
+      // Round 2 — footprint reduction (iPhone incident), applied here too for consistency
+      // with the public map: cap the render pixel ratio at 2 to bound GPU memory footprint
+      // on high-DPI mobile screens.
+      pixelRatio: Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2),
     })
     if (typeof map.once === 'function') {
       map.once('style.load', () => {
