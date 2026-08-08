@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .superpowers/
+
+# maplibre-gl worker + its shared chunk, copied from node_modules by
+# scripts/copy-maplibre-worker.mjs (predev/prebuild) — kept out of git so they always
+# match the installed version.
+/public/maplibre-gl-worker.js
+/public/maplibre-gl-shared.mjs
