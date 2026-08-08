@@ -10,7 +10,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "node scripts/migrate.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tiles:render": "node scripts/render-tiles.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
@@ -28,10 +29,14 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vercel/blob": "^2.7.0",
     "@vitejs/plugin-react": "^6.0.5",
+    "esbuild": "^0.28.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "jsdom": "^30.0.1",
+    "playwright-core": "^1.62.1",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
