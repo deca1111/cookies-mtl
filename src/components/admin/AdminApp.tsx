@@ -2,10 +2,11 @@
 
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import '@/lib/maplibre-setup'
 import { useEffect, useRef, useState } from 'react'
 import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
-import { getMapStyleUrl } from '@/lib/map-style'
+import { applyPalette, currentTheme, getMapStyleUrl } from '@/lib/map-style'
 import type { Shop } from '@/lib/shops'
 import { PlaceSearch, type PickedPlace } from './PlaceSearch'
 import { RatingInput } from './RatingInput'
@@ -31,16 +32,30 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     setDraftSession((s) => s + 1)
   }
 
-  // Mini confirmation map with a draggable pin, shown whenever a draft has coords
+  // Mini confirmation map with a draggable pin, shown whenever a draft has coords.
+  // Theme-aware like CookieMap: same `currentTheme()` + `getMapStyleUrl()` pathway. The
+  // Map is still constructed synchronously (no pre-fetch of the style JSON) so opening a
+  // draft keeps building exactly one map — see the stability test below this component.
+  // The palette is instead applied once the (stock-coloured) style has loaded, via the
+  // guarded `once`/`getStyle`/`setStyle` calls, which the maplibre-gl vitest mock — built
+  // for the test above and not implementing those methods — simply skips.
   useEffect(() => {
     if (!draft || !mapDiv.current) return
+    const theme = currentTheme()
     const map = new maplibregl.Map({
       container: mapDiv.current,
-      style: getMapStyleUrl('light'),
+      style: getMapStyleUrl(theme),
       center: [draft.lng, draft.lat],
       zoom: 16,
       attributionControl: { compact: true },
     })
+    if (typeof map.once === 'function') {
+      map.once('style.load', () => {
+        if (typeof map.getStyle === 'function' && typeof map.setStyle === 'function') {
+          map.setStyle(applyPalette(map.getStyle(), theme))
+        }
+      })
+    }
     const marker = new maplibregl.Marker({ draggable: true }).setLngLat([draft.lng, draft.lat]).addTo(map)
     marker.on('dragend', () => {
       const { lat, lng } = marker.getLngLat()

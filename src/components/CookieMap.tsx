@@ -2,17 +2,14 @@
 
 import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import '@/lib/maplibre-setup'
 import { useEffect, useRef, useState } from 'react'
-import { getMapStyleUrl, applyPalette, type MapTheme } from '@/lib/map-style'
+import { currentTheme, getMapStyleUrl, applyPalette } from '@/lib/map-style'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 import { ShopSheet } from './ShopSheet'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
-
-function currentTheme(): MapTheme {
-  return typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-}
 
 export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -44,7 +41,10 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         })
         mapRef.current = map
 
-        map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'bottom-right')
+        // top-left: bottom-right sits under the bottom sheet on mobile once a shop is
+        // selected, and top-right is already the FR/EN toggle — top-left stays reachable
+        // in both states.
+        map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'top-left')
 
         for (const shop of shops) {
           const el = document.createElement('button')
