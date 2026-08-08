@@ -16,11 +16,20 @@ type Draft = PickedPlace & { rating: number; review: string; id?: number }
 
 export function AdminApp({ shops }: { shops: Shop[] }) {
   const [draft, setDraft] = useState<Draft | null>(null)
+  const [draftSession, setDraftSession] = useState(0)
   const [manualName, setManualName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const mapDiv = useRef<HTMLDivElement>(null)
   const markerRef = useRef<maplibregl.Marker | null>(null)
+
+  // Opens a draft and bumps the session counter, so the mini-map effect (keyed on
+  // draftSession) only rebuilds the map when a NEW draft is opened — not on every
+  // keystroke of the in-form fields (name, address, review, etc.).
+  const openDraft = (d: Draft) => {
+    setDraft(d)
+    setDraftSession((s) => s + 1)
+  }
 
   // Mini confirmation map with a draggable pin, shown whenever a draft has coords
   useEffect(() => {
@@ -43,11 +52,11 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       markerRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft?.lat === undefined, draft?.name])
+  }, [draftSession])
 
   const startManual = (typedName: string) => {
     setManualName(typedName)
-    setDraft({ name: typedName, address: '', lat: MTL_CENTER[1], lng: MTL_CENTER[0], googleMapsUrl: '', rating: 0, review: '' })
+    openDraft({ name: typedName, address: '', lat: MTL_CENTER[1], lng: MTL_CENTER[0], googleMapsUrl: '', rating: 0, review: '' })
   }
 
   const save = async () => {
@@ -91,7 +100,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       {!draft && (
         <section className="flex flex-col gap-3">
           <h2 className="text-lg">Ajouter un cookie</h2>
-          <PlaceSearch onPick={(p) => setDraft({ ...p, rating: 0, review: '' })} onManualRequest={startManual} />
+          <PlaceSearch onPick={(p) => openDraft({ ...p, rating: 0, review: '' })} onManualRequest={startManual} />
         </section>
       )}
 
@@ -153,7 +162,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
                 <span className="text-sm text-[color:var(--text-muted)]">{String(shop.rating).replace('.', ',')} / 5</span>
               </div>
               <div className="flex gap-3 text-sm">
-                <button onClick={() => setDraft({ ...shop, id: shop.id })} className="underline">Modifier</button>
+                <button onClick={() => openDraft({ ...shop, id: shop.id })} className="underline">Modifier</button>
                 <button onClick={() => remove(shop)} className="text-red-700 underline">Supprimer</button>
               </div>
             </li>
