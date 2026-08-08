@@ -1,0 +1,32 @@
+export type Lang = 'fr' | 'en'
+
+export const dict = {
+  fr: {
+    directions: 'Itinéraire',
+    copyAddress: 'Copier l’adresse',
+    copied: 'Copié ✓',
+    share: 'Partager',
+    googleListing: 'Fiche Google',
+    openInPlans: 'Ouvrir dans Plans',
+    openInGoogleMaps: 'Ouvrir dans Google Maps',
+    mapUnavailable: 'La carte fait une pause cookie. Réessaie dans un instant !',
+    linkCopied: 'Lien copié ✓',
+    close: 'Fermer',
+    retry: 'Réessayer',
+  },
+  en: {
+    directions: 'Directions',
+    copyAddress: 'Copy address',
+    copied: 'Copied ✓',
+    share: 'Share',
+    googleListing: 'Google listing',
+    openInPlans: 'Open in Apple Maps',
+    openInGoogleMaps: 'Open in Google Maps',
+    mapUnavailable: 'The map is on a cookie break. Try again in a moment!',
+    linkCopied: 'Link copied ✓',
+    close: 'Close',
+    retry: 'Retry',
+  },
+} as const satisfies Record<Lang, Record<string, string>>
+
+export type MsgKey = keyof (typeof dict)['fr']
