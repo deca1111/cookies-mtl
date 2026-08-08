@@ -48,7 +48,9 @@ vi.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}))
 import { CookieMap } from '../CookieMap'
 
 beforeEach(() => {
-  mapConstructor.mockClear()
+  // mockReset (not just mockClear) so a mockImplementation set by one test can never leak
+  // into the next.
+  mapConstructor.mockReset()
   removeSpy.mockClear()
   handlers = {}
   global.fetch = vi.fn(async () => ({
@@ -58,15 +60,25 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // This file now has 3 tests rendering <CookieMap>; without an explicit unmount between
-  // them, an earlier test's un-torn-down effect (pending retryTimeout, visibilitychange
+  // This file now has several tests rendering <CookieMap>; without an explicit unmount
+  // between them, an earlier test's un-torn-down effect (pending timers, visibilitychange
   // listener) could bleed into a later test — cleanup() runs each effect's own cleanup
   // function synchronously.
   cleanup()
   vi.restoreAllMocks()
 })
 
-test('rebuilds the map when maplibre reports webglcontextlost', async () => {
+// Round 3 (iPhone incident, footprint reduction continued — see
+// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 3"): MapLibre
+// already has a built-in, zero-network webglcontextlost/webglcontextrestored recovery path (it
+// saves the in-memory style before tearing the WebGL context down, then restores from that
+// saved copy — no refetch). CookieMap used to call scheduleRebuild synchronously on every
+// webglcontextlost, discarding that cheap built-in recovery before the browser got a chance to
+// use it. It now gives MapLibre's own recovery a bounded RESTORE_GRACE_MS (6000ms) window
+// first, via handleContextLoss, and only falls back to the existing damped/capped rebuild if
+// webglcontextrestored doesn't fire in time.
+
+test('rebuilds the map when maplibre reports webglcontextlost and it is not restored in time', async () => {
   render(<CookieMap shops={[]} />)
 
   await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
@@ -78,12 +90,97 @@ test('rebuilds the map when maplibre reports webglcontextlost', async () => {
       handlers.webglcontextlost()
     })
 
-    // The dead map is torn down immediately; the rebuild itself waits out the damping
-    // cooldown (see the cooldown test below) before init() runs again.
+    // MapLibre gets first crack at recovering itself for free — the dead map is NOT torn down
+    // immediately. It's given the grace window to fire webglcontextrestored on its own before
+    // the fallback rebuild kicks in.
+    expect(removeSpy).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000) // grace window elapses without a restore
+    })
+    // Only now does the fallback path tear the dead map down and start the damping cooldown.
     expect(removeSpy).toHaveBeenCalledTimes(1)
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(mapConstructor).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+test('restores within the grace window — no teardown, no new map is constructed', async () => {
+  render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
+  await waitFor(() => expect(handlers.webglcontextrestored).toBeTypeOf('function'))
+
+  vi.useFakeTimers()
+  try {
+    act(() => {
+      handlers.webglcontextlost()
+    })
+
+    // Partway through the grace window, MapLibre's own recovery fires webglcontextrestored —
+    // its built-in, zero-network in-memory restore already brought the map back.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+    act(() => {
+      handlers.webglcontextrestored()
+    })
+
+    // Waiting well past both the grace window and the damping cooldown proves no fallback
+    // rebuild was ever scheduled — MapLibre's own recovery was trusted and nothing else
+    // happened: no teardown, no new Map construction.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000)
+    })
+
+    expect(removeSpy).not.toHaveBeenCalled()
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+test('does not rebuild until both the grace window and the damping cooldown elapse', async () => {
+  render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
+
+  vi.useFakeTimers()
+  try {
+    act(() => {
+      handlers.webglcontextlost()
+    })
+
+    // Just short of the grace window: MapLibre could still recover on its own — no teardown.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5999)
+    })
+    expect(removeSpy).not.toHaveBeenCalled()
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    // Crossing the 6000ms grace boundary without a restore: the fallback tears the dead map
+    // down and starts the separate damping cooldown — still no new map yet.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(removeSpy).toHaveBeenCalledTimes(1)
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    // Just short of the cooldown: still no rebuild.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1999)
+    })
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    // Crossing the 2000ms cooldown boundary triggers exactly one rebuild.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
     })
     expect(mapConstructor).toHaveBeenCalledTimes(2)
   } finally {
@@ -103,10 +200,10 @@ test('a failed rebuild does not latch `rebuilding` — the scheduled retry recov
   let fetchCalls = 0
   global.fetch = vi.fn(async () => {
     fetchCalls += 1
-    // Call 1: initial mount — succeeds. Call 2: the rebuild triggered by webglcontextlost
-    // below, once the damping cooldown elapses — fails (simulates "network not back yet"
-    // right after returning from background). Call 3+: the scheduled failure-retry —
-    // succeeds again.
+    // Call 1: initial mount — succeeds. Call 2: the rebuild triggered once the grace window
+    // elapses without a restore and the damping cooldown runs out — fails (simulates "network
+    // not back yet" right after returning from background). Call 3+: the scheduled
+    // failure-retry — succeeds again.
     if (fetchCalls === 2) return { ok: false, json: async () => ({}) }
     return { ok: true, json: async () => ({ layers: [] }) }
   }) as unknown as typeof fetch
@@ -120,8 +217,12 @@ test('a failed rebuild does not latch `rebuilding` — the scheduled retry recov
     act(() => {
       handlers.webglcontextlost()
     })
-    // The dead map is torn down immediately; the rebuild's own init() doesn't run until the
-    // damping cooldown elapses.
+    // The dead map is not torn down until the grace window elapses without a restore.
+    expect(removeSpy).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000)
+    })
     expect(removeSpy).toHaveBeenCalledTimes(1)
     expect(mapConstructor).toHaveBeenCalledTimes(1)
 
@@ -166,7 +267,15 @@ test('gives up after 3 consecutive failed attempts — no 4th retry is scheduled
     act(() => {
       handlers.webglcontextlost()
     })
-    // Only the damping-cooldown timer is pending so far — init() hasn't even run once yet.
+    // Only the grace-window timer is pending so far — nothing has been torn down yet.
+    expect(vi.getTimerCount()).toBe(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000)
+    })
+    // Grace elapsed without a restore: the dead map is torn down and the damping cooldown
+    // timer is now the only one pending — init() hasn't even run once yet.
+    expect(removeSpy).toHaveBeenCalledTimes(1)
     expect(vi.getTimerCount()).toBe(1)
 
     await act(async () => {
@@ -209,66 +318,17 @@ test('gives up after 3 consecutive failed attempts — no 4th retry is scheduled
 // could rebuild the map (style fetch + tiles + markers) unboundedly until iOS Safari killed the
 // page. These two tests pin the damping cooldown and the total-rebuild cap that fix that gap.
 
-test('does not rebuild immediately on webglcontextlost — waits for the 2000ms damping cooldown', async () => {
-  render(<CookieMap shops={[]} />)
-  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
-  await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
-
-  vi.useFakeTimers()
+test('caps the map pixelRatio at 2 even when devicePixelRatio reports 3 (iPhone GPU memory footprint)', async () => {
+  const originalDpr = window.devicePixelRatio
+  Object.defineProperty(window, 'devicePixelRatio', { value: 3, configurable: true })
   try {
-    act(() => {
-      handlers.webglcontextlost()
-    })
+    render(<CookieMap shops={[]} />)
+    await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
 
-    // Just short of the cooldown: still no rebuild.
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1999)
-    })
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
-
-    // Crossing the 2000ms cooldown boundary triggers exactly one rebuild.
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(1)
-    })
-    expect(mapConstructor).toHaveBeenCalledTimes(2)
+    const options = mapConstructor.mock.calls[0][0] as { pixelRatio?: number }
+    expect(options.pixelRatio).toBe(2)
   } finally {
-    vi.useRealTimers()
-  }
-})
-
-test('caps loss-triggered rebuilds at 5 per mount — the 6th loss shows the error state instead of rebuilding', async () => {
-  const { container } = render(<CookieMap shops={[]} />)
-  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
-
-  vi.useFakeTimers()
-  try {
-    // 5 loss->successful-rebuild cycles: each one clears the cooldown and produces one more
-    // Map construction (2..6).
-    for (let i = 0; i < 5; i++) {
-      expect(handlers.webglcontextlost).toBeTypeOf('function')
-      act(() => {
-        handlers.webglcontextlost()
-      })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(2000)
-      })
-      expect(mapConstructor).toHaveBeenCalledTimes(i + 2)
-    }
-    expect(container.querySelector('.absolute.inset-0')).toBeNull()
-
-    // 6th loss: the per-mount cap is already reached, so no further rebuild is scheduled —
-    // waiting out the cooldown window proves nothing fires — and the error state shows instead.
-    act(() => {
-      handlers.webglcontextlost()
-    })
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2000)
-    })
-
-    expect(mapConstructor).toHaveBeenCalledTimes(6) // 1 initial + 5 rebuilds, never a 6th
-    expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
-  } finally {
-    vi.useRealTimers()
+    Object.defineProperty(window, 'devicePixelRatio', { value: originalDpr, configurable: true })
   }
 })
 
@@ -292,16 +352,19 @@ test('counts failure retries against the rebuild cap — cap is shared, not sepa
 
   vi.useFakeTimers()
   try {
-    // Fire a loss that will trigger a rebuild. Once the cooldown elapses, init() is called
-    // (call 2), but the style fetch fails — we're now at rebuildCount=1, failureCount=1.
-    // A retry is scheduled for 3000ms later (rebuildCount incremented to 2).
+    // Fire a loss that will trigger a rebuild once the grace window elapses without a restore.
     act(() => {
       handlers.webglcontextlost()
     })
     expect(mapConstructor).toHaveBeenCalledTimes(1)
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2000)
+      await vi.advanceTimersByTimeAsync(6000) // grace window, no restore
+    })
+    expect(removeSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000) // damping cooldown
     })
     // The rebuild's init() ran (call 2) and failed. No 2nd map yet.
     expect(mapConstructor).toHaveBeenCalledTimes(1)
@@ -327,10 +390,10 @@ test('counts failure retries against the rebuild cap — cap is shared, not sepa
     })
 
     // Total Map constructions: 1 initial + 0 successful rebuilds = 1. The rebuild and its two
-    // retries all failed, so the map was never rebuilt. Most importantly, rebuildCount was
-    // incremented (1 for the rebuild + 2 for the retries) and now sits at 3, so a subsequent
-    // loss event would still have room to attempt rebuilds (cap is 5), but failureCount's
-    // independent < 3 limit cut off the retries after the rebuild itself failed.
+    // retries all failed, so the map was never rebuilt. rebuildCount was incremented (1 for
+    // the rebuild + 2 for the retries) and now sits at 3, so a subsequent loss event would
+    // still have room to attempt rebuilds (cap is 5), but failureCount's independent < 3
+    // limit cut off the retries after the rebuild itself failed.
     expect(mapConstructor).toHaveBeenCalledTimes(1)
     expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
   } finally {
@@ -338,26 +401,46 @@ test('counts failure retries against the rebuild cap — cap is shared, not sepa
   }
 })
 
-// Round 2 — footprint reduction (iPhone incident, see
-// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 2 — footprint
-// reduction"): the damping/cap fix above stops the rebuild loop from running away, but the
-// user's iPhone still lost the WebGL context repeatedly during active use — consistent with
-// GPU memory pressure from rendering at devicePixelRatio 3 (a real iPhone value) exceeding iOS
-// Safari's tolerance. Standard MapLibre mitigation: cap the render pixel ratio at 2. This test
-// pins that the Map constructor never receives a pixelRatio above 2, even when
-// window.devicePixelRatio reports 3.
+test('caps loss-triggered rebuilds at 5 per mount — the 6th loss shows the error state instead of rebuilding', async () => {
+  const { container } = render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
 
-test('caps the map pixelRatio at 2 even when devicePixelRatio reports 3 (iPhone GPU memory footprint)', async () => {
-  const originalDpr = window.devicePixelRatio
-  Object.defineProperty(window, 'devicePixelRatio', { value: 3, configurable: true })
+  vi.useFakeTimers()
   try {
-    render(<CookieMap shops={[]} />)
-    await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+    // 5 loss->successful-rebuild cycles: each one clears the grace window and cooldown and
+    // produces one more Map construction (2..6).
+    for (let i = 0; i < 5; i++) {
+      expect(handlers.webglcontextlost).toBeTypeOf('function')
+      act(() => {
+        handlers.webglcontextlost()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000) // grace window, no restore
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000) // damping cooldown
+      })
+      expect(mapConstructor).toHaveBeenCalledTimes(i + 2)
+    }
+    expect(container.querySelector('.absolute.inset-0')).toBeNull()
 
-    const options = mapConstructor.mock.calls[0][0] as { pixelRatio?: number }
-    expect(options.pixelRatio).toBe(2)
+    // 6th loss: the per-mount cap is already reached, so no further rebuild is scheduled —
+    // waiting out the grace window and cooldown proves nothing fires — and the error state
+    // shows instead.
+    act(() => {
+      handlers.webglcontextlost()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000)
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    expect(mapConstructor).toHaveBeenCalledTimes(6) // 1 initial + 5 rebuilds, never a 6th
+    expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
   } finally {
-    Object.defineProperty(window, 'devicePixelRatio', { value: originalDpr, configurable: true })
+    vi.useRealTimers()
   }
 })
 
@@ -382,11 +465,17 @@ test('clicking the retry button on the error screen resets the rebuild budget an
         handlers.webglcontextlost()
       })
       await act(async () => {
+        await vi.advanceTimersByTimeAsync(6000)
+      })
+      await act(async () => {
         await vi.advanceTimersByTimeAsync(2000)
       })
     }
     act(() => {
       handlers.webglcontextlost()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000)
     })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000)

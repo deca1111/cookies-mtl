@@ -26,6 +26,18 @@ const REBUILD_COOLDOWN_MS = 2000
 // the existing consecutive-failure breaker, but only if rebuildCount permits.
 const MAX_REBUILDS_PER_MOUNT = 5
 
+// Round 3 (iPhone incident, footprint reduction continued — see
+// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 3"). MapLibre
+// itself already has a built-in, zero-network webglcontextlost/webglcontextrestored recovery
+// path: it saves the in-memory style before tearing down the WebGL context, then restores from
+// that saved copy on `webglcontextrestored` — no refetch, no new Map/Painter/context. Our own
+// scheduleRebuild path used to run unconditionally on every webglcontextlost, discarding that
+// cheap built-in path before the browser ever got a chance to use it, and plausibly adding to
+// the very memory pressure causing repeated losses. RESTORE_GRACE_MS gives MapLibre's own
+// recovery a bounded window to fire `webglcontextrestored` first; only if it doesn't do we fall
+// back to the existing damped/capped scheduleRebuild path.
+const RESTORE_GRACE_MS = 6000
+
 export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -74,15 +86,38 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     // ensure no cross-talk between rebuild cooldown and failure-retry backoff.
     let rebuildTimeout: ReturnType<typeof setTimeout> | null = null
     let failureRetryTimeout: ReturnType<typeof setTimeout> | null = null
+    // Round 3: pending "give MapLibre's own webglcontextrestored a chance" window. Set by
+    // handleContextLoss when a loss is first observed, cleared either by webglcontextrestored
+    // firing (recovered for free, in-memory, no network — nothing else to do) or by its own
+    // timeout firing (falls back to scheduleRebuild). Its truthiness also guards against
+    // starting a second, overlapping grace window if webglcontextlost/visibilitychange fire
+    // again while one is already pending.
+    let graceTimeout: ReturnType<typeof setTimeout> | null = null
     // Counts every loss-/visibility-triggered rebuild attempt (scheduled, not necessarily
     // successful) — never reset within the mount, unlike `failureCount`. This is what actually
     // bounds the success->loss->success flapping loop from the iPhone incident.
     let rebuildCount = 0
 
-    // Shared by the webglcontextlost handler and the visibilitychange fallback: tears the dead
-    // map down immediately (nothing left to preserve once its context is lost), then either
-    // schedules a damped rebuild or, once MAX_REBUILDS_PER_MOUNT is reached, gives up and shows
-    // the error state instead of scheduling another one.
+    // Round 3: entry point for BOTH the webglcontextlost handler and the visibilitychange
+    // fallback (previously each called scheduleRebuild directly). Defers to MapLibre's own
+    // built-in, zero-network context recovery first: starts a bounded grace window instead of
+    // tearing the map down immediately. If webglcontextrestored fires within the window, the
+    // map.on('webglcontextrestored', ...) handler registered in init() clears graceTimeout and
+    // nothing else happens. Only once the window elapses without a restore do we fall back to
+    // the existing damped/capped scheduleRebuild path.
+    function handleContextLoss(map: maplibregl.Map) {
+      if (cancelled || rebuilding || graceTimeout) return
+      graceTimeout = setTimeout(() => {
+        graceTimeout = null
+        scheduleRebuild(map)
+      }, RESTORE_GRACE_MS)
+    }
+
+    // Shared fallback used by handleContextLoss once its grace window elapses without a
+    // restore: tears the dead map down (nothing left to preserve — MapLibre's own recovery
+    // window already passed), then either schedules a damped rebuild or, once
+    // MAX_REBUILDS_PER_MOUNT is reached, gives up and shows the error state instead of
+    // scheduling another one.
     function scheduleRebuild(map: maplibregl.Map) {
       if (cancelled || rebuilding) return
       rebuilding = true
@@ -146,14 +181,23 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         }
         map.on('click', () => setSelected(null))
 
-        // Task 17b bug 1: mobile OSes reclaim GPU memory from backgrounded tabs (and cap
-        // simultaneous live WebGL contexts, ~8 on iOS Safari), which can leave this map's
-        // canvas dead — MapLibre surfaces that as a `webglcontextlost` map event. Recover by
-        // tearing the dead map down and rebuilding from scratch via this same `init()` path;
-        // simplest reliable recovery, and `selectedRef` carries the current selection across
-        // the rebuild.
+        // Task 17b bug 1 / Round 3: mobile OSes reclaim GPU memory from backgrounded tabs (and
+        // cap simultaneous live WebGL contexts, ~8 on iOS Safari), which can leave this map's
+        // canvas dead — MapLibre surfaces that as a `webglcontextlost` map event. MapLibre
+        // itself already tries to recover for free first (in-memory `setStyle` from a saved
+        // copy — no network refetch); calling scheduleRebuild synchronously here would discard
+        // that cheap built-in path before the browser gets a chance to use it. Defer instead:
+        // enter the bounded grace window via handleContextLoss, and only fall back to the full
+        // damped/capped rebuild if MapLibre's own recovery doesn't fire in time. `selectedRef`
+        // still carries the current selection across a fallback rebuild if one does happen.
         map.on('webglcontextlost', () => {
-          scheduleRebuild(map)
+          handleContextLoss(map)
+        })
+        map.on('webglcontextrestored', () => {
+          if (graceTimeout) {
+            clearTimeout(graceTimeout)
+            graceTimeout = null
+          }
         })
       } catch {
         if (!cancelled) {
@@ -196,13 +240,17 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       const canvas = map.getCanvas()
       const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
       if (gl?.isContextLost()) {
-        scheduleRebuild(map)
+        // Round 3: route through the same loss-entry logic as webglcontextlost instead of
+        // scheduling a rebuild directly — gives MapLibre's own recovery the same bounded grace
+        // window even when the loss is only noticed on returning to the tab.
+        handleContextLoss(map)
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)
 
     return () => {
       cancelled = true
+      if (graceTimeout) clearTimeout(graceTimeout)
       if (rebuildTimeout) clearTimeout(rebuildTimeout)
       if (failureRetryTimeout) clearTimeout(failureRetryTimeout)
       document.removeEventListener('visibilitychange', onVisibilityChange)
