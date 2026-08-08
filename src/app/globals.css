@@ -52,40 +52,38 @@
   --foreground: var(--text-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
-    --bg: #241a13; /* [spec] chocolat */
-    --surface: #2c2018;
-    --surface-2: #362920;
+  --bg: #241a13; /* [spec] chocolat */
+  --surface: #2c2018;
+  --surface-2: #362920;
 
-    --text-strong: #f4ebdd;
-    --text-body: #dccdb9;
-    --text-muted: #a49081;
+  --text-strong: #f4ebdd;
+  --text-body: #dccdb9;
+  --text-muted: #a49081;
 
-    --accent: #d29a55; /* [spec] caramel doré */
-    --accent-ink: #dfa96a;
-    --accent-wash: rgba(210, 154, 85, 0.14);
+  --accent: #d29a55; /* [spec] caramel doré */
+  --accent-ink: #dfa96a;
+  --accent-wash: rgba(210, 154, 85, 0.14);
 
-    --border: #493829;
-    --border-strong: #634d38;
+  --border: #493829;
+  --border-strong: #634d38;
 
-    --btn-bg: #d29a55;
-    --btn-bg-hover: #e0aa68;
-    --btn-text: #241a13;
+  --btn-bg: #d29a55;
+  --btn-bg-hover: #e0aa68;
+  --btn-text: #241a13;
 
-    --pin: #d29a55;
-    --pin-chip: #3a2415;
-    --pin-ring: #17100b;
-    --pin-shadow: rgba(0, 0, 0, 0.55);
+  --pin: #d29a55;
+  --pin-chip: #3a2415;
+  --pin-ring: #17100b;
+  --pin-shadow: rgba(0, 0, 0, 0.55);
 
-    --danger: #e5907a;
+  --danger: #e5907a;
 
-    --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
-    --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);
-    --shadow-chip: 0 2px 10px rgba(0, 0, 0, 0.4);
-  }
+  --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);
+  --shadow-chip: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
 @theme inline {
@@ -171,11 +169,9 @@ body {
   outline-offset: 3px;
 }
 
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] .cmtl-pin {
   /* « légèrement lumineux » — the gold drop lifts off the chocolate ground. */
-  .cmtl-pin {
-    box-shadow: 0 3px 10px var(--pin-shadow), 0 0 14px rgba(210, 154, 85, 0.34);
-  }
+  box-shadow: 0 3px 10px var(--pin-shadow), 0 0 14px rgba(210, 154, 85, 0.34);
 }
 
 /* --- Bottom sheet --------------------------------------------------------- */
@@ -237,11 +233,9 @@ body {
   opacity: 0.72;
 }
 
-@media (prefers-color-scheme: dark) {
-  .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
-    filter: invert(1) brightness(1.1);
-    opacity: 0.66;
-  }
+:root[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.1);
+  opacity: 0.66;
 }
 
 .maplibregl-ctrl-attrib.maplibregl-compact {
@@ -269,11 +263,9 @@ body {
   opacity: 0.9;
 }
 
-@media (prefers-color-scheme: dark) {
-  .maplibregl-ctrl-attrib-button {
-    filter: invert(1);
-    opacity: 0.38;
-  }
+:root[data-theme='dark'] .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+  opacity: 0.38;
 }
 
 @media (prefers-reduced-motion: reduce) {

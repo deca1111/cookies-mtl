@@ -4,6 +4,7 @@ import { Comfortaa } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/components/LangProvider";
 import { SITE_URL, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/site";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 // Titres et marque : la Gill Sans Ultra Bold fournie par Léo (licence perso, self-host).
 const gillSans = localFont({
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${gillSans.variable} ${comfortaa.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <LangProvider>{children}</LangProvider>
       </body>
     </html>

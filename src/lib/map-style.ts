@@ -7,11 +7,13 @@ export function getMapStyleUrl(theme: MapTheme): string {
   return env || DEFAULT_STYLE
 }
 
-// Reads the OS/browser theme the same way everywhere a map is mounted (CookieMap, the
-// admin mini-map) so both stay in sync with each other and with globals.css's
-// `prefers-color-scheme` rules. Falls back to 'light' when `matchMedia` isn't available
-// (jsdom in tests doesn't implement it), same as an unmatched media query would.
+// Source de vérité du thème pour les cartes : l'attribut posé par src/lib/theme.ts
+// (toggle manuel), sinon le système. Fallback 'light' hors navigateur (jsdom, SSR).
 export function currentTheme(): MapTheme {
+  if (typeof document !== 'undefined') {
+    const t = document.documentElement.dataset.theme
+    if (t === 'light' || t === 'dark') return t
+  }
   if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'light'
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
