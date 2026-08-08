@@ -24,3 +24,42 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+:root {
+  --bg: #f3ede3;
+  --sheet-bg: #fffdf9;
+  --text-strong: #2c1f16;
+  --text-body: #4a3b2d;
+  --text-muted: #8a7a68;
+  --accent: #a4794a;
+  --border: #d9cfc0;
+  --btn-bg: #3b2a1f;
+  --btn-text: #f6efe4;
+  --pin: #3b2a1f;
+  --pin-ring: #faf6ee;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #241a13;
+    --sheet-bg: #2e2118;
+    --text-strong: #f2e7d8;
+    --text-body: #d8c9b8;
+    --text-muted: #a3958a;
+    --accent: #d29a55;
+    --border: #5a4936;
+    --btn-bg: #d29a55;
+    --btn-text: #241a13;
+    --pin: #d29a55;
+    --pin-ring: #241a13;
+  }
+}
+.cmtl-pin {
+  width: 26px;
+  height: 26px;
+  background: var(--pin);
+  border: 2.5px solid var(--pin-ring);
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(45deg);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
