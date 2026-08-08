@@ -1,7 +1,7 @@
 # Cookies MTL 🍪
 
 La carte des cookies de Montréal — chaque cookie goûté, noté et localisé.
-Prod : https://cookies-mtl.vercel.app
+Prod : https://cookies.zucchinistudio.com/
 
 Stack : Next.js (App Router) · TypeScript · Tailwind CSS · MapLibre GL · Postgres (Neon). Déployé sur Vercel.
 
