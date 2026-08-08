@@ -36,8 +36,8 @@ mkdirSync(destDir, { recursive: true })
 for (const { src, dest } of files) {
   const srcPath = join(distDir, src)
   if (!existsSync(srcPath)) {
-    console.warn(`[copy-maplibre-worker] source not found: ${srcPath} — is maplibre-gl installed?`)
-    continue
+    console.error(`[copy-maplibre-worker] source not found: ${srcPath} — maplibre-gl dist layout changed — update scripts/copy-maplibre-worker.mjs`)
+    process.exit(1)
   }
   copyFileSync(srcPath, join(destDir, dest))
   console.log(`[copy-maplibre-worker] copied ${src} -> public/${dest}`)
