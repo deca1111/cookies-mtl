@@ -76,7 +76,17 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
   // Spec carte hybride §4 : quel moteur de rendu sert la carte. `'raster'` est
   // choisi dès que WebGL échoue (init ou pertes répétées) et mémorisé, si possible,
   // via localStorage — les visites suivantes ne chargent alors plus MapLibre du tout.
-  const [renderer, setRenderer] = useState<'webgl' | 'raster'>(() => preferredRenderer())
+  // `null` = pas encore décidé : le SSR et le premier rendu client affichent le même
+  // conteneur vide, la préférence (localStorage) n'est lue qu'après montage — lire
+  // localStorage dans l'initialiseur du useState créait un mismatch d'hydratation
+  // (React #418) dès que la préférence différait du rendu serveur.
+  const [renderer, setRenderer] = useState<'webgl' | 'raster' | null>(null)
+  useEffect(() => {
+    // Hydratation volontaire, même motif que LangProvider : décision client
+    // post-montage à partir d'un état serveur neutre.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRenderer(preferredRenderer())
+  }, [])
   // Round 2 — footprint reduction: bumped by the retry button on the error screen, mirroring
   // AdminApp's draftSession pattern. It's the main effect's only dependency, so bumping it
   // re-runs the whole effect — cleanup tears down whatever's left, then the effect body

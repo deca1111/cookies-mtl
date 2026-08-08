@@ -110,7 +110,9 @@ export function RasterMap({
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full" />
+      {/* fond crème : au-delà de la zone pré-rendue (bords à faible zoom sur grand
+          écran), la carte fond dans le thème au lieu du gris Leaflet par défaut */}
+      <div ref={containerRef} className="h-full w-full bg-[color:var(--bg)]" />
       <button
         onClick={onRetryWebgl}
         className="absolute bottom-6 left-1/2 z-[1000] -translate-x-1/2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-[12px] text-[color:var(--text-muted)] shadow-[var(--shadow-chip)] transition-colors hover:text-[color:var(--text-body)]"

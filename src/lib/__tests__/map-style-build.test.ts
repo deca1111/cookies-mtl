@@ -2,7 +2,8 @@ import { expect, test } from 'vitest'
 import { simplifyStyle, buildMapStyle } from '../map-style'
 
 // Fixture : un id représentatif par famille gardée + un par famille supprimée.
-const fixture = () => ({
+type FixtureLayer = { id: string; type: string; paint?: Record<string, unknown> }
+const fixture = (): { layers: FixtureLayer[] } => ({
   layers: [
     { id: 'background', type: 'background' },
     { id: 'water', type: 'fill' },

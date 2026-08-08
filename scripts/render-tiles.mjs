@@ -128,10 +128,13 @@ for (const theme of THEMES) {
   await page.waitForFunction('typeof window.renderSlab === "function"')
   console.log(`=== thème ${theme} ===`)
   for (const z of ZOOMS) {
-    const x0 = Math.floor(lon2x(BBOX.west, z))
-    const x1 = Math.floor(lon2x(BBOX.east, z))
-    const y0 = Math.floor(lat2y(BBOX.north, z))
-    const y1 = Math.floor(lat2y(BBOX.south, z))
+    // Marge d'une tuile à chaque bord : Leaflet demande toute tuile qui INTERSECTE
+    // la bbox (son option `bounds`), pas seulement celles dont le coin y tombe — un
+    // floor strict laissait les tuiles de bord en 403 (constaté sur la borne nord).
+    const x0 = Math.floor(lon2x(BBOX.west, z)) - 1
+    const x1 = Math.floor(lon2x(BBOX.east, z)) + 1
+    const y0 = Math.floor(lat2y(BBOX.north, z)) - 1
+    const y1 = Math.floor(lat2y(BBOX.south, z)) + 1
     for (let sx = x0; sx <= x1; sx += SLAB) {
       for (let sy = y0; sy <= y1; sy += SLAB) {
         const dataUrl = await page.evaluate(
