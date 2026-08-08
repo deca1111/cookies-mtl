@@ -4,39 +4,30 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '@/lib/maplibre-setup'
 import { useEffect, useRef, useState } from 'react'
-import { currentTheme, getMapStyleUrl, applyPalette, type MapTheme } from '@/lib/map-style'
+import { currentTheme, getMapStyleUrl, buildMapStyle, type MapTheme } from '@/lib/map-style'
+import { preferredRenderer, markRasterPreferred, clearRasterPreference } from '@/lib/map-renderer'
+import { viewportTileUrls } from '@/lib/tile-math'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
+import { RasterMap } from './RasterMap'
 import { ShopSheet } from './ShopSheet'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 
-// Fix round 2 (iPhone incident: .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md).
-// Fix round 1's `failureCount < 3` breaker only bounds consecutive FAILED init() calls — it
-// resets to 0 on every successful init, so it never engages for a success->loss->success
-// flapping loop. On a mobile device flapping in and out of GPU memory pressure, every
-// `webglcontextlost` triggered an immediate, undamped, full rebuild (style fetch + tiles +
-// markers) with no delay and no cap on total rebuilds — unbounded cost until iOS Safari killed
-// the page. These two constants damp and cap loss-/visibility-triggered rebuilds specifically;
-// they compose with (don't replace) the existing failed-init retry logic.
-const REBUILD_COOLDOWN_MS = 2000
-// Bounds ALL automatic re-init attempts per mount: loss-triggered rebuilds (damped via the
-// cooldown above) AND failure retries (from catch block). Composes with the independent
-// failureCount < 3 check — a loss-triggered rebuild that itself fails is still retried under
-// the existing consecutive-failure breaker, but only if rebuildCount permits.
+// Borne les retries d'ÉCHEC D'INIT (fetch de style raté — souci réseau) par mount.
+// Depuis la bascule raster (spec carte hybride), c'est son seul rôle : les pertes de
+// contexte WebGL ne déclenchent plus jamais de rebuild MapLibre, elles basculent vers
+// le fallback Leaflet (voir handleContextLoss).
 const MAX_REBUILDS_PER_MOUNT = 5
 
-// Round 3 (iPhone incident, footprint reduction continued — see
-// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 3"). MapLibre
-// itself already has a built-in, zero-network webglcontextlost/webglcontextrestored recovery
-// path: it saves the in-memory style before tearing down the WebGL context, then restores from
-// that saved copy on `webglcontextrestored` — no refetch, no new Map/Painter/context. Our own
-// scheduleRebuild path used to run unconditionally on every webglcontextlost, discarding that
-// cheap built-in path before the browser ever got a chance to use it, and plausibly adding to
-// the very memory pressure causing repeated losses. RESTORE_GRACE_MS gives MapLibre's own
-// recovery a bounded window to fire `webglcontextrestored` first; only if it doesn't do we fall
-// back to the existing damped/capped scheduleRebuild path.
-const RESTORE_GRACE_MS = 6000
+// Spec carte hybride §4 : fenêtre laissée au restore natif de MapLibre (in-memory,
+// zéro réseau) après une perte de contexte, AVANT de basculer vers le fallback
+// raster. Le restore utile tire en ~1 s ; l'issue de secours étant une bascule bon
+// marché et visuellement jumelle (plus un rebuild coûteux comme au round 3, qui
+// justifiait 6 s), 1,5 s suffit — au-delà, on fait attendre l'utilisateur devant un
+// canvas gelé pour rien. L'horloge ne court qu'onglet visible, et le fallback est
+// préchauffé en parallèle (warmRasterFallback) pour une bascule quasi instantanée.
+const RESTORE_GRACE_MS = 1500
 
 // Round 3: `maxTileCacheSize` left unset defaults to a dynamically-sized cache that scales with
 // the viewport in device pixels (`maxTileCacheZoomLevels`, default 5, x approximate tiles
@@ -62,7 +53,7 @@ async function getRecoloredStyle(theme: MapTheme, url: string) {
   if (styleCache.has(key)) return styleCache.get(key)
   const res = await fetch(url)
   if (!res.ok) throw new Error('style fetch failed')
-  const style = applyPalette(await res.json(), theme)
+  const style = buildMapStyle(await res.json(), theme)
   styleCache.set(key, style)
   return style
 }
@@ -82,6 +73,10 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     initialSlug ? (shops.find((s) => s.slug === initialSlug) ?? null) : null
   )
   const [mapError, setMapError] = useState(false)
+  // Spec carte hybride §4 : quel moteur de rendu sert la carte. `'raster'` est
+  // choisi dès que WebGL échoue (init ou pertes répétées) et mémorisé, si possible,
+  // via localStorage — les visites suivantes ne chargent alors plus MapLibre du tout.
+  const [renderer, setRenderer] = useState<'webgl' | 'raster'>(() => preferredRenderer())
   // Round 2 — footprint reduction: bumped by the retry button on the error screen, mirroring
   // AdminApp's draftSession pattern. It's the main effect's only dependency, so bumping it
   // re-runs the whole effect — cleanup tears down whatever's left, then the effect body
@@ -107,80 +102,122 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     setMapSession((s) => s + 1)
   }
 
+  // Bascule vers le fallback Leaflet : mémorise le choix (au mieux localStorage,
+  // sinon session) et démonte l'écran d'erreur éventuel — la bascule EST la
+  // réponse à l'échec, pas un message.
+  const switchToRaster = () => {
+    markRasterPreferred()
+    setMapError(false)
+    setRenderer('raster')
+  }
+  // Porte de sortie du raster (lien « Réessayer la carte détaillée ») : efface la
+  // préférence et retente MapLibre avec un budget de retries frais.
+  const retryWebgl = () => {
+    clearRasterPreference()
+    setRenderer('webgl')
+    setMapSession((s) => s + 1)
+  }
+
   useEffect(() => {
+    if (renderer !== 'webgl') return
     if (!containerRef.current) return
     const theme = currentTheme()
     let cancelled = false
-    let rebuilding = false
-    // Fix round 1 (task 17b review): bounds automatic rebuild cycles so a failed retry
-    // can't spin forever, and doubles as the circuit breaker the reviewer flagged as
-    // missing for repeated context losses. Reset to 0 on a successful init; a run of 3
-    // consecutive failures (initial load or rebuild, doesn't matter which) stops
-    // scheduling further retries — the mapError screen stays up until something external
-    // changes (network back, manual reload, another webglcontextlost/visibilitychange).
+    // Fix round 1 (task 17b review) : borne les retries consécutifs d'échec d'init
+    // (fetch de style). Reset à 0 sur un init réussi.
     let failureCount = 0
-    // Fast-follow: split into separate timers to allow clearing each independently and
-    // ensure no cross-talk between rebuild cooldown and failure-retry backoff.
-    let rebuildTimeout: ReturnType<typeof setTimeout> | null = null
     let failureRetryTimeout: ReturnType<typeof setTimeout> | null = null
-    // Round 3: pending "give MapLibre's own webglcontextrestored a chance" window. Set by
-    // handleContextLoss when a loss is first observed, cleared either by webglcontextrestored
-    // firing (recovered for free, in-memory, no network — nothing else to do) or by its own
-    // timeout firing (falls back to scheduleRebuild). Its truthiness also guards against
-    // starting a second, overlapping grace window if webglcontextlost/visibilitychange fire
-    // again while one is already pending.
+    // Fenêtre « laisse au restore natif sa chance » (spec §4). Posée par startGrace,
+    // levée par webglcontextrestored (récupération gratuite, rien d'autre à faire) ou
+    // par sa propre échéance (bascule raster). Sa véracité empêche une seconde
+    // fenêtre de se superposer.
     let graceTimeout: ReturnType<typeof setTimeout> | null = null
-    // Counts every loss-/visibility-triggered rebuild attempt (scheduled, not necessarily
-    // successful) — never reset within the mount, unlike `failureCount`. This is what actually
-    // bounds the success->loss->success flapping loop from the iPhone incident.
+    // Compte les tentatives de retry d'échec d'init — jamais reset dans le mount.
     let rebuildCount = 0
+    // Nombre de pertes de contexte observées dans la session de carte courante : la
+    // 1re a droit à la grâce, la 2e bascule immédiatement (le restore natif a déjà
+    // eu sa chance, et le fallback est déjà préchauffé).
+    let lossCount = 0
+    // Perte survenue onglet caché : cas bénin typique (iOS reprend le GPU en
+    // arrière-plan, restore gratuit au retour). On ne fait ni basculer ni décompter
+    // en arrière-plan — la grâce court à partir du retour visible.
+    let pendingHiddenLoss = false
 
-    // Round 3: entry point for BOTH the webglcontextlost handler and the visibilitychange
-    // fallback (previously each called scheduleRebuild directly). Defers to MapLibre's own
-    // built-in, zero-network context recovery first: starts a bounded grace window instead of
-    // tearing the map down immediately. If webglcontextrestored fires within the window, the
-    // map.on('webglcontextrestored', ...) handler registered in init() clears graceTimeout and
-    // nothing else happens. Only once the window elapses without a restore do we fall back to
-    // the existing damped/capped scheduleRebuild path.
-    function handleContextLoss(map: maplibregl.Map) {
-      if (cancelled || rebuilding || graceTimeout) return
+    // Spec §4 : pendant la grâce on préchauffe le fallback (chunk Leaflet + 9 tuiles
+    // du viewport) pour que la bascule, si elle a lieu, soit quasi instantanée. Si le
+    // restore natif gagne, on n'a dépensé que quelques Ko.
+    function warmRasterFallback(map: maplibregl.Map) {
+      import('./RasterMap').catch(() => {})
+      const base = process.env.NEXT_PUBLIC_TILES_BASE_URL ?? ''
+      const c = map.getCenter()
+      for (const url of viewportTileUrls(base, theme, c.lng, c.lat, map.getZoom())) {
+        fetch(url).catch(() => {})
+      }
+    }
+
+    function startGrace(map: maplibregl.Map) {
       graceTimeout = setTimeout(() => {
         graceTimeout = null
-        scheduleRebuild(map)
+        if (cancelled) return
+        // Grâce écoulée sans restore : le contexte est considéré irrécupérable sur
+        // cet appareil — démonte la carte morte et bascule. Plus JAMAIS de rebuild
+        // MapLibre sur perte (l'ancien chemin amorti du round 1-2 nourrissait la
+        // pression mémoire qu'il essayait de fuir).
+        map.remove()
+        if (mapRef.current === map) mapRef.current = null
+        switchToRaster()
       }, RESTORE_GRACE_MS)
     }
 
-    // Shared fallback used by handleContextLoss once its grace window elapses without a
-    // restore: tears the dead map down (nothing left to preserve — MapLibre's own recovery
-    // window already passed), then either schedules a damped rebuild or, once
-    // MAX_REBUILDS_PER_MOUNT is reached, gives up and shows the error state instead of
-    // scheduling another one.
-    function scheduleRebuild(map: maplibregl.Map) {
-      if (cancelled || rebuilding) return
-      rebuilding = true
-      map.remove()
-      if (mapRef.current === map) mapRef.current = null
-
-      if (rebuildCount >= MAX_REBUILDS_PER_MOUNT) {
-        setMapError(true)
-        rebuilding = false
+    // Point d'entrée commun du handler webglcontextlost et du fallback
+    // visibilitychange (spec §4).
+    function handleContextLoss(map: maplibregl.Map) {
+      if (cancelled || graceTimeout) return
+      lossCount += 1
+      if (lossCount >= 2) {
+        // 2e perte de la même session : bascule immédiate, sans nouvelle grâce.
+        map.remove()
+        if (mapRef.current === map) mapRef.current = null
+        switchToRaster()
         return
       }
-      rebuildCount += 1
-      if (rebuildTimeout) clearTimeout(rebuildTimeout)
-      rebuildTimeout = setTimeout(() => {
-        rebuildTimeout = null
-        if (!cancelled) init()
-        else rebuilding = false
-      }, REBUILD_COOLDOWN_MS)
+      warmRasterFallback(map)
+      if (document.visibilityState !== 'visible') {
+        pendingHiddenLoss = true
+        return
+      }
+      startGrace(map)
     }
 
     async function init() {
       try {
-        // Round 3: reuse the cached, already-fetched-and-recolored style across
-        // rebuilds/retries instead of refetching + re-parsing + re-recoloring 123 layers every
-        // time (see getRecoloredStyle's own comment).
-        const style = await getRecoloredStyle(theme, getMapStyleUrl(theme))
+        // Deux familles d'échec, deux réponses (spec carte hybride §4) : un fetch de
+        // style qui échoue est un souci réseau — il garde le chemin de retries bornés
+        // et ne doit JAMAIS condamner l'appareil au raster ; une construction de Map
+        // qui échoue est un contexte WebGL refusé — bascule raster immédiate.
+        let style
+        try {
+          // Round 3: reuse the cached, already-fetched-and-recolored style across
+          // rebuilds/retries instead of refetching + re-parsing + re-recoloring the
+          // style's layers every time (see getRecoloredStyle's own comment).
+          style = await getRecoloredStyle(theme, getMapStyleUrl(theme))
+        } catch {
+          if (!cancelled) {
+            setMapError(true)
+            failureCount += 1
+            // Fix round 1 (task 17b) + fast-follow : retry borné, compté dans le cap
+            // partagé — voir les commentaires de MAX_REBUILDS_PER_MOUNT.
+            if (failureCount < 3 && rebuildCount < MAX_REBUILDS_PER_MOUNT) {
+              rebuildCount += 1
+              if (failureRetryTimeout) clearTimeout(failureRetryTimeout)
+              failureRetryTimeout = setTimeout(() => {
+                failureRetryTimeout = null
+                if (!cancelled) init()
+              }, 3000)
+            }
+          }
+          return
+        }
         if (cancelled || !containerRef.current) return
 
         const map = new maplibregl.Map({
@@ -238,34 +275,13 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
             clearTimeout(graceTimeout)
             graceTimeout = null
           }
+          pendingHiddenLoss = false
         })
       } catch {
-        if (!cancelled) {
-          setMapError(true)
-          failureCount += 1
-          // Fix round 1: the original code only reset `rebuilding` on the SUCCESS path
-          // (right after `mapRef.current = map`), so a rebuild whose retry also failed
-          // left `rebuilding` stuck `true` forever — no live map left to ever fire another
-          // `webglcontextlost`, and `onVisibilityChange` bailed on the flag on every future
-          // check. Schedule one bounded retry instead of just giving up silently.
-          // Fast-follow: count failure retries against the rebuild cap. Only schedule a
-          // retry if we have both capacity (rebuildCount < cap) and haven't hit the
-          // consecutive-failure limit (failureCount < 3).
-          if (failureCount < 3 && rebuildCount < MAX_REBUILDS_PER_MOUNT) {
-            rebuildCount += 1
-            if (failureRetryTimeout) clearTimeout(failureRetryTimeout)
-            failureRetryTimeout = setTimeout(() => {
-              failureRetryTimeout = null
-              if (!cancelled) init()
-            }, 3000)
-          }
-        }
-      } finally {
-        // Always reset — on success (redundant with the reset above, harmless) AND on
-        // failure, so a later external trigger (webglcontextlost on a map that did end up
-        // getting built some other way, or visibilitychange) is never permanently blocked
-        // by a stale `true` left over from this attempt.
-        rebuilding = false
+        // Création du contexte WebGL refusée (GPUInitializationError & co) : c'est le
+        // cas « appareil au WebGL cassé » de l'incident iPhone — bascule raster
+        // immédiate, aucun écran d'erreur, préférence mémorisée (spec §4).
+        if (!cancelled) switchToRaster()
       }
     }
     init()
@@ -274,15 +290,22 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     // hidden and only leave the dead canvas discoverable once the tab is foregrounded again.
     // Re-check on visibilitychange and rebuild if the canvas reports its context lost.
     const onVisibilityChange = () => {
-      if (document.visibilityState !== 'visible' || rebuilding) return
+      if (document.visibilityState !== 'visible' || cancelled) return
       const map = mapRef.current
       if (!map) return
+      // Une perte signalée pendant que l'onglet était caché démarre sa grâce
+      // seulement maintenant (spec §4 : l'horloge ne court qu'au premier plan).
+      if (pendingHiddenLoss) {
+        pendingHiddenLoss = false
+        if (!graceTimeout) startGrace(map)
+        return
+      }
       const canvas = map.getCanvas()
       const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
       if (gl?.isContextLost()) {
-        // Round 3: route through the same loss-entry logic as webglcontextlost instead of
-        // scheduling a rebuild directly — gives MapLibre's own recovery the same bounded grace
-        // window even when the loss is only noticed on returning to the tab.
+        // Certains navigateurs mobiles suppriment webglcontextlost onglet caché et ne
+        // laissent le canvas mort découvrable qu'au retour — même point d'entrée que
+        // l'événement.
         handleContextLoss(map)
       }
     }
@@ -291,18 +314,21 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     return () => {
       cancelled = true
       if (graceTimeout) clearTimeout(graceTimeout)
-      if (rebuildTimeout) clearTimeout(rebuildTimeout)
       if (failureRetryTimeout) clearTimeout(failureRetryTimeout)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       mapRef.current?.remove()
       mapRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapSession])
+  }, [mapSession, renderer])
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
-      <div ref={containerRef} className="h-full w-full" />
+      {renderer === 'raster' ? (
+        <RasterMap shops={shops} selected={selected} onSelect={setSelected} onRetryWebgl={retryWebgl} />
+      ) : (
+        <div ref={containerRef} className="h-full w-full" />
+      )}
       {mapError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-[color:var(--bg)] p-8 text-center">
           <p className="max-w-xs text-[15px] leading-relaxed text-[color:var(--text-body)]">{t('mapUnavailable')}</p>
