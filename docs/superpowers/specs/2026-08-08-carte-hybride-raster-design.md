@@ -81,10 +81,19 @@ conteneur) :
 - **Init** : la création du contexte WebGL échoue (`GPUInitializationError` / throw de
   `new Map`) → bascule immédiate, aucun écran intermédiaire.
 - **Runtime** : une perte de contexte entre d'abord en grâce (restore natif MapLibre),
-  **ramenée à 3 s** (le restore natif tire en ~1–2 s quand il fonctionne ; l'issue de
-  secours étant désormais une bascule bon marché et non un rebuild coûteux, la fenêtre
-  de 6 s du round 3 n'a plus de raison d'être). Bascule si le restore ne vient pas à
-  échéance, **ou dès la deuxième perte dans la même session**.
+  **ramenée à 1,5 s** — le restore qui fonctionne tire bien en dessous, et la bascule
+  étant désormais bon marché et visuellement jumelle, l'asymétrie favorise la sortie
+  rapide (la fenêtre de 6 s du round 3 protégeait un rebuild coûteux qui n'existe plus).
+  Trois garde-fous rendent la latence perçue minimale sans pénaliser les appareils sains :
+  - **Préchauffage parallèle** : dès la perte, import dynamique de Leaflet + préchargement
+    des tuiles du viewport pendant la grâce. Restore à temps → on jette (quelques Ko) ;
+    échéance → RasterMap monte quasi instantanément. Gel perçu ≈ 1,5 s, une fois par
+    appareil.
+  - **Horloge au premier plan uniquement** : une perte survenue onglet caché (cas bénin
+    typique : iOS reprend le GPU en arrière-plan, restore gratuit au retour) ne fait ni
+    basculer ni décompter — la grâce court à partir du retour visible.
+  - **Deuxième perte de la même session : bascule immédiate, sans grâce** (Leaflet déjà
+    chaud).
 - **Visites suivantes** : `'raster'` présent → `RasterMap` directement, MapLibre et son
   style ne sont même pas chargés. Coût de la panne : une seule fois par appareil.
 
@@ -137,9 +146,11 @@ dist depuis un même dossier HTTP).
 - `simplifyStyle`/`buildMapStyle` : couches gardées/supprimées sur un style fixture,
   halo posé sur les symbols, idempotence, ordre simplify→palette.
 - Détection : init raté → `'raster'` écrit + RasterMap monté ; 1re perte → grâce (pas de
-  bascule) ; restore dans la grâce → rien ; grâce expirée ou 2e perte → bascule ;
-  `'raster'` présent au mount → MapLibre jamais instancié ; « Réessayer » efface et
-  retente ; localStorage indisponible → comportement session-only sans throw.
+  bascule) + préchauffage lancé ; restore dans la grâce → rien (préchauffage abandonné) ;
+  grâce expirée → bascule ; 2e perte → bascule sans grâce ; perte onglet caché → aucun
+  décompte, grâce au retour visible ; `'raster'` présent au mount → MapLibre jamais
+  instancié ; « Réessayer » efface et retente ; localStorage indisponible →
+  comportement session-only sans throw.
 - `RasterMap` : monte avec les shops, pin cliquable → ShopSheet, thème → URL de tuiles.
 - Tests context-loss existants ajustés : l'issue « écran d'erreur » devient « bascule »
   (l'écran ne reste que pour l'échec du fallback lui-même).
