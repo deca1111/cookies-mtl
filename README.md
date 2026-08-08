@@ -1,4 +1,4 @@
-# Cookies MTL 🍪
+# Cookies Club — Montréal 🍪 (Cookies MTL)
 
 La carte des cookies de Montréal — chaque cookie goûté, noté et localisé.
 Prod : https://cookies.zucchinistudio.com/

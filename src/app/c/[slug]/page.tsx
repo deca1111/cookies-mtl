@@ -2,13 +2,14 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { CookieMap } from '@/components/CookieMap'
 import { getShopBySlug, listShops } from '@/lib/shops'
+import { SITE_NAME, shopTitle } from '@/lib/site'
 
 export async function generateMetadata({ params }: PageProps<'/c/[slug]'>) {
   const { slug } = await params
   const shop = await getShopBySlug(slug)
-  if (!shop) return { title: 'Cookies MTL' }
+  if (!shop) return { title: SITE_NAME }
   return {
-    title: `${shop.name} — Cookies MTL`,
+    title: shopTitle(shop.name),
     description: `${String(shop.rating).replace('.', ',')} / 5 · ${shop.review.slice(0, 140)}`,
   }
 }

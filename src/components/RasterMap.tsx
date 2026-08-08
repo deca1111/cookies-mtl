@@ -62,7 +62,7 @@ export function RasterMap({
         // viewport large à faible zoom demande des tuiles hors pyramide (404)
         bounds: MTL_BOUNDS,
         attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · style Cookies MTL',
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · style Cookies Club',
       }).addTo(map)
 
       for (const shop of shops) {

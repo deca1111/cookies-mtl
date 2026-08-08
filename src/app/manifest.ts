@@ -1,10 +1,11 @@
 import type { MetadataRoute } from 'next'
+import { SITE_NAME, SITE_BRAND } from '@/lib/site'
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Cookies MTL',
-    short_name: 'Cookies MTL',
-    description: 'La carte des cookies de Montréal',
+    name: SITE_NAME,
+    short_name: SITE_BRAND,
+    description: 'La carte des cookies de Montréal · Montreal cookie map',
     start_url: '/',
     display: 'standalone',
     background_color: '#f3ede3',

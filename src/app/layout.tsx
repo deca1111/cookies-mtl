@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Comfortaa } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/components/LangProvider";
+import { SITE_URL, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/site";
 
 // Titres et marque : la Gill Sans Ultra Bold fournie par Léo (licence perso, self-host).
 const gillSans = localFont({
@@ -19,13 +20,9 @@ const comfortaa = Comfortaa({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "http://localhost:3000"
-  ),
-  title: "Cookies MTL",
-  description: "La carte des cookies de Montréal · Montreal's cookie map",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

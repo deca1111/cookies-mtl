@@ -4,7 +4,7 @@ import { listShops } from '@/lib/shops'
 import { AdminApp } from '@/components/admin/AdminApp'
 import { LoginForm } from '@/components/admin/LoginForm'
 
-export const metadata = { title: 'Admin — Cookies MTL', robots: { index: false, follow: false } }
+export const metadata = { title: 'Admin — Cookies Club', robots: { index: false, follow: false } }
 
 export default function AdminPage() {
   return (
