@@ -11,6 +11,17 @@ import { ShopSheet } from './ShopSheet'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 
+// Fix round 2 (iPhone incident: .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md).
+// Fix round 1's `failureCount < 3` breaker only bounds consecutive FAILED init() calls — it
+// resets to 0 on every successful init, so it never engages for a success->loss->success
+// flapping loop. On a mobile device flapping in and out of GPU memory pressure, every
+// `webglcontextlost` triggered an immediate, undamped, full rebuild (style fetch + tiles +
+// markers) with no delay and no cap on total rebuilds — unbounded cost until iOS Safari killed
+// the page. These two constants damp and cap loss-/visibility-triggered rebuilds specifically;
+// they compose with (don't replace) the existing failed-init retry logic.
+const REBUILD_COOLDOWN_MS = 2000
+const MAX_REBUILDS_PER_MOUNT = 5
+
 export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
@@ -41,6 +52,33 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     // changes (network back, manual reload, another webglcontextlost/visibilitychange).
     let failureCount = 0
     let retryTimeout: ReturnType<typeof setTimeout> | null = null
+    // Counts every loss-/visibility-triggered rebuild attempt (scheduled, not necessarily
+    // successful) — never reset within the mount, unlike `failureCount`. This is what actually
+    // bounds the success->loss->success flapping loop from the iPhone incident.
+    let rebuildCount = 0
+
+    // Shared by the webglcontextlost handler and the visibilitychange fallback: tears the dead
+    // map down immediately (nothing left to preserve once its context is lost), then either
+    // schedules a damped rebuild or, once MAX_REBUILDS_PER_MOUNT is reached, gives up and shows
+    // the error state instead of scheduling another one.
+    function scheduleRebuild(map: maplibregl.Map) {
+      if (cancelled || rebuilding) return
+      rebuilding = true
+      map.remove()
+      if (mapRef.current === map) mapRef.current = null
+
+      if (rebuildCount >= MAX_REBUILDS_PER_MOUNT) {
+        setMapError(true)
+        rebuilding = false
+        return
+      }
+      rebuildCount += 1
+      retryTimeout = setTimeout(() => {
+        retryTimeout = null
+        if (!cancelled) init()
+        else rebuilding = false
+      }, REBUILD_COOLDOWN_MS)
+    }
 
     async function init() {
       try {
@@ -85,11 +123,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         // simplest reliable recovery, and `selectedRef` carries the current selection across
         // the rebuild.
         map.on('webglcontextlost', () => {
-          if (cancelled || rebuilding) return
-          rebuilding = true
-          map.remove()
-          if (mapRef.current === map) mapRef.current = null
-          init()
+          scheduleRebuild(map)
         })
       } catch {
         if (!cancelled) {
@@ -127,10 +161,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       const canvas = map.getCanvas()
       const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
       if (gl?.isContextLost()) {
-        rebuilding = true
-        map.remove()
-        mapRef.current = null
-        init()
+        scheduleRebuild(map)
       }
     }
     document.addEventListener('visibilitychange', onVisibilityChange)

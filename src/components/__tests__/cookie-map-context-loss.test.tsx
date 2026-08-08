@@ -72,12 +72,23 @@ test('rebuilds the map when maplibre reports webglcontextlost', async () => {
   await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
   await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
 
-  act(() => {
-    handlers.webglcontextlost()
-  })
+  vi.useFakeTimers()
+  try {
+    act(() => {
+      handlers.webglcontextlost()
+    })
 
-  await waitFor(() => expect(removeSpy).toHaveBeenCalledTimes(1))
-  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(2))
+    // The dead map is torn down immediately; the rebuild itself waits out the damping
+    // cooldown (see the cooldown test below) before init() runs again.
+    expect(removeSpy).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(mapConstructor).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 // Fix round 1 (task 17b review, Important finding): the original code only reset the
@@ -93,8 +104,9 @@ test('a failed rebuild does not latch `rebuilding` — the scheduled retry recov
   global.fetch = vi.fn(async () => {
     fetchCalls += 1
     // Call 1: initial mount — succeeds. Call 2: the rebuild triggered by webglcontextlost
-    // below — fails (simulates "network not back yet" right after returning from
-    // background). Call 3+: the scheduled retry — succeeds again.
+    // below, once the damping cooldown elapses — fails (simulates "network not back yet"
+    // right after returning from background). Call 3+: the scheduled failure-retry —
+    // succeeds again.
     if (fetchCalls === 2) return { ok: false, json: async () => ({}) }
     return { ok: true, json: async () => ({ layers: [] }) }
   }) as unknown as typeof fetch
@@ -105,24 +117,27 @@ test('a failed rebuild does not latch `rebuilding` — the scheduled retry recov
 
   vi.useFakeTimers()
   try {
-    await act(async () => {
+    act(() => {
       handlers.webglcontextlost()
-      // Flush the microtasks of the failing fetch (mocked, no real I/O delay) before
-      // asserting on its outcome.
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
+    })
+    // The dead map is torn down immediately; the rebuild's own init() doesn't run until the
+    // damping cooldown elapses.
+    expect(removeSpy).toHaveBeenCalledTimes(1)
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    // Cross the cooldown: the rebuild's init() runs and fails (fetchCalls === 2 above).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
     })
 
-    // The failed rebuild tore the old map down but could not build a replacement yet —
-    // the error screen is showing, and no 2nd map has been constructed.
-    expect(removeSpy).toHaveBeenCalledTimes(1)
+    // The failed rebuild could not build a replacement — the error screen is showing, and
+    // no 2nd map has been constructed.
     expect(mapConstructor).toHaveBeenCalledTimes(1)
     expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
 
-    // Advance past the bounded 3000ms retry. Before the fix, `rebuilding` stuck `true`
-    // meant nothing in the component would ever call init() again — this retry is the
-    // only path back to a live map after a failed rebuild.
+    // Advance past the bounded 3000ms failure-retry. Before the "Fix round 1" latch fix,
+    // `rebuilding` stuck `true` meant nothing in the component would ever call init() again
+    // — this retry is the only path back to a live map after a failed rebuild.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000)
     })
@@ -148,13 +163,16 @@ test('gives up after 3 consecutive failed attempts — no 4th retry is scheduled
 
   vi.useFakeTimers()
   try {
-    await act(async () => {
+    act(() => {
       handlers.webglcontextlost()
-      await Promise.resolve()
-      await Promise.resolve()
-      await Promise.resolve()
     })
-    // Failure #1 (the rebuild itself): one retry scheduled.
+    // Only the damping-cooldown timer is pending so far — init() hasn't even run once yet.
+    expect(vi.getTimerCount()).toBe(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    // Failure #1 (the rebuild's own init(), once the cooldown elapsed): one retry scheduled.
     expect(vi.getTimerCount()).toBe(1)
 
     await act(async () => {
@@ -177,6 +195,77 @@ test('gives up after 3 consecutive failed attempts — no 4th retry is scheduled
 
     // The map was never successfully rebuilt, and the error screen is still showing.
     expect(mapConstructor).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+// Fix round 2 (iPhone incident, see .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md):
+// the "Fix round 1" circuit breaker above only bounds consecutive FAILED init() calls
+// (failureCount resets to 0 on every successful init). Nothing bounded a success->loss->success
+// flapping loop: each webglcontextlost fired an immediate, undamped, full init() with no delay
+// and no cap on total rebuilds, so a mobile device flapping in and out of GPU memory pressure
+// could rebuild the map (style fetch + tiles + markers) unboundedly until iOS Safari killed the
+// page. These two tests pin the damping cooldown and the total-rebuild cap that fix that gap.
+
+test('does not rebuild immediately on webglcontextlost — waits for the 2000ms damping cooldown', async () => {
+  render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
+
+  vi.useFakeTimers()
+  try {
+    act(() => {
+      handlers.webglcontextlost()
+    })
+
+    // Just short of the cooldown: still no rebuild.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1999)
+    })
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    // Crossing the 2000ms cooldown boundary triggers exactly one rebuild.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(mapConstructor).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+test('caps loss-triggered rebuilds at 5 per mount — the 6th loss shows the error state instead of rebuilding', async () => {
+  const { container } = render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+
+  vi.useFakeTimers()
+  try {
+    // 5 loss->successful-rebuild cycles: each one clears the cooldown and produces one more
+    // Map construction (2..6).
+    for (let i = 0; i < 5; i++) {
+      expect(handlers.webglcontextlost).toBeTypeOf('function')
+      act(() => {
+        handlers.webglcontextlost()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2000)
+      })
+      expect(mapConstructor).toHaveBeenCalledTimes(i + 2)
+    }
+    expect(container.querySelector('.absolute.inset-0')).toBeNull()
+
+    // 6th loss: the per-mount cap is already reached, so no further rebuild is scheduled —
+    // waiting out the cooldown window proves nothing fires — and the error state shows instead.
+    act(() => {
+      handlers.webglcontextlost()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+
+    expect(mapConstructor).toHaveBeenCalledTimes(6) // 1 initial + 5 rebuilds, never a 6th
     expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
   } finally {
     vi.useRealTimers()
