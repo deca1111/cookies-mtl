@@ -65,9 +65,11 @@ export function RasterMap({
       for (const shop of shops) {
         // Mêmes pins DOM que la carte MapLibre : la classe .cmtl-pin de globals.css
         // s'applique telle quelle (thème via prefers-color-scheme, comme partout).
+        // vrai <button> comme sur MapLibre : focusable, activable clavier, mêmes
+        // styles .cmtl-pin (hover/focus-visible compris)
         const icon = L.divIcon({
           className: '',
-          html: `<span class="cmtl-pin" role="button" aria-label="${shop.name.replaceAll('"', '&quot;')}"></span>`,
+          html: `<button class="cmtl-pin" aria-label="${shop.name.replaceAll('"', '&quot;')}"></button>`,
           iconSize: [22, 22],
           iconAnchor: [11, 22],
         })
@@ -75,7 +77,9 @@ export function RasterMap({
           .addTo(map)
           .on('click', () => {
             onSelect(shop)
-            map?.flyTo([shop.lat, shop.lng], Math.max(map.getZoom(), 15))
+            // même comportement que easeTo({center}) sur MapLibre : recentrer sans
+            // changer le zoom
+            map?.panTo([shop.lat, shop.lng])
           })
       }
       map.on('click', () => onSelect(null))
@@ -109,7 +113,10 @@ export function RasterMap({
   }, [])
 
   return (
-    <div className="relative h-full w-full">
+    // isolate + z-0 : confine les z-index internes de Leaflet (panes 400, markers
+    // 600, contrôles 1000) dans ce stacking context — sans ça ils passaient
+    // au-dessus de la ShopSheet (z-20, fixed) qui s'ouvrait invisible sous la carte.
+    <div className="relative isolate z-0 h-full w-full">
       {/* Fond au ton du thème : au-delà de la zone pré-rendue, la carte fond dans le
           crème/chocolat au lieu du gris Leaflet. Style INLINE obligatoirement :
           leaflet.css pose `background:#ddd` sur .leaflet-container (classe ajoutée
