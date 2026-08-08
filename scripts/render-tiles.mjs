@@ -19,7 +19,7 @@
 // import.meta.url, donc tous les fichiers dist doivent être servis depuis le même
 // dossier HTTP.
 import { createServer } from 'node:http'
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-core'
@@ -40,6 +40,10 @@ const args = new Map(process.argv.slice(2).map((a) => a.split('=')))
 const THEMES = (args.get('--themes') ?? 'light,dark').split(',')
 const [zMin, zMax] = (args.get('--zooms') ?? '11-16').split('-').map(Number)
 const ZOOMS = Array.from({ length: zMax - zMin + 1 }, (_, i) => zMin + i)
+// --only-missing : ne rend que les tuiles absentes du disque (extension de marge,
+// reprise). Ne PAS l'utiliser après un changement de style — les tuiles existantes
+// seraient conservées telles quelles, donc périmées.
+const ONLY_MISSING = args.has('--only-missing')
 
 // -- même formule que src/lib/tile-math.ts (copie assumée : script Node pur) --
 const lon2x = (lon, z) => ((lon + 180) / 360) * 2 ** z
@@ -128,15 +132,31 @@ for (const theme of THEMES) {
   await page.waitForFunction('typeof window.renderSlab === "function"')
   console.log(`=== thème ${theme} ===`)
   for (const z of ZOOMS) {
-    // Marge d'une tuile à chaque bord : Leaflet demande toute tuile qui INTERSECTE
-    // la bbox (son option `bounds`), pas seulement celles dont le coin y tombe — un
-    // floor strict laissait les tuiles de bord en 403 (constaté sur la borne nord).
-    const x0 = Math.floor(lon2x(BBOX.west, z)) - 1
-    const x1 = Math.floor(lon2x(BBOX.east, z)) + 1
-    const y0 = Math.floor(lat2y(BBOX.north, z)) - 1
-    const y1 = Math.floor(lat2y(BBOX.south, z)) + 1
+    // Marge de DEUX tuiles à chaque bord : au-delà de l'intersection stricte avec
+    // la bbox (option `bounds`), Leaflet demande encore une rangée supplémentaire
+    // (tampon keepBuffer + viewports transitoires des animations de zoom et de
+    // l'élasticité maxBounds) — constaté en preview avec une marge de 1 (404 sur
+    // y±2 du floor-range à z12).
+    const MARGIN = 2
+    const x0 = Math.floor(lon2x(BBOX.west, z)) - MARGIN
+    const x1 = Math.floor(lon2x(BBOX.east, z)) + MARGIN
+    const y0 = Math.floor(lat2y(BBOX.north, z)) - MARGIN
+    const y1 = Math.floor(lat2y(BBOX.south, z)) + MARGIN
     for (let sx = x0; sx <= x1; sx += SLAB) {
       for (let sy = y0; sy <= y1; sy += SLAB) {
+        if (ONLY_MISSING) {
+          // saute la dalle entière si toutes ses tuiles dans la zone existent déjà
+          let anyMissing = false
+          for (let i = 0; i < SLAB && !anyMissing; i++) {
+            for (let j = 0; j < SLAB && !anyMissing; j++) {
+              const tx = sx + i
+              const ty = sy + j
+              if (tx < x0 || tx > x1 || ty < y0 || ty > y1) continue
+              if (!existsSync(join(OUT, 'tiles', PATH_VERSION, theme, String(z), String(tx), `${ty}.webp`))) anyMissing = true
+            }
+          }
+          if (!anyMissing) continue
+        }
         const dataUrl = await page.evaluate(
           ([lng, lat, mz]) => window.renderSlab(lng, lat, mz),
           // zoom MapLibre = zoom Leaflet − 1 (tuiles 512 px vs 256 px)
@@ -149,6 +169,7 @@ for (const theme of THEMES) {
             const ty = sy + j
             if (tx < x0 || tx > x1 || ty < y0 || ty > y1) continue
             const file = join(OUT, 'tiles', PATH_VERSION, theme, String(z), String(tx), `${ty}.webp`)
+            if (ONLY_MISSING && existsSync(file)) continue
             mkdirSync(dirname(file), { recursive: true })
             writeFileSync(
               file,
