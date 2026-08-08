@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest'
+import { expect, test, vi, beforeEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 const mapConstructor = vi.fn()
@@ -44,6 +44,11 @@ vi.mock('@/app/actions/shops', () => ({
 
 import { AdminApp } from '../AdminApp'
 
+beforeEach(() => {
+  mapConstructor.mockClear()
+  markerConstructor.mockClear()
+})
+
 test('mini-map is built once per draft session, not on every name keystroke', () => {
   render(<AdminApp shops={[]} />)
 
@@ -61,4 +66,22 @@ test('mini-map is built once per draft session, not on every name keystroke', ()
   fireEvent.change(nameInput, { target: { value: 'Bis' } })
 
   expect(mapConstructor).toHaveBeenCalledTimes(1)
+})
+
+test('caps the mini-map pixelRatio at 2 even when devicePixelRatio reports 3 (GPU memory footprint)', () => {
+  const originalDpr = window.devicePixelRatio
+  Object.defineProperty(window, 'devicePixelRatio', { value: 3, configurable: true })
+  try {
+    render(<AdminApp shops={[]} />)
+
+    // Open a manual draft the same way the existing test does.
+    const searchInput = screen.getByPlaceholderText('Nom du magasin…')
+    fireEvent.change(searchInput, { target: { value: 'Biscuiterie' } })
+    fireEvent.click(screen.getByText('Placer à la main'))
+
+    const options = mapConstructor.mock.calls[0][0] as { pixelRatio?: number }
+    expect(options.pixelRatio).toBe(2)
+  } finally {
+    Object.defineProperty(window, 'devicePixelRatio', { value: originalDpr, configurable: true })
+  }
 })
