@@ -7,7 +7,7 @@ export function parseGoogleMapsUrl(finalUrl: string): { name: string; lat: numbe
   } catch {
     return null
   }
-  if (!url.hostname.endsWith('google.com')) return null
+  if (url.hostname !== 'google.com' && !url.hostname.endsWith('.google.com')) return null
 
   const placeMatch = url.pathname.match(/\/place\/([^/]+)/)
   if (!placeMatch) return null

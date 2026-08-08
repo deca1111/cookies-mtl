@@ -43,3 +43,7 @@ test('resolveGoogleShareLink rejects non-google hosts and network failures as nu
 test('returns null when the place name has malformed percent-encoding', () => {
   expect(parseGoogleMapsUrl('https://www.google.com/maps/place/Bad%Name/@45.5,-73.6,17z')).toBeNull()
 })
+
+test('rejects a lookalike host that merely ends with "google.com"', () => {
+  expect(parseGoogleMapsUrl('https://evilgoogle.com/maps/place/X/@45.5,-73.6,17z')).toBeNull()
+})
