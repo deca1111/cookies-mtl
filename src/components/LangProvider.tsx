@@ -14,6 +14,10 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('cmtl_lang')
+    // Hydratation volontaire : le SSR rend toujours 'fr', puis le client applique la
+    // préférence stockée/navigateur après montage — un useState paresseux lirait
+    // localStorage au premier rendu client et casserait l'hydratation.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored === 'fr' || stored === 'en') setLangState(stored)
     else if (navigator.language.toLowerCase().startsWith('en')) setLangState('en')
   }, [])

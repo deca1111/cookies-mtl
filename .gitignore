@@ -46,3 +46,6 @@ next-env.d.ts
 # match the installed version.
 /public/maplibre-gl-worker.js
 /public/maplibre-gl-shared.mjs
+
+# Dossier de travail du pipeline de tuiles (scripts/render-tiles.mjs)
+.tiles-work/

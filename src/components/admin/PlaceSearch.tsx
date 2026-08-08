@@ -28,6 +28,9 @@ export function PlaceSearch({
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
     if (q.trim().length < 2) {
+      // Vidage immédiat voulu quand la requête devient trop courte (pas d'attente du
+      // debounce) ; déplacer ce state dans l'onChange dupliquerait la logique de seuil.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setResults([])
       return
     }
