@@ -96,18 +96,27 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     setSaving(true)
     setError(null)
     const payload = { ...draft }
-    const res = draft.id ? await updateShopAction(draft.id, payload) : await createShopAction(payload)
-    setSaving(false)
-    if (!res.ok) {
-      setError(res.error)
-      return
+    try {
+      const res = draft.id ? await updateShopAction(draft.id, payload) : await createShopAction(payload)
+      if (!res.ok) {
+        setError(res.error)
+        return
+      }
+      closeDraft()
+    } catch {
+      setError('server')
+    } finally {
+      setSaving(false)
     }
-    closeDraft()
   }
 
   const remove = async (shop: Shop) => {
     if (!window.confirm(`Supprimer « ${shop.name} » ?`)) return
-    await deleteShopAction(shop.id)
+    try {
+      await deleteShopAction(shop.id)
+    } catch {
+      window.alert('La suppression a échoué — réessaie.')
+    }
   }
 
   const errorLabels: Record<string, string> = {
@@ -117,6 +126,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     rating: 'Choisis une note (0 à 5, par demi-cookie).',
     googleMapsUrl: 'Le lien Google est invalide.',
     review: 'L’avis est trop long.',
+    server: 'Erreur serveur — réessaie, ta saisie est conservée.',
   }
 
   const field =

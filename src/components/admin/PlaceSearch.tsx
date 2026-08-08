@@ -47,13 +47,18 @@ export function PlaceSearch({
   const submitLink = async () => {
     setBusy(true)
     setLinkError(false)
-    const resolved = await resolveLinkAction(link.trim())
-    setBusy(false)
-    if (!resolved) {
+    try {
+      const resolved = await resolveLinkAction(link.trim())
+      if (!resolved) {
+        setLinkError(true)
+        return
+      }
+      onPick({ ...resolved, address: '' })
+    } catch {
       setLinkError(true)
-      return
+    } finally {
+      setBusy(false)
     }
-    onPick({ ...resolved, address: '' })
   }
 
   const field =
