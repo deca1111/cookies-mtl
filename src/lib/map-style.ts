@@ -115,3 +115,41 @@ export function applyPalette<T extends { layers: StyleLayer[] }>(style: T, theme
   }
   return style
 }
+
+// Style « épuré » (spec 2026-08-08-carte-hybride-raster) : rues + leurs noms,
+// quartiers/villes, eau + ses noms, parcs — rien d'autre. Liste établie sur les
+// 119 couches du style OpenFreeMap `bright` et validée visuellement sur démo.
+const SIMPLIFY_KEEP_EXACT = new Set([
+  'background', 'park', 'landcover-grass-park', 'landcover-wood', 'landcover-grass',
+  'highway-name-minor', 'highway-name-major',
+  'label_other', 'label_village', 'label_town', 'label_city', 'label_city_capital',
+  'waterway_line_label', 'water_name_point_label', 'water_name_line_label',
+])
+const SIMPLIFY_KEEP_PATTERNS = [
+  /^water($|-)/,
+  /^waterway-/, // waterway_tunnel (underscore) reste exclu
+  /^(highway|bridge|tunnel)-(motorway|trunk|primary|secondary|tertiary|minor|link)/,
+]
+
+export function simplifyStyle<T extends { layers: StyleLayer[] }>(style: T): T {
+  style.layers = style.layers.filter(
+    (l) => SIMPLIFY_KEEP_EXACT.has(l.id) || SIMPLIFY_KEEP_PATTERNS.some((re) => re.test(l.id))
+  )
+  return style
+}
+
+// Fabrique unique du style des deux cartes (MapLibre live ET pipeline de tuiles) :
+// simplification -> palette -> halo. Le halo (1.5, couleur du fond) couvre le retour
+// v1.1 « labels lisibles » et doit rester identique entre les deux rendus.
+export function buildMapStyle<T extends { layers: StyleLayer[] }>(style: T, theme: MapTheme): T {
+  const out = applyPalette(simplifyStyle(style), theme)
+  const bg = PALETTES[theme].background
+  for (const layer of out.layers) {
+    if (layer.type === 'symbol') {
+      layer.paint = layer.paint ?? {}
+      layer.paint['text-halo-color'] = bg
+      layer.paint['text-halo-width'] = 1.5
+    }
+  }
+  return out
+}
