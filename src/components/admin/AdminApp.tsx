@@ -32,6 +32,23 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     setDraftSession((s) => s + 1)
   }
 
+  // Task 17b bug 1: closing a draft (save or cancel) used to leave `draftSession`
+  // unchanged, so the mini-map effect's cleanup (`map.remove()`) never ran on close —
+  // only at the *next* openDraft, right before building the replacement map. That left
+  // one orphaned MapLibre instance + live WebGL context behind for as long as the admin
+  // stayed on the list view, and mobile browsers cap simultaneous WebGL contexts (~8 on
+  // iOS Safari); repeated add/cancel cycles in the same tab march toward that cap and the
+  // OLDEST context (often the public map, in another tab/session sharing the same GPU
+  // budget) gets force-lost. Bumping draftSession on close makes the effect re-run
+  // immediately: its cleanup removes the old map, then the effect body sees `draft ===
+  // null` and returns early instead of building a new one — so the mini-map is destroyed
+  // right away instead of lingering.
+  const closeDraft = () => {
+    setDraft(null)
+    setManualName(null)
+    setDraftSession((s) => s + 1)
+  }
+
   // Mini confirmation map with a draggable pin, shown whenever a draft has coords.
   // Theme-aware like CookieMap: same `currentTheme()` + `getMapStyleUrl()` pathway. The
   // Map is still constructed synchronously (no pre-fetch of the style JSON) so opening a
@@ -85,8 +102,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       setError(res.error)
       return
     }
-    setDraft(null)
-    setManualName(null)
+    closeDraft()
   }
 
   const remove = async (shop: Shop) => {
@@ -180,7 +196,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
               {saving ? '…' : 'Enregistrer'}
             </button>
             <button
-              onClick={() => { setDraft(null); setManualName(null); setError(null) }}
+              onClick={() => { closeDraft(); setError(null) }}
               className="px-1 text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
             >
               Annuler
