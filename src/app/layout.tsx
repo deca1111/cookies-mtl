@@ -24,6 +24,11 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : "http://localhost:3000"
+  ),
   title: "Cookies MTL",
   description:
     "La carte des cookies de Montréal · Montreal's cookie map — coming soon.",
