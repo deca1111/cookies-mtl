@@ -76,12 +76,12 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       <div ref={containerRef} className="h-full w-full" />
       {mapError && (
         <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--bg)] p-8 text-center">
-          <p>{t('mapUnavailable')}</p>
+          <p className="max-w-xs text-[15px] leading-relaxed text-[color:var(--text-body)]">{t('mapUnavailable')}</p>
         </div>
       )}
       <button
         onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-        className="absolute right-3 top-3 z-10 rounded-full bg-[color:var(--sheet-bg)] px-3 py-1.5 text-sm shadow"
+        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-2 font-mono text-[11px] font-medium tracking-[0.14em] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
         aria-label={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
       >
         {lang === 'fr' ? 'EN' : 'FR'}

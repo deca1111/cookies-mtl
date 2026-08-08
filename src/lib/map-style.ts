@@ -8,9 +8,13 @@ export function getMapStyleUrl(theme: MapTheme): string {
 }
 
 // Spec palette (docs/superpowers/specs/2026-08-07-cookies-mtl-design.md — Direction visuelle)
+// Light: crème ground with off-white streets — the streets read as the same lin
+// as the sheet. Water is pulled warm so nothing on the map goes cold.
+// Dark: chocolate ground, streets a step lighter, labels warm cream.
+// Label colours are set for contrast against their own ground (both ≥ 4.5:1).
 const PALETTES = {
-  light: { background: '#f3ede3', water: '#d8d4c3', roads: '#faf6ee', parks: '#e4e6d4', text: '#6b5b49' },
-  dark: { background: '#241a13', water: '#191410', roads: '#32251b', parks: '#27301f', text: '#a3958a' },
+  light: { background: '#f3ede3', water: '#dbd3c2', roads: '#fffdf8', parks: '#e5e5d2', text: '#5b4a38' },
+  dark: { background: '#241a13', water: '#181109', roads: '#3a2b1f', parks: '#25301f', text: '#bcaa98' },
 }
 
 type StyleLayer = { id: string; type: string; paint?: Record<string, unknown> }

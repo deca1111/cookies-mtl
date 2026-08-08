@@ -1,8 +1,91 @@
 @import "tailwindcss";
 
+/* ----------------------------------------------------------------------------
+   Cookies MTL — visual system
+   Light (default) : « Crème & espresso » — lin/crème ground, espresso marks,
+                     caramel accents. Warm, quiet, editorial.
+   Dark  (system)  : « Moka nuit » — chocolate ground, luminous gold caramel,
+                     cream type.
+   Palette values marked [spec] are fixed by the validated design direction
+   (docs/superpowers/specs/2026-08-07-cookies-mtl-design.md § Direction visuelle).
+---------------------------------------------------------------------------- */
+
 :root {
-  --background: #fdf8f1;
-  --foreground: #201a14;
+  color-scheme: light;
+
+  --bg: #f3ede3; /* [spec] crème — map ground + page ground */
+  --surface: #fffdf9; /* [spec] lin — sheet, cards, controls */
+  --surface-2: #f6f0e6; /* inset fields, hover wash */
+
+  --text-strong: #2c1f16;
+  --text-body: #4a3b2d;
+  --text-muted: #7d6d5b; /* still reads as muted, still clears 4.5:1 at 13px */
+
+  --accent: #a4794a; /* [spec] caramel */
+  --accent-ink: #7d5a34; /* caramel that still reads as text on crème */
+  --accent-wash: rgba(164, 121, 74, 0.12);
+
+  --border: #e3d9c9; /* hairlines whisper */
+  --border-strong: #cfc0a8;
+
+  --btn-bg: #3b2a1f; /* [spec] espresso */
+  --btn-bg-hover: #503a2a;
+  --btn-text: #faf5ec;
+
+  --pin: #3b2a1f; /* [spec] espresso drop */
+  --pin-chip: #c79a63; /* the caramel chip inside the drop */
+  --pin-ring: #fffdf9;
+  --pin-shadow: rgba(59, 42, 31, 0.34);
+
+  --danger: #9a3b2a; /* terracotta — a warning that belongs to this palette */
+
+  --radius-sheet: 28px;
+  --radius-card: 18px;
+  --radius-field: 12px;
+
+  --shadow-sheet: 0 -2px 40px rgba(59, 42, 31, 0.14);
+  --shadow-float: 0 10px 34px rgba(59, 42, 31, 0.16);
+  --shadow-chip: 0 2px 10px rgba(59, 42, 31, 0.12);
+
+  /* Legacy tokens kept in sync so nothing can drift onto a second palette. */
+  --background: var(--bg);
+  --foreground: var(--text-body);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg: #241a13; /* [spec] chocolat */
+    --surface: #2c2018;
+    --surface-2: #362920;
+
+    --text-strong: #f4ebdd;
+    --text-body: #dccdb9;
+    --text-muted: #a49081;
+
+    --accent: #d29a55; /* [spec] caramel doré */
+    --accent-ink: #dfa96a;
+    --accent-wash: rgba(210, 154, 85, 0.14);
+
+    --border: #493829;
+    --border-strong: #634d38;
+
+    --btn-bg: #d29a55;
+    --btn-bg-hover: #e0aa68;
+    --btn-text: #241a13;
+
+    --pin: #d29a55;
+    --pin-chip: #3a2415;
+    --pin-ring: #17100b;
+    --pin-shadow: rgba(0, 0, 0, 0.55);
+
+    --danger: #e5907a;
+
+    --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
+    --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);
+    --shadow-chip: 0 2px 10px rgba(0, 0, 0, 0.4);
+  }
 }
 
 @theme inline {
@@ -10,56 +93,202 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #17120c;
-    --foreground: #f2ece3;
-  }
+  --font-serif: var(--font-fraunces);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text-body);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
-:root {
-  --bg: #f3ede3;
-  --sheet-bg: #fffdf9;
-  --text-strong: #2c1f16;
-  --text-body: #4a3b2d;
-  --text-muted: #8a7a68;
-  --accent: #a4794a;
-  --border: #d9cfc0;
-  --btn-bg: #3b2a1f;
-  --btn-text: #f6efe4;
-  --pin: #3b2a1f;
-  --pin-ring: #faf6ee;
+/* Fraunces carries the personality: high optical size for display cuts, a
+   touch of SOFT to keep the terminals warm, WONK off so it stays classical. */
+.font-serif {
+  font-variation-settings: "opsz" 48, "SOFT" 28, "WONK" 0;
+  letter-spacing: -0.015em;
+  font-weight: 500;
 }
+
+/* The review is the point of the whole site, so it is set as a verdict rather
+   than as UI text: the display face in italic, one step up in size. It is the
+   only italic in the app — the single place the design raises its voice. */
+.cmtl-verdict {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-style: italic;
+  font-variation-settings: "opsz" 28, "SOFT" 40, "WONK" 0;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+}
+
+/* One visible focus treatment for the whole app. */
+:where(a, button, input, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+::selection {
+  background: var(--accent-wash);
+  color: var(--text-strong);
+}
+
+/* --- Map marker ----------------------------------------------------------
+   A drop whose tip points at the address, carrying one caramel chip. The same
+   caramel dot is the rating mark in the sheet, so pin and score speak the same
+   language. Radius on the bottom-right corner + 45° rotation puts the point
+   straight down; translateY compensates the rotated bounding box so the tip,
+   not the box, sits on the coordinate. */
+.cmtl-pin {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  appearance: none;
+  background: var(--pin);
+  border: 2px solid var(--pin-ring);
+  border-radius: 50% 50% 3px 50%;
+  transform: translateY(-4px) rotate(45deg);
+  box-shadow: 0 3px 10px var(--pin-shadow);
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cmtl-pin::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--pin-chip);
+}
+
+.cmtl-pin:hover,
+.cmtl-pin:focus-visible {
+  transform: translateY(-6px) rotate(45deg) scale(1.12);
+}
+
+.cmtl-pin:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #241a13;
-    --sheet-bg: #2e2118;
-    --text-strong: #f2e7d8;
-    --text-body: #d8c9b8;
-    --text-muted: #a3958a;
-    --accent: #d29a55;
-    --border: #5a4936;
-    --btn-bg: #d29a55;
-    --btn-text: #241a13;
-    --pin: #d29a55;
-    --pin-ring: #241a13;
+  /* « légèrement lumineux » — the gold drop lifts off the chocolate ground. */
+  .cmtl-pin {
+    box-shadow: 0 3px 10px var(--pin-shadow), 0 0 14px rgba(210, 154, 85, 0.34);
   }
 }
-.cmtl-pin {
-  width: 26px;
-  height: 26px;
-  background: var(--pin);
-  border: 2.5px solid var(--pin-ring);
-  border-radius: 50% 50% 50% 4px;
-  transform: rotate(45deg);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  cursor: pointer;
+
+/* --- Bottom sheet --------------------------------------------------------- */
+.cmtl-sheet::before {
+  content: "";
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  width: 38px;
+  height: 4px;
+  margin-left: -19px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  opacity: 0.7;
+}
+
+@media (min-width: 640px) {
+  .cmtl-sheet::before {
+    display: none;
+  }
+}
+
+.cmtl-sheet {
+  animation: cmtl-sheet-in 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes cmtl-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- MapLibre chrome, brought into the palette ---------------------------- */
+.maplibregl-ctrl-group {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--shadow-chip) !important;
+  overflow: hidden;
+}
+
+.maplibregl-ctrl-group button {
+  width: 38px !important;
+  height: 38px !important;
+  background: transparent !important;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--border) !important;
+}
+
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: none;
+  opacity: 0.72;
+}
+
+@media (prefers-color-scheme: dark) {
+  .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+    filter: invert(1) brightness(1.1);
+    opacity: 0.66;
+  }
+}
+
+.maplibregl-ctrl-attrib.maplibregl-compact {
+  background: var(--surface) !important;
+  border-radius: 999px !important;
+  box-shadow: var(--shadow-chip);
+  min-height: 22px;
+}
+
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib a {
+  color: var(--text-muted) !important;
+  font-size: 10px;
+}
+
+/* The attribution toggle ships as a high-contrast dot in both themes; it is an
+   affordance, not a feature, so it is dimmed to sit behind the map. */
+.maplibregl-ctrl-attrib-button {
+  background-color: transparent !important;
+  border-radius: 999px !important;
+  opacity: 0.45;
+}
+
+.maplibregl-ctrl-attrib-button:hover {
+  opacity: 0.9;
+}
+
+@media (prefers-color-scheme: dark) {
+  .maplibregl-ctrl-attrib-button {
+    filter: invert(1);
+    opacity: 0.38;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -48,41 +48,66 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-20 rounded-t-3xl bg-[color:var(--sheet-bg)] p-5 pb-8 shadow-[0_-6px_24px_rgba(0,0,0,0.15)]">
-      <button aria-label={t('close')} onClick={onClose} className="absolute right-4 top-3 text-[color:var(--text-muted)]">
+    <div className="cmtl-sheet fixed inset-x-0 bottom-0 z-20 rounded-t-[var(--radius-sheet)] border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-6 shadow-[var(--shadow-sheet)] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:w-[380px] sm:rounded-[var(--radius-sheet)] sm:border sm:pt-5 sm:pb-6 sm:shadow-[var(--shadow-float)]">
+      <button
+        aria-label={t('close')}
+        onClick={onClose}
+        className="absolute right-3 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-2)] hover:text-[color:var(--text-strong)] sm:top-3"
+      >
         ✕
       </button>
-      <h2 className="font-serif text-xl text-[color:var(--text-strong)]">{shop.name}</h2>
-      <RatingCookies rating={shop.rating} />
-      {shop.review && <p className="mt-2 text-[color:var(--text-body)]">{shop.review}</p>}
-      <p className="mt-1 text-sm text-[color:var(--text-muted)]">{shop.address}</p>
+      <h2 className="font-serif pr-9 text-[22px] leading-[1.15] text-[color:var(--text-strong)]">{shop.name}</h2>
+      <div className="mt-2">
+        <RatingCookies rating={shop.rating} />
+      </div>
+      {shop.review && (
+        <p className="cmtl-verdict mt-3 text-[17px] leading-[1.45] text-[color:var(--text-body)]">{shop.review}</p>
+      )}
+      <p className="mt-3 border-t border-[color:var(--border)] pt-3 text-[13px] leading-snug text-[color:var(--text-muted)]">
+        {shop.address}
+      </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button onClick={onDirections} className="rounded-full bg-[color:var(--btn-bg)] px-5 py-2.5 text-[color:var(--btn-text)]">
+        <button
+          onClick={onDirections}
+          className="rounded-full bg-[color:var(--btn-bg)] px-5 py-2.5 text-[14px] font-medium text-[color:var(--btn-text)] transition-colors hover:bg-[color:var(--btn-bg-hover)] active:scale-[0.98]"
+        >
           {t('directions')}
         </button>
-        <button onClick={onCopy} className="rounded-full border border-[color:var(--border)] px-5 py-2.5">
+        <button
+          onClick={onCopy}
+          className="rounded-full border border-[color:var(--border-strong)] px-4 py-2.5 text-[14px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
+        >
           {copied ? t('copied') : t('copyAddress')}
         </button>
-        <button onClick={onShare} className="rounded-full border border-[color:var(--border)] px-5 py-2.5">
+        <button
+          onClick={onShare}
+          className="rounded-full border border-[color:var(--border-strong)] px-4 py-2.5 text-[14px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
+        >
           {linkCopied ? t('linkCopied') : t('share')}
         </button>
         <a
           href={shop.googleMapsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="ml-auto text-sm text-[color:var(--text-muted)] underline-offset-2 hover:underline"
+          className="ml-auto py-2.5 text-[13px] text-[color:var(--text-muted)] underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)] hover:underline"
         >
           {t('googleListing')} ↗
         </a>
       </div>
 
       {iosChooser && (
-        <div className="mt-3 flex gap-2">
-          <a href={appleMapsUrl(shop.lat, shop.lng)} className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm">
+        <div className="mt-3 flex gap-2 border-t border-[color:var(--border)] pt-3">
+          <a
+            href={appleMapsUrl(shop.lat, shop.lng)}
+            className="rounded-full border border-[color:var(--border-strong)] px-4 py-2 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)]"
+          >
             {t('openInPlans')}
           </a>
-          <a href={googleDirectionsUrl(shop.lat, shop.lng)} className="rounded-full border border-[color:var(--border)] px-4 py-2 text-sm">
+          <a
+            href={googleDirectionsUrl(shop.lat, shop.lng)}
+            className="rounded-full border border-[color:var(--border-strong)] px-4 py-2 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)]"
+          >
             {t('openInGoogleMaps')}
           </a>
         </div>

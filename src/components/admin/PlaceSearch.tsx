@@ -56,29 +56,42 @@ export function PlaceSearch({
     onPick({ ...resolved, address: '' })
   }
 
+  const field =
+    'rounded-[var(--radius-field)] border border-[color:var(--border-strong)] bg-[color:var(--surface-2)] px-4 py-3 text-[15px] text-[color:var(--text-strong)] placeholder:text-[color:var(--text-muted)]'
+  const quietLink =
+    'text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]'
+
   if (mode === 'link') {
     return (
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-[color:var(--text-muted)]">
+      <div className="flex flex-col gap-3">
+        <p className="text-[13px] leading-relaxed text-[color:var(--text-muted)]">
           Dans Google Maps : Partager → Copier le lien, puis colle-le ici.
         </p>
         <input
           value={link}
           onChange={(e) => setLink(e.target.value)}
           placeholder="https://maps.app.goo.gl/…"
-          className="rounded-xl border border-[color:var(--border)] px-4 py-3"
+          className={field}
         />
-        <div className="flex gap-2">
-          <button type="button" onClick={submitLink} disabled={busy} className="rounded-xl bg-[color:var(--btn-bg)] px-4 py-2 text-[color:var(--btn-text)]">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={submitLink}
+            disabled={busy}
+            className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-4 py-2.5 text-[14px] font-medium text-[color:var(--btn-text)] transition-colors hover:bg-[color:var(--btn-bg-hover)] disabled:opacity-60"
+          >
             {busy ? '…' : 'Utiliser ce lien'}
           </button>
-          <button type="button" onClick={() => setMode('search')} className="px-3 text-sm underline">
+          <button type="button" onClick={() => setMode('search')} className={`px-1 text-[13px] ${quietLink}`}>
             Retour à la recherche
           </button>
         </div>
         {linkError && (
-          <p className="text-sm text-red-600">
-            Lien illisible. <button type="button" className="underline" onClick={() => onManualRequest(q)}>Placer le point à la main</button>
+          <p className="text-[13px] text-[color:var(--danger)]">
+            Lien illisible.{' '}
+            <button type="button" className="underline underline-offset-4" onClick={() => onManualRequest(q)}>
+              Placer le point à la main
+            </button>
           </p>
         )}
       </div>
@@ -86,36 +99,36 @@ export function PlaceSearch({
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="Nom du magasin…"
         autoFocus
-        className="rounded-xl border border-[color:var(--border)] px-4 py-3"
+        className={field}
       />
       {results.length > 0 && (
-        <ul className="divide-y divide-[color:var(--border)] rounded-xl border border-[color:var(--border)]">
+        <ul className="divide-y divide-[color:var(--border)] overflow-hidden rounded-[var(--radius-field)] border border-[color:var(--border)]">
           {results.map((r, i) => (
             <li key={i}>
               <button
                 type="button"
                 onClick={() => onPick({ ...r, googleMapsUrl: '' })}
-                className="w-full px-4 py-3 text-left"
+                className="w-full px-4 py-3 text-left transition-colors hover:bg-[color:var(--surface-2)]"
               >
-                <span className="block">{r.name}</span>
-                <span className="block text-sm text-[color:var(--text-muted)]">{r.address}</span>
+                <span className="font-serif block text-[16px] text-[color:var(--text-strong)]">{r.name}</span>
+                <span className="mt-0.5 block text-[13px] text-[color:var(--text-muted)]">{r.address}</span>
               </button>
             </li>
           ))}
         </ul>
       )}
       {q.trim().length >= 2 && (
-        <div className="flex gap-3 text-sm">
-          <button type="button" onClick={() => setMode('link')} className="underline">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
+          <button type="button" onClick={() => setMode('link')} className={quietLink}>
             Je ne trouve pas — coller un lien Google Maps
           </button>
-          <button type="button" onClick={() => onManualRequest(q)} className="underline">
+          <button type="button" onClick={() => onManualRequest(q)} className={quietLink}>
             Placer à la main
           </button>
         </div>

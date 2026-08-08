@@ -81,56 +81,71 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
 
   const errorLabels: Record<string, string> = {
     name: 'Le nom est requis.',
-    address: "L'adresse est requise.",
+    address: 'L’adresse est requise.',
     position: 'La position doit être à Montréal.',
     rating: 'Choisis une note (0 à 5, par demi-cookie).',
     googleMapsUrl: 'Le lien Google est invalide.',
-    review: "L'avis est trop long.",
+    review: 'L’avis est trop long.',
   }
+
+  const field =
+    'rounded-[var(--radius-field)] border border-[color:var(--border-strong)] bg-[color:var(--surface-2)] px-4 py-3 text-[15px] text-[color:var(--text-strong)] placeholder:text-[color:var(--text-muted)]'
+  const card =
+    'flex flex-col gap-4 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-chip)]'
+  const eyebrow =
+    'font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]'
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 p-5 pb-16">
-      <header className="flex items-center justify-between">
-        <h1 className="font-serif text-2xl">🍪 Admin</h1>
-        <button onClick={() => logout()} className="text-sm text-[color:var(--text-muted)] underline">
+      <header className="flex items-center justify-between gap-4">
+        <h1 className="font-serif text-[26px] leading-none text-[color:var(--text-strong)]">🍪 Admin</h1>
+        <button
+          onClick={() => logout()}
+          className="text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
+        >
           Se déconnecter
         </button>
       </header>
 
       {!draft && (
-        <section className="flex flex-col gap-3">
-          <h2 className="text-lg">Ajouter un cookie</h2>
+        <section className={card}>
+          <h2 className={eyebrow}>Ajouter un cookie</h2>
           <PlaceSearch onPick={(p) => openDraft({ ...p, rating: 0, review: '' })} onManualRequest={startManual} />
         </section>
       )}
 
       {draft && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-lg">{draft.id ? 'Modifier' : 'C’est bien ici ?'}</h2>
+        <section className={card}>
+          <h2 className={eyebrow}>{draft.id ? 'Modifier' : 'C’est bien ici ?'}</h2>
           <input
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             placeholder="Nom du magasin"
-            className="rounded-xl border border-[color:var(--border)] px-4 py-3"
+            className={field}
           />
           <input
             value={draft.address}
             onChange={(e) => setDraft({ ...draft, address: e.target.value })}
             placeholder="Adresse"
-            className="rounded-xl border border-[color:var(--border)] px-4 py-3"
+            className={field}
           />
-          <div ref={mapDiv} className="h-52 w-full overflow-hidden rounded-xl border border-[color:var(--border)]" />
-          <details>
-            <summary className="cursor-pointer text-sm text-[color:var(--text-muted)]">Lien fiche Google (avancé)</summary>
+          <div
+            ref={mapDiv}
+            className="h-52 w-full overflow-hidden rounded-[var(--radius-field)] border border-[color:var(--border-strong)]"
+          />
+          <details className="group">
+            <summary className="cursor-pointer list-none text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]">
+              Lien fiche Google (avancé)
+            </summary>
             <input
               value={draft.googleMapsUrl}
               onChange={(e) => setDraft({ ...draft, googleMapsUrl: e.target.value })}
               placeholder="Auto si vide"
-              className="mt-2 w-full rounded-xl border border-[color:var(--border)] px-4 py-3"
+              className={`mt-3 w-full ${field}`}
             />
           </details>
           {manualName !== null && (
-            <p className="text-sm text-[color:var(--text-muted)]">Glisse le point sur le magasin.</p>
+            <p className="text-[13px] text-[color:var(--text-muted)]">Glisse le point sur le magasin.</p>
           )}
           <RatingInput value={draft.rating} onChange={(rating) => setDraft({ ...draft, rating })} />
           <textarea
@@ -138,32 +153,53 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
             onChange={(e) => setDraft({ ...draft, review: e.target.value })}
             placeholder="Ton avis…"
             rows={3}
-            className="rounded-xl border border-[color:var(--border)] px-4 py-3"
+            className={`resize-none leading-relaxed ${field}`}
           />
-          {error && <p className="text-sm text-red-600">{errorLabels[error] ?? 'Erreur — réessaie.'}</p>}
-          <div className="flex gap-2">
-            <button onClick={save} disabled={saving} className="rounded-xl bg-[color:var(--btn-bg)] px-5 py-3 text-[color:var(--btn-text)]">
+          {error && <p className="text-[13px] text-[color:var(--danger)]">{errorLabels[error] ?? 'Erreur — réessaie.'}</p>}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={save}
+              disabled={saving}
+              className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-5 py-3 text-[15px] font-medium text-[color:var(--btn-text)] transition-colors hover:bg-[color:var(--btn-bg-hover)] disabled:opacity-60"
+            >
               {saving ? '…' : 'Enregistrer'}
             </button>
-            <button onClick={() => { setDraft(null); setManualName(null); setError(null) }} className="px-3 underline">
+            <button
+              onClick={() => { setDraft(null); setManualName(null); setError(null) }}
+              className="px-1 text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
+            >
               Annuler
             </button>
           </div>
         </section>
       )}
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-lg">Les cookies ({shops.length})</h2>
-        <ul className="divide-y divide-[color:var(--border)]">
+      <section className={card}>
+        <h2 className={eyebrow}>Les cookies ({shops.length})</h2>
+        <ul className="-my-1 divide-y divide-[color:var(--border)]">
           {shops.map((shop) => (
-            <li key={shop.id} className="flex items-center justify-between py-3">
-              <div>
-                <span className="block">{shop.name}</span>
-                <span className="text-sm text-[color:var(--text-muted)]">{String(shop.rating).replace('.', ',')} / 5</span>
+            <li key={shop.id} className="flex items-center justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <span className="font-serif block truncate text-[17px] text-[color:var(--text-strong)]">
+                  {shop.name}
+                </span>
+                <span className="font-serif text-[13px] text-[color:var(--text-muted)]">
+                  {String(shop.rating).replace('.', ',')} / 5
+                </span>
               </div>
-              <div className="flex gap-3 text-sm">
-                <button onClick={() => openDraft({ ...shop, id: shop.id })} className="underline">Modifier</button>
-                <button onClick={() => remove(shop)} className="text-red-700 underline">Supprimer</button>
+              <div className="flex shrink-0 gap-3 text-[13px]">
+                <button
+                  onClick={() => openDraft({ ...shop, id: shop.id })}
+                  className="text-[color:var(--text-body)] underline underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)]"
+                >
+                  Modifier
+                </button>
+                <button
+                  onClick={() => remove(shop)}
+                  className="text-[color:var(--danger)] underline underline-offset-4 transition-opacity hover:opacity-75"
+                >
+                  Supprimer
+                </button>
               </div>
             </li>
           ))}

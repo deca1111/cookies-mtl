@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/components/LangProvider";
 
@@ -13,6 +13,16 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// Display face: shop names and page titles. SOFT/opsz are tuned in globals.css
+// so the same variable font can be warm at 22px and still crisp at 13px.
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
+  display: "swap",
+  axes: ["SOFT", "WONK", "opsz"],
+});
+
 export const metadata: Metadata = {
   title: "Cookies MTL",
   description:
@@ -23,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <LangProvider>{children}</LangProvider>
