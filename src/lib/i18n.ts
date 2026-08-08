@@ -13,6 +13,7 @@ export const dict = {
     linkCopied: 'Lien copié ✓',
     close: 'Fermer',
     retry: 'Réessayer',
+    retryDetailedMap: 'Réessayer la carte détaillée',
   },
   en: {
     directions: 'Directions',
@@ -26,6 +27,7 @@ export const dict = {
     linkCopied: 'Link copied ✓',
     close: 'Close',
     retry: 'Retry',
+    retryDetailedMap: 'Retry the detailed map',
   },
 } as const satisfies Record<Lang, Record<string, string>>
 

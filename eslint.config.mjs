@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Dossiers de travail hors-code (gitignorés, mais la flat config ESLint
+    // n'honore pas .gitignore) : artefacts d'incident et sorties du pipeline
+    // de tuiles (scripts/render-tiles.mjs).
+    ".superpowers/**",
+    ".tiles-work/**",
+    ".tiles-out/**",
   ]),
 ]);
 
