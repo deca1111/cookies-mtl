@@ -35,7 +35,10 @@ const args = new Map(process.argv.slice(2).map((a) => a.split('=')))
 const THEMES = (args.get('--themes') ?? 'light,dark').split(',')
 const [zMin, zMax] = (args.get('--zooms') ?? '11-16').split('-').map(Number)
 const ZOOMS = Array.from({ length: zMax - zMin + 1 }, (_, i) => zMin + i)
-const UPLOAD = args.has('--upload')
+const UPLOAD = args.has('--upload') || args.has('--upload-only')
+// Reprise d'un upload interrompu (rate-limit…) sans re-rendre : les tuiles de
+// .tiles-out sont réutilisées telles quelles, l'overwrite Blob est idempotent.
+const UPLOAD_ONLY = args.has('--upload-only')
 
 // -- même formule que src/lib/tile-math.ts (copie assumée : script Node pur) --
 const lon2x = (lon, z) => ((lon + 180) / 360) * 2 ** z
@@ -43,6 +46,7 @@ const lat2y = (lat, z) => ((1 - Math.asinh(Math.tan((lat * Math.PI) / 180)) / Ma
 const x2lon = (x, z) => (x / 2 ** z) * 360 - 180
 const y2lat = (y, z) => (Math.atan(Math.sinh(Math.PI * (1 - (2 * y) / 2 ** z))) * 180) / Math.PI
 
+if (!UPLOAD_ONLY) {
 // 1. bundle du vrai code de style (source unique de vérité — buildMapStyle)
 mkdirSync(WORK, { recursive: true })
 await build({
@@ -164,6 +168,7 @@ await browser.close()
 server.close()
 console.log(`RENDU TERMINÉ: ${total} tuiles, ${errors} erreurs de rendu`)
 if (errors > 0) process.exit(1)
+}
 
 // 6. upload Blob (optionnel)
 if (UPLOAD) {
@@ -180,13 +185,27 @@ if (UPLOAD) {
   walk(join(OUT, 'tiles'))
   console.log(`upload de ${files.length} tuiles vers Vercel Blob…`)
   let uploaded = 0
-  const CONCURRENCY = 12
+  // 6 en parallèle + backoff : l'API Blob rate-limite (constaté à ~1500 puts à 12
+  // de concurrence) et renvoie retryAfter — on le respecte au lieu d'abandonner.
+  const CONCURRENCY = 6
+  async function putWithRetry(pathname, body, opts) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await put(pathname, body, opts)
+      } catch (e) {
+        if (attempt >= 6) throw e
+        const wait = (e?.retryAfter ? e.retryAfter * 1000 : 2000 * attempt) + Math.floor(Math.random() * 500)
+        console.log(`  ${e?.name ?? 'erreur'} sur ${pathname} — pause ${Math.round(wait / 1000)}s, retry ${attempt}/5`)
+        await new Promise((ok) => setTimeout(ok, wait))
+      }
+    }
+  }
   const queue = [...files]
   await Promise.all(
     Array.from({ length: CONCURRENCY }, async () => {
       for (let f = queue.shift(); f; f = queue.shift()) {
         const pathname = f.slice(OUT.length + 1).replaceAll('\\', '/')
-        await put(pathname, readFileSync(f), {
+        await putWithRetry(pathname, readFileSync(f), {
           access: 'public',
           addRandomSuffix: false,
           allowOverwrite: true,
