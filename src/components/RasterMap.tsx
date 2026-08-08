@@ -58,6 +58,9 @@ export function RasterMap({
         minZoom: 11,
         maxNativeZoom: 16, // au-delà : sur-zoom (agrandissement de la tuile z16)
         maxZoom: 18,
+        // ne demander QUE les tuiles intersectant la zone pré-rendue — sans ça, un
+        // viewport large à faible zoom demande des tuiles hors pyramide (404)
+        bounds: MTL_BOUNDS,
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · style Cookies MTL',
       }).addTo(map)

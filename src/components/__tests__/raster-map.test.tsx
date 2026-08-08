@@ -15,6 +15,7 @@ vi.mock('leaflet', () => {
     remove: removeSpy,
     setMaxBounds: vi.fn(),
     flyTo: vi.fn(),
+    panTo: vi.fn(),
     getZoom: vi.fn(() => 12),
     addControl: vi.fn(),
     on: vi.fn(),
@@ -57,9 +58,14 @@ test('monte Leaflet avec les tuiles du thème et un pin cliquable par boutique',
   render(<RasterMap shops={[shop]} selected={null} onSelect={onSelect} onRetryWebgl={() => {}} />)
 
   await waitFor(() => expect(tileLayerSpy).toHaveBeenCalledTimes(1))
-  const [url, opts] = tileLayerSpy.mock.calls[0] as [string, { maxNativeZoom: number }]
+  const [url, opts] = tileLayerSpy.mock.calls[0] as [string, { maxNativeZoom: number; bounds: unknown }]
   expect(url).toContain('/tiles/v1/light/{z}/{x}/{y}.webp')
   expect(opts.maxNativeZoom).toBe(16)
+  // régression 404 hors pyramide : le calque DOIT borner ses requêtes à la bbox
+  expect(opts.bounds).toEqual([
+    [45.4, -73.75],
+    [45.62, -73.45],
+  ])
 
   await waitFor(() => expect(markerSpy).toHaveBeenCalledTimes(1))
   expect(markerClickHandlers).toHaveLength(1)
