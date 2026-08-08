@@ -91,34 +91,27 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-fraunces);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-title);
 }
 
 body {
   background: var(--bg);
   color: var(--text-body);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body), ui-rounded, ui-sans-serif, system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Fraunces carries the personality: high optical size for display cuts, a
-   touch of SOFT to keep the terminals warm, WONK off so it stays classical. */
-.font-serif {
-  font-variation-settings: "opsz" 48, "SOFT" 28, "WONK" 0;
-  letter-spacing: -0.015em;
-  font-weight: 500;
+/* La Gill Sans Ultra Bold est déjà très noire : on la laisse respirer. */
+.font-display {
+  letter-spacing: 0.01em;
 }
 
-/* The review is the point of the whole site, so it is set as a verdict rather
-   than as UI text: the display face in italic, one step up in size. It is the
-   only italic in the app — the single place the design raises its voice. */
+/* L'avis reste la voix du site : Comfortaa en italique synthétique, un cran au-dessus. */
 .cmtl-verdict {
-  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-family: var(--font-body), ui-rounded, system-ui, sans-serif;
   font-style: italic;
-  font-variation-settings: "opsz" 28, "SOFT" 40, "WONK" 0;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.005em;
 }
 

@@ -8,7 +8,7 @@ export function RatingCookies({ rating }: { rating: number }) {
   return (
     <span aria-label={label} className="inline-flex items-baseline gap-2.5 text-[color:var(--accent)]">
       <span aria-hidden className="text-[13px] leading-none tracking-[0.22em]">{dots.join('')}</span>
-      <span aria-hidden className="font-serif text-[14px] leading-none text-[color:var(--text-muted)]">
+      <span aria-hidden className="text-[14px] leading-none text-[color:var(--text-muted)]">
         {String(rating).replace('.', ',')}
       </span>
     </span>

@@ -124,7 +124,7 @@ export function PlaceSearch({
                 onClick={() => onPick({ ...r, googleMapsUrl: '' })}
                 className="w-full px-4 py-3 text-left transition-colors hover:bg-[color:var(--surface-2)]"
               >
-                <span className="font-serif block text-[16px] text-[color:var(--text-strong)]">{r.name}</span>
+                <span className="font-display block text-[16px] text-[color:var(--text-strong)]">{r.name}</span>
                 <span className="mt-0.5 block text-[13px] text-[color:var(--text-muted)]">{r.address}</span>
               </button>
             </li>

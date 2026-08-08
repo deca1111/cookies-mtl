@@ -1,26 +1,21 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Comfortaa } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/components/LangProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// Display face: shop names and page titles. SOFT/opsz are tuned in globals.css
-// so the same variable font can be warm at 22px and still crisp at 13px.
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
+// Titres et marque : la Gill Sans Ultra Bold fournie par Léo (licence perso, self-host).
+const gillSans = localFont({
+  src: "../fonts/gill-sans-ultra-bold.otf",
+  variable: "--font-title",
+  weight: "700",
   display: "swap",
-  axes: ["SOFT", "WONK", "opsz"],
+});
+
+const comfortaa = Comfortaa({
+  variable: "--font-body",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -37,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      className={`${gillSans.variable} ${comfortaa.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <LangProvider>{children}</LangProvider>

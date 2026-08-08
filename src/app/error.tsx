@@ -6,7 +6,7 @@ export default function Error({ reset }: { reset: () => void }) {
       <span aria-hidden className="text-2xl opacity-40">
         🍪
       </span>
-      <p className="font-serif max-w-sm text-[20px] leading-snug text-[color:var(--text-strong)]">
+      <p className="font-display max-w-sm text-[20px] leading-snug text-[color:var(--text-strong)]">
         Oups, quelque chose a brûlé au four. / Something burned in the oven.
       </p>
       <button

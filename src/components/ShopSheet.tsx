@@ -72,7 +72,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
         className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain pt-6 sm:pt-5"
         onTouchMove={(e) => e.stopPropagation()}
       >
-        <h2 className="font-serif pr-9 text-[22px] leading-[1.15] text-[color:var(--text-strong)]">{shop.name}</h2>
+        <h2 className="font-display pr-9 text-[22px] leading-[1.15] text-[color:var(--text-strong)]">{shop.name}</h2>
         <div className="mt-2">
           <RatingCookies rating={shop.rating} />
         </div>

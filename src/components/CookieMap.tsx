@@ -352,7 +352,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       )}
       <button
         onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-2 font-mono text-[11px] font-medium tracking-[0.14em] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
+        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-2 text-[11px] font-medium tracking-[0.14em] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
         aria-label={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
       >
         {lang === 'fr' ? 'EN' : 'FR'}
