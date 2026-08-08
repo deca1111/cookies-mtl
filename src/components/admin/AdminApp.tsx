@@ -69,6 +69,10 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       // with the public map: cap the render pixel ratio at 2 to bound GPU memory footprint
       // on high-DPI mobile screens.
       pixelRatio: Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2),
+      // Round 3 — same rationale as CookieMap.tsx's MAX_TILE_CACHE_SIZE: unset defaults to a
+      // viewport-scaled dynamic cache, a documented iOS OOM crash mechanism. Applied here too
+      // for consistency, though this mini-map isn't implicated in the incident.
+      maxTileCacheSize: 40,
     })
     if (typeof map.once === 'function') {
       map.once('style.load', () => {

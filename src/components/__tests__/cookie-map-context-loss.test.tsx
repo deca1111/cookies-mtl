@@ -45,14 +45,23 @@ vi.mock('maplibre-gl', () => {
 
 vi.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}))
 
-import { CookieMap } from '../CookieMap'
+import { CookieMap, __clearStyleCacheForTests } from '../CookieMap'
 
+// Round 3 (iPhone incident, footprint reduction continued — see
+// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 3"): CookieMap
+// now caches the fetched+recolored style at module scope, keyed by (theme, url), so rebuilds
+// and retries within (and across) a mount reuse it instead of refetching. That cache is
+// intentionally NOT reset per mount in production — but this test file mounts <CookieMap>
+// many times, each expecting its own fresh fetch-mock-driven initial load, so it must be
+// cleared between tests via CookieMap's test-only escape hatch.
 beforeEach(() => {
-  // mockReset (not just mockClear) so a mockImplementation set by one test can never leak
-  // into the next.
+  // mockReset (not just mockClear) so a mockImplementation/mockImplementationOnce set by one
+  // test (several below make the Map constructor throw, to simulate a failed rebuild — see
+  // the Round 3 note further down) can never leak into the next test.
   mapConstructor.mockReset()
   removeSpy.mockClear()
   handlers = {}
+  __clearStyleCacheForTests()
   global.fetch = vi.fn(async () => ({
     ok: true,
     json: async () => ({ layers: [] }),
@@ -60,23 +69,20 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  // This file now has several tests rendering <CookieMap>; without an explicit unmount
-  // between them, an earlier test's un-torn-down effect (pending timers, visibilitychange
-  // listener) could bleed into a later test — cleanup() runs each effect's own cleanup
-  // function synchronously.
+  // This file renders <CookieMap> many times; without an explicit unmount between them, an
+  // earlier test's un-torn-down effect (pending timers, visibilitychange listener) could
+  // bleed into a later test — cleanup() runs each effect's own cleanup function synchronously.
   cleanup()
   vi.restoreAllMocks()
 })
 
-// Round 3 (iPhone incident, footprint reduction continued — see
-// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 3"): MapLibre
-// already has a built-in, zero-network webglcontextlost/webglcontextrestored recovery path (it
-// saves the in-memory style before tearing the WebGL context down, then restores from that
-// saved copy — no refetch). CookieMap used to call scheduleRebuild synchronously on every
-// webglcontextlost, discarding that cheap built-in recovery before the browser got a chance to
-// use it. It now gives MapLibre's own recovery a bounded RESTORE_GRACE_MS (6000ms) window
-// first, via handleContextLoss, and only falls back to the existing damped/capped rebuild if
-// webglcontextrestored doesn't fire in time.
+// Round 3: MapLibre already has a built-in, zero-network webglcontextlost/webglcontextrestored
+// recovery path (it saves the in-memory style before tearing the WebGL context down, then
+// restores from that saved copy — no refetch). CookieMap used to call scheduleRebuild
+// synchronously on every webglcontextlost, discarding that cheap built-in recovery before the
+// browser got a chance to use it. It now gives MapLibre's own recovery a bounded
+// RESTORE_GRACE_MS (6000ms) window first, via handleContextLoss, and only falls back to the
+// existing damped/capped rebuild if webglcontextrestored doesn't fire in time.
 
 test('rebuilds the map when maplibre reports webglcontextlost and it is not restored in time', async () => {
   render(<CookieMap shops={[]} />)
@@ -188,6 +194,41 @@ test('does not rebuild until both the grace window and the damping cooldown elap
   }
 })
 
+// Round 3: fetching + parsing + recoloring the ~123-layer style is real work that used to
+// re-run on every context-loss-triggered rebuild. It's now cached per (theme, url) at module
+// scope, so a rebuild reuses the already-recolored style object instead of refetching.
+
+test('caches the fetched+recolored style — a loss-triggered rebuild reuses it instead of refetching', async () => {
+  const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ layers: [] }) }))
+  global.fetch = fetchMock as unknown as typeof fetch
+
+  render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+
+  vi.useFakeTimers()
+  try {
+    act(() => {
+      handlers.webglcontextlost()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000) // grace window, no restore
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000) // damping cooldown -> init() re-runs
+    })
+    expect(mapConstructor).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.useRealTimers()
+  }
+
+  // Two inits (the initial mount + the loss-triggered rebuild) produced two Map instances, but
+  // the style was fetched only once — the rebuild reused the cached, already-recolored style
+  // object instead of re-fetching + re-parsing + re-recoloring all 123 layers.
+  expect(fetchMock).toHaveBeenCalledTimes(1)
+})
+
 // Fix round 1 (task 17b review, Important finding): the original code only reset the
 // in-flight `rebuilding` guard on the SUCCESS path. If a rebuild's own retry also failed,
 // `rebuilding` stayed `true` forever — no live map left to ever fire another
@@ -195,45 +236,41 @@ test('does not rebuild until both the grace window and the damping cooldown elap
 // the user was stuck on the mapError screen until a full reload. These two tests exercise
 // the bounded-retry fix: `rebuilding` must not latch (a scheduled retry gets to attempt
 // another init), and the retry count must be capped (a circuit breaker, not an infinite loop).
+//
+// Round 3 note: with the style cache above, a rebuild's init() no longer refetches, so a
+// fetch-mock failure can no longer simulate "the rebuild's init() fails" the way these tests
+// used to. They now fail Map construction itself instead (e.g. WebGL context creation failing
+// right after a loss, under the same memory pressure that caused the loss in the first place)
+// — init()'s try/catch treats that identically to a fetch failure, so the same
+// rebuilding-doesn't-latch / retry-recovers assertions still hold.
 
 test('a failed rebuild does not latch `rebuilding` — the scheduled retry recovers the map', async () => {
-  let fetchCalls = 0
-  global.fetch = vi.fn(async () => {
-    fetchCalls += 1
-    // Call 1: initial mount — succeeds. Call 2: the rebuild triggered once the grace window
-    // elapses without a restore and the damping cooldown runs out — fails (simulates "network
-    // not back yet" right after returning from background). Call 3+: the scheduled
-    // failure-retry — succeeds again.
-    if (fetchCalls === 2) return { ok: false, json: async () => ({}) }
-    return { ok: true, json: async () => ({ layers: [] }) }
-  }) as unknown as typeof fetch
-
   const { container } = render(<CookieMap shops={[]} />)
   await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
   await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
+
+  mapConstructor.mockImplementationOnce(() => {
+    throw new Error('context creation failed')
+  })
 
   vi.useFakeTimers()
   try {
     act(() => {
       handlers.webglcontextlost()
     })
-    // The dead map is not torn down until the grace window elapses without a restore.
     expect(removeSpy).not.toHaveBeenCalled()
 
+    // Cross the grace window: MapLibre's own webglcontextrestored never fired.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(6000)
     })
     expect(removeSpy).toHaveBeenCalledTimes(1)
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
 
-    // Cross the cooldown: the rebuild's init() runs and fails (fetchCalls === 2 above).
+    // Cross the cooldown: the rebuild's init() runs and its Map construction throws.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000)
     })
-
-    // The failed rebuild could not build a replacement — the error screen is showing, and
-    // no 2nd map has been constructed.
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    expect(mapConstructor).toHaveBeenCalledTimes(2)
     expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
 
     // Advance past the bounded 3000ms failure-retry. Before the "Fix round 1" latch fix,
@@ -243,7 +280,7 @@ test('a failed rebuild does not latch `rebuilding` — the scheduled retry recov
       await vi.advanceTimersByTimeAsync(3000)
     })
 
-    expect(mapConstructor).toHaveBeenCalledTimes(2)
+    expect(mapConstructor).toHaveBeenCalledTimes(3)
     expect(container.querySelector('.absolute.inset-0')).toBeNull()
   } finally {
     vi.useRealTimers()
@@ -251,16 +288,14 @@ test('a failed rebuild does not latch `rebuilding` — the scheduled retry recov
 })
 
 test('gives up after 3 consecutive failed attempts — no 4th retry is scheduled', async () => {
-  global.fetch = vi.fn(async (_input, _init) => {
-    return { ok: true, json: async () => ({ layers: [] }) }
-  }) as unknown as typeof fetch
-
   const { container } = render(<CookieMap shops={[]} />)
   await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
   await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
 
   // From here on, every init attempt (the rebuild and all of its retries) fails.
-  global.fetch = vi.fn(async () => ({ ok: false, json: async () => ({}) })) as unknown as typeof fetch
+  mapConstructor.mockImplementation(() => {
+    throw new Error('context creation failed')
+  })
 
   vi.useFakeTimers()
   try {
@@ -274,7 +309,7 @@ test('gives up after 3 consecutive failed attempts — no 4th retry is scheduled
       await vi.advanceTimersByTimeAsync(6000)
     })
     // Grace elapsed without a restore: the dead map is torn down and the damping cooldown
-    // timer is now the only one pending — init() hasn't even run once yet.
+    // timer is now the only one pending.
     expect(removeSpy).toHaveBeenCalledTimes(1)
     expect(vi.getTimerCount()).toBe(1)
 
@@ -302,31 +337,39 @@ test('gives up after 3 consecutive failed attempts — no 4th retry is scheduled
     })
     expect(vi.getTimerCount()).toBe(0)
 
-    // The map was never successfully rebuilt, and the error screen is still showing.
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    // 1 successful initial mount + 3 failed attempts (the rebuild + 2 retries), each of which
+    // reaches (and throws inside) the Map constructor.
+    expect(mapConstructor).toHaveBeenCalledTimes(4)
     expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
   } finally {
     vi.useRealTimers()
   }
 })
 
-// Fix round 2 (iPhone incident, see .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md):
-// the "Fix round 1" circuit breaker above only bounds consecutive FAILED init() calls
-// (failureCount resets to 0 on every successful init). Nothing bounded a success->loss->success
-// flapping loop: each webglcontextlost fired an immediate, undamped, full init() with no delay
-// and no cap on total rebuilds, so a mobile device flapping in and out of GPU memory pressure
-// could rebuild the map (style fetch + tiles + markers) unboundedly until iOS Safari killed the
-// page. These two tests pin the damping cooldown and the total-rebuild cap that fix that gap.
+// Round 2 — footprint reduction (iPhone incident, see
+// .superpowers/sdd/2026-08-07-cookies-mtl/incident-iphone-evidence.md, "Round 2 — footprint
+// reduction"): the damping/cap fix above stops the rebuild loop from running away, but the
+// user's iPhone still lost the WebGL context repeatedly during active use — consistent with
+// GPU memory pressure from rendering at devicePixelRatio 3 (a real iPhone value) exceeding iOS
+// Safari's tolerance. Standard MapLibre mitigation: cap the render pixel ratio at 2. This test
+// pins that the Map constructor never receives a pixelRatio above 2, even when
+// window.devicePixelRatio reports 3.
 
-test('caps the map pixelRatio at 2 even when devicePixelRatio reports 3 (iPhone GPU memory footprint)', async () => {
+test('caps the map pixelRatio at 2 and sets an explicit tile cache size, even when devicePixelRatio reports 3', async () => {
   const originalDpr = window.devicePixelRatio
   Object.defineProperty(window, 'devicePixelRatio', { value: 3, configurable: true })
   try {
     render(<CookieMap shops={[]} />)
     await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
 
-    const options = mapConstructor.mock.calls[0][0] as { pixelRatio?: number }
+    const options = mapConstructor.mock.calls[0][0] as { pixelRatio?: number; maxTileCacheSize?: number }
     expect(options.pixelRatio).toBe(2)
+    // Round 3: unset maxTileCacheSize defaults to viewport-scaled dynamic sizing — the
+    // documented iOS OOM crash mechanism in mapbox/mapbox-gl-js#4052. This only needs to catch
+    // a regression back to "unset"; the exact chosen value and its rationale live next to
+    // MAX_TILE_CACHE_SIZE in CookieMap.tsx.
+    expect(options.maxTileCacheSize).toBeTypeOf('number')
+    expect(options.maxTileCacheSize).toBeGreaterThan(0)
   } finally {
     Object.defineProperty(window, 'devicePixelRatio', { value: originalDpr, configurable: true })
   }
@@ -336,19 +379,13 @@ test('counts failure retries against the rebuild cap — cap is shared, not sepa
   // Fast-follow: ensure that failure-retry attempts consume from the per-mount rebuild budget,
   // so a flapping scenario (loss + failed init + retry + loss + ...) cannot exceed the cap
   // even when mixing loss-triggered rebuilds with failure-retry attempts.
-  let fetchCalls = 0
-  global.fetch = vi.fn(async () => {
-    fetchCalls += 1
-    // Call 1: initial mount — succeeds.
-    // Calls 2-4: loss-triggered rebuild + its two failure retries — all fail.
-    // Calls 5+: if we got here, we've already hit the cap and shouldn't be calling init() anymore.
-    if (fetchCalls <= 4 && fetchCalls > 1) return { ok: false, json: async () => ({}) }
-    return { ok: true, json: async () => ({ layers: [] }) }
-  }) as unknown as typeof fetch
-
   const { container } = render(<CookieMap shops={[]} />)
   await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
   await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
+
+  mapConstructor.mockImplementation(() => {
+    throw new Error('context creation failed')
+  })
 
   vi.useFakeTimers()
   try {
@@ -366,35 +403,35 @@ test('counts failure retries against the rebuild cap — cap is shared, not sepa
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2000) // damping cooldown
     })
-    // The rebuild's init() ran (call 2) and failed. No 2nd map yet.
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    // The rebuild's init() ran and failed — we're now at rebuildCount=1, failureCount=1. A
+    // retry is scheduled (rebuildCount incremented to 2).
+    expect(mapConstructor).toHaveBeenCalledTimes(2)
     expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000)
     })
-    // 1st failure retry (call 3) also failed. rebuildCount is now 2, failureCount is now 2.
+    // 1st failure retry also failed. rebuildCount is now 2->3, failureCount is now 1->2.
     // Another retry is scheduled (rebuildCount incremented to 3).
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    expect(mapConstructor).toHaveBeenCalledTimes(3)
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(3000)
     })
-    // 2nd failure retry (call 4) also failed. rebuildCount is now 3, failureCount is now 3.
-    // failureCount hit its limit (< 3 is false), so no more retries scheduled.
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    // 2nd failure retry also failed. failureCount hit its limit (< 3 is false), so no more
+    // retries scheduled.
+    expect(mapConstructor).toHaveBeenCalledTimes(4)
 
     // Wait to prove no more timers are pending.
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10000)
     })
 
-    // Total Map constructions: 1 initial + 0 successful rebuilds = 1. The rebuild and its two
-    // retries all failed, so the map was never rebuilt. rebuildCount was incremented (1 for
-    // the rebuild + 2 for the retries) and now sits at 3, so a subsequent loss event would
-    // still have room to attempt rebuilds (cap is 5), but failureCount's independent < 3
-    // limit cut off the retries after the rebuild itself failed.
-    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    // Total Map constructions: 1 successful initial mount + 3 failed attempts (the rebuild +
+    // its two retries), all of which reached (and threw inside) the Map constructor.
+    // rebuildCount ends at 3 (1 for the rebuild + 2 for the retries) — well under the cap of
+    // 5 — but failureCount's independent < 3 limit cut off the retries first.
+    expect(mapConstructor).toHaveBeenCalledTimes(4)
     expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
   } finally {
     vi.useRealTimers()

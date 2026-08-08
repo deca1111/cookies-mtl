@@ -4,7 +4,7 @@ import * as maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import '@/lib/maplibre-setup'
 import { useEffect, useRef, useState } from 'react'
-import { currentTheme, getMapStyleUrl, applyPalette } from '@/lib/map-style'
+import { currentTheme, getMapStyleUrl, applyPalette, type MapTheme } from '@/lib/map-style'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 import { ShopSheet } from './ShopSheet'
@@ -37,6 +37,43 @@ const MAX_REBUILDS_PER_MOUNT = 5
 // recovery a bounded window to fire `webglcontextrestored` first; only if it doesn't do we fall
 // back to the existing damped/capped scheduleRebuild path.
 const RESTORE_GRACE_MS = 6000
+
+// Round 3: `maxTileCacheSize` left unset defaults to a dynamically-sized cache that scales with
+// the viewport in device pixels (`maxTileCacheZoomLevels`, default 5, x approximate tiles
+// visible) — this is the exact mechanism behind mapbox/mapbox-gl-js#4052's documented iOS OOM
+// crashes (unbounded cache growth during ordinary panning/zooming on memory-constrained
+// devices). 40 sits in the middle of a mobile-safe 32-64 range: comfortably above what's ever
+// visible in a single iPhone viewport at once (roughly 10-20 tiles at pixelRatio 2, the Round 2
+// cap) so ordinary panning/zooming around Montreal doesn't thrash the cache, while still
+// bounding worst-case memory far below the uncapped, viewport-and-DPR-scaled default.
+const MAX_TILE_CACHE_SIZE = 40
+
+// Round 3: fetching + JSON-parsing + recoloring the ~123-layer OpenFreeMap style is real
+// network + CPU work that used to re-run from scratch on every context-loss-triggered rebuild,
+// even though the style itself never changes within a session. Cache the FINAL recolored style
+// object per (theme, url) at module scope so it survives across rebuilds/retries within a mount
+// and across separate mounts (e.g. the error screen's retry button, or a second CookieMap
+// instance sharing the tab). MapLibre does not mutate the style object it's handed, so the same
+// object can safely be reused by more than one `new Map({style})` call.
+const styleCache = new Map()
+
+async function getRecoloredStyle(theme: MapTheme, url: string) {
+  const key = `${theme}:${url}`
+  if (styleCache.has(key)) return styleCache.get(key)
+  const res = await fetch(url)
+  if (!res.ok) throw new Error('style fetch failed')
+  const style = applyPalette(await res.json(), theme)
+  styleCache.set(key, style)
+  return style
+}
+
+// Test-only escape hatch: the cache above is intentionally module-scoped (not per-mount) so
+// production rebuilds/retries reuse it, but that means it would otherwise persist across every
+// test in cookie-map-context-loss.test.tsx, silently skipping the fetch mock those tests rely
+// on. Production code never calls this.
+export function __clearStyleCacheForTests() {
+  styleCache.clear()
+}
 
 export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?: string }) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -140,9 +177,10 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
 
     async function init() {
       try {
-        const res = await fetch(getMapStyleUrl(theme))
-        if (!res.ok) throw new Error('style fetch failed')
-        const style = applyPalette(await res.json(), theme)
+        // Round 3: reuse the cached, already-fetched-and-recolored style across
+        // rebuilds/retries instead of refetching + re-parsing + re-recoloring 123 layers every
+        // time (see getRecoloredStyle's own comment).
+        const style = await getRecoloredStyle(theme, getMapStyleUrl(theme))
         if (cancelled || !containerRef.current) return
 
         const map = new maplibregl.Map({
@@ -158,6 +196,8 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           // Standard MapLibre mitigation: cap the render pixel ratio at 2 — still crisp on
           // retina screens, without the devicePixelRatio-3 memory cost.
           pixelRatio: Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 2),
+          // Round 3 — see MAX_TILE_CACHE_SIZE's own comment for the value rationale.
+          maxTileCacheSize: MAX_TILE_CACHE_SIZE,
         })
         mapRef.current = map
         failureCount = 0
