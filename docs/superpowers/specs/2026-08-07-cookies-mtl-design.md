@@ -60,7 +60,7 @@ Table `shops` (Neon Postgres) :
 ## Page publique — la carte
 
 - MapLibre GL, tuiles OpenFreeMap, **style personnalisé** aux couleurs cookie (crème/caramel/chocolat) — travail de design dédié à l'implémentation (skill frontend-design).
-- Marqueurs 🍪 dont la teinte reflète la note (échelle précise arrêtée lors du travail de design visuel).
+- Marqueurs en goutte épurée (pas d'emoji brut), teinte pouvant refléter la note (échelle arrêtée au design visuel).
 - Centrage initial sur Montréal ; bouton « me localiser » (géolocalisation navigateur, avec permission).
 - Tap sur un marqueur → **volet bas** (bottom sheet) : nom, note, avis, adresse, actions.
 - Toggle FR/EN discret.
@@ -92,6 +92,16 @@ Accès : mot de passe unique (env var, comparaison côté serveur), session via 
 ### Gestion
 
 Sous le formulaire : liste des magasins (nom, note) avec modifier / supprimer (confirmation avant suppression).
+
+## Direction visuelle
+
+Validée sur maquettes (companion visuel ; mockups conservés dans `.superpowers/brainstorm/`) :
+
+- **Ton général** : épuré, professionnel, chaleureux — jamais cartoon ni « goofy ».
+- **Mode clair (défaut)** : famille crème/lin (fond de carte ≈ `#f3ede3`–`#eae7e0`, rues blanc cassé), marqueurs brun espresso (≈ `#3b2a1f`) avec touches caramel, fiche blanc cassé aux coins très arrondis.
+- **Mode sombre** (suit la préférence système) : direction « Moka nuit » — carte chocolat noir (≈ `#241a13`), marqueurs caramel doré (≈ `#d29a55`) légèrement lumineux, texte crème.
+- **Note affichée** en pastilles discrètes (●●●●◐) accompagnées de la valeur (« 4,5 »).
+- **Typographie et réglage fin du style de carte** : à arrêter à l'implémentation (skill frontend-design) ; piste : serif élégante type Fraunces pour les titres en mode clair.
 
 ## Internationalisation
 
