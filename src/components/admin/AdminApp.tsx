@@ -6,7 +6,7 @@ import '@/lib/maplibre-setup'
 import { useEffect, useRef, useState } from 'react'
 import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
-import { applyPalette, currentTheme, getMapStyleUrl } from '@/lib/map-style'
+import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
 import type { Shop } from '@/lib/shops'
 import { PlaceSearch, type PickedPlace } from './PlaceSearch'
 import { RatingInput } from './RatingInput'
@@ -77,7 +77,9 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     if (typeof map.once === 'function') {
       map.once('style.load', () => {
         if (typeof map.getStyle === 'function' && typeof map.setStyle === 'function') {
-          map.setStyle(applyPalette(map.getStyle(), theme))
+          // buildMapStyle = simplification épurée + palette + halo, la même fabrique
+          // que la carte publique et le pipeline de tuiles (spec carte hybride §1).
+          map.setStyle(buildMapStyle(map.getStyle(), theme))
         }
       })
     }
