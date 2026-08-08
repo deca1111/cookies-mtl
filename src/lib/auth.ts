@@ -19,8 +19,10 @@ export function verifySessionToken(token: string, secret: string, nowMs: number)
   const expiry = Number(expiryStr)
   if (!Number.isFinite(expiry) || expiry <= nowMs) return false
   const expected = hmac(expiryStr, secret)
-  if (sig.length !== expected.length) return false
-  return timingSafeEqual(Buffer.from(sig), Buffer.from(expected))
+  const sigBuf = Buffer.from(sig)
+  const expectedBuf = Buffer.from(expected)
+  if (sigBuf.length !== expectedBuf.length) return false
+  return timingSafeEqual(sigBuf, expectedBuf)
 }
 
 export async function isAdmin(): Promise<boolean> {

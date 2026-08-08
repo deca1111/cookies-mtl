@@ -25,3 +25,9 @@ test('rejects malformed tokens without throwing', () => {
     expect(verifySessionToken(bad, SECRET, Date.now())).toBe(false)
   }
 })
+
+test('rejects a same-string-length non-ascii signature without throwing', () => {
+  const future = Date.now() + 60_000
+  const sig = 'a'.repeat(63) + 'é'
+  expect(verifySessionToken(`${future}.${sig}`, SECRET, Date.now())).toBe(false)
+})
