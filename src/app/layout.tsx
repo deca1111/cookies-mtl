@@ -30,8 +30,7 @@ export const metadata: Metadata = {
       : "http://localhost:3000"
   ),
   title: "Cookies MTL",
-  description:
-    "La carte des cookies de Montréal · Montreal's cookie map — coming soon.",
+  description: "La carte des cookies de Montréal · Montreal's cookie map",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
