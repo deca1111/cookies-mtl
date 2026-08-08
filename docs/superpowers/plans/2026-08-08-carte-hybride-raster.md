@@ -315,15 +315,15 @@ import { lonToTileX, latToTileY, viewportTileUrls } from '../tile-math'
 // Valeurs de référence calculées pendant la démo validée (centre de Montréal).
 test('conversions Mercator au centre de Montréal', () => {
   expect(lonToTileX(-73.5674, 13)).toBe(2421)
-  expect(latToTileY(45.5019, 13)).toBe(2929)
+  expect(latToTileY(45.5019, 13)).toBe(2930)
 })
 
 test('viewportTileUrls: 9 tuiles 3x3 autour du centre, chemin v1 + thème', () => {
   const urls = viewportTileUrls('https://blob.example', 'dark', -73.5674, 45.5019, 13)
   expect(urls).toHaveLength(9)
-  expect(urls).toContain('https://blob.example/tiles/v1/dark/13/2421/2929.webp')
-  expect(urls).toContain('https://blob.example/tiles/v1/dark/13/2420/2928.webp')
-  expect(urls).toContain('https://blob.example/tiles/v1/dark/13/2422/2930.webp')
+  expect(urls).toContain('https://blob.example/tiles/v1/dark/13/2421/2930.webp')
+  expect(urls).toContain('https://blob.example/tiles/v1/dark/13/2420/2929.webp')
+  expect(urls).toContain('https://blob.example/tiles/v1/dark/13/2422/2931.webp')
 })
 
 test('viewportTileUrls clampe le zoom hors pyramide', () => {
