@@ -33,6 +33,14 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     const theme = currentTheme()
     let cancelled = false
     let rebuilding = false
+    // Fix round 1 (task 17b review): bounds automatic rebuild cycles so a failed retry
+    // can't spin forever, and doubles as the circuit breaker the reviewer flagged as
+    // missing for repeated context losses. Reset to 0 on a successful init; a run of 3
+    // consecutive failures (initial load or rebuild, doesn't matter which) stops
+    // scheduling further retries — the mapError screen stays up until something external
+    // changes (network back, manual reload, another webglcontextlost/visibilitychange).
+    let failureCount = 0
+    let retryTimeout: ReturnType<typeof setTimeout> | null = null
 
     async function init() {
       try {
@@ -49,7 +57,8 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           attributionControl: { compact: true },
         })
         mapRef.current = map
-        rebuilding = false
+        failureCount = 0
+        setMapError(false)
 
         // top-left: bottom-right sits under the bottom sheet on mobile once a shop is
         // selected, and top-right is already the FR/EN toggle — top-left stays reachable
@@ -83,7 +92,27 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           init()
         })
       } catch {
-        if (!cancelled) setMapError(true)
+        if (!cancelled) {
+          setMapError(true)
+          failureCount += 1
+          // Fix round 1: the original code only reset `rebuilding` on the SUCCESS path
+          // (right after `mapRef.current = map`), so a rebuild whose retry also failed
+          // left `rebuilding` stuck `true` forever — no live map left to ever fire another
+          // `webglcontextlost`, and `onVisibilityChange` bailed on the flag on every future
+          // check. Schedule one bounded retry instead of just giving up silently.
+          if (failureCount < 3) {
+            retryTimeout = setTimeout(() => {
+              retryTimeout = null
+              if (!cancelled) init()
+            }, 3000)
+          }
+        }
+      } finally {
+        // Always reset — on success (redundant with the reset above, harmless) AND on
+        // failure, so a later external trigger (webglcontextlost on a map that did end up
+        // getting built some other way, or visibilitychange) is never permanently blocked
+        // by a stale `true` left over from this attempt.
+        rebuilding = false
       }
     }
     init()
@@ -108,6 +137,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
 
     return () => {
       cancelled = true
+      if (retryTimeout) clearTimeout(retryTimeout)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       mapRef.current?.remove()
       mapRef.current = null
