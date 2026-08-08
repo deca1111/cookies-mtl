@@ -39,3 +39,7 @@ test('resolveGoogleShareLink rejects non-google hosts and network failures as nu
   const failing = vi.fn().mockRejectedValue(new Error('net'))
   expect(await resolveGoogleShareLink('https://maps.app.goo.gl/x', failing as unknown as typeof fetch)).toBeNull()
 })
+
+test('returns null when the place name has malformed percent-encoding', () => {
+  expect(parseGoogleMapsUrl('https://www.google.com/maps/place/Bad%Name/@45.5,-73.6,17z')).toBeNull()
+})

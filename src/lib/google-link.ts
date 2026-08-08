@@ -11,7 +11,12 @@ export function parseGoogleMapsUrl(finalUrl: string): { name: string; lat: numbe
 
   const placeMatch = url.pathname.match(/\/place\/([^/]+)/)
   if (!placeMatch) return null
-  const name = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '))
+  let name: string
+  try {
+    name = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '))
+  } catch {
+    return null
+  }
 
   // Precise pin: ...!3d<lat>!4d<lng> — preferred over @lat,lng (viewport center)
   const precise = finalUrl.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/)
