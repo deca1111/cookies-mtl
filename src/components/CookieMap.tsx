@@ -20,10 +20,19 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
   const [mapError, setMapError] = useState(false)
   const { t, lang, setLang } = useLang()
 
+  // Kept in sync below so the mount-only effect (deps: []) can read the CURRENT selected
+  // shop when rebuilding the map after a WebGL context loss, instead of the stale value
+  // it originally closed over.
+  const selectedRef = useRef(selected)
+  useEffect(() => {
+    selectedRef.current = selected
+  }, [selected])
+
   useEffect(() => {
     if (!containerRef.current) return
     const theme = currentTheme()
     let cancelled = false
+    let rebuilding = false
 
     async function init() {
       try {
@@ -35,11 +44,12 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         const map = new maplibregl.Map({
           container: containerRef.current,
           style,
-          center: selected ? [selected.lng, selected.lat] : MTL_CENTER,
-          zoom: selected ? 15 : 12,
+          center: selectedRef.current ? [selectedRef.current.lng, selectedRef.current.lat] : MTL_CENTER,
+          zoom: selectedRef.current ? 15 : 12,
           attributionControl: { compact: true },
         })
         mapRef.current = map
+        rebuilding = false
 
         // top-left: bottom-right sits under the bottom sheet on mobile once a shop is
         // selected, and top-right is already the FR/EN toggle — top-left stays reachable
@@ -58,13 +68,47 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([shop.lng, shop.lat]).addTo(map)
         }
         map.on('click', () => setSelected(null))
+
+        // Task 17b bug 1: mobile OSes reclaim GPU memory from backgrounded tabs (and cap
+        // simultaneous live WebGL contexts, ~8 on iOS Safari), which can leave this map's
+        // canvas dead — MapLibre surfaces that as a `webglcontextlost` map event. Recover by
+        // tearing the dead map down and rebuilding from scratch via this same `init()` path;
+        // simplest reliable recovery, and `selectedRef` carries the current selection across
+        // the rebuild.
+        map.on('webglcontextlost', () => {
+          if (cancelled || rebuilding) return
+          rebuilding = true
+          map.remove()
+          if (mapRef.current === map) mapRef.current = null
+          init()
+        })
       } catch {
         if (!cancelled) setMapError(true)
       }
     }
     init()
+
+    // Defense in depth: some mobile browsers suppress `webglcontextlost` while the tab is
+    // hidden and only leave the dead canvas discoverable once the tab is foregrounded again.
+    // Re-check on visibilitychange and rebuild if the canvas reports its context lost.
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || rebuilding) return
+      const map = mapRef.current
+      if (!map) return
+      const canvas = map.getCanvas()
+      const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl')
+      if (gl?.isContextLost()) {
+        rebuilding = true
+        map.remove()
+        mapRef.current = null
+        init()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     return () => {
       cancelled = true
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       mapRef.current?.remove()
       mapRef.current = null
     }
