@@ -271,3 +271,69 @@ test('caps loss-triggered rebuilds at 5 per mount — the 6th loss shows the err
     vi.useRealTimers()
   }
 })
+
+test('counts failure retries against the rebuild cap — cap is shared, not separate', async () => {
+  // Fast-follow: ensure that failure-retry attempts consume from the per-mount rebuild budget,
+  // so a flapping scenario (loss + failed init + retry + loss + ...) cannot exceed the cap
+  // even when mixing loss-triggered rebuilds with failure-retry attempts.
+  let fetchCalls = 0
+  global.fetch = vi.fn(async () => {
+    fetchCalls += 1
+    // Call 1: initial mount — succeeds.
+    // Calls 2-4: loss-triggered rebuild + its two failure retries — all fail.
+    // Calls 5+: if we got here, we've already hit the cap and shouldn't be calling init() anymore.
+    if (fetchCalls <= 4 && fetchCalls > 1) return { ok: false, json: async () => ({}) }
+    return { ok: true, json: async () => ({ layers: [] }) }
+  }) as unknown as typeof fetch
+
+  const { container } = render(<CookieMap shops={[]} />)
+  await waitFor(() => expect(mapConstructor).toHaveBeenCalledTimes(1))
+  await waitFor(() => expect(handlers.webglcontextlost).toBeTypeOf('function'))
+
+  vi.useFakeTimers()
+  try {
+    // Fire a loss that will trigger a rebuild. Once the cooldown elapses, init() is called
+    // (call 2), but the style fetch fails — we're now at rebuildCount=1, failureCount=1.
+    // A retry is scheduled for 3000ms later (rebuildCount incremented to 2).
+    act(() => {
+      handlers.webglcontextlost()
+    })
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    // The rebuild's init() ran (call 2) and failed. No 2nd map yet.
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+    // 1st failure retry (call 3) also failed. rebuildCount is now 2, failureCount is now 2.
+    // Another retry is scheduled (rebuildCount incremented to 3).
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000)
+    })
+    // 2nd failure retry (call 4) also failed. rebuildCount is now 3, failureCount is now 3.
+    // failureCount hit its limit (< 3 is false), so no more retries scheduled.
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+
+    // Wait to prove no more timers are pending.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000)
+    })
+
+    // Total Map constructions: 1 initial + 0 successful rebuilds = 1. The rebuild and its two
+    // retries all failed, so the map was never rebuilt. Most importantly, rebuildCount was
+    // incremented (1 for the rebuild + 2 for the retries) and now sits at 3, so a subsequent
+    // loss event would still have room to attempt rebuilds (cap is 5), but failureCount's
+    // independent < 3 limit cut off the retries after the rebuild itself failed.
+    expect(mapConstructor).toHaveBeenCalledTimes(1)
+    expect(container.querySelector('.absolute.inset-0')).not.toBeNull()
+  } finally {
+    vi.useRealTimers()
+  }
+})

@@ -20,6 +20,10 @@ const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 // the page. These two constants damp and cap loss-/visibility-triggered rebuilds specifically;
 // they compose with (don't replace) the existing failed-init retry logic.
 const REBUILD_COOLDOWN_MS = 2000
+// Bounds ALL automatic re-init attempts per mount: loss-triggered rebuilds (damped via the
+// cooldown above) AND failure retries (from catch block). Composes with the independent
+// failureCount < 3 check — a loss-triggered rebuild that itself fails is still retried under
+// the existing consecutive-failure breaker, but only if rebuildCount permits.
 const MAX_REBUILDS_PER_MOUNT = 5
 
 export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?: string }) {
@@ -51,7 +55,10 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     // scheduling further retries — the mapError screen stays up until something external
     // changes (network back, manual reload, another webglcontextlost/visibilitychange).
     let failureCount = 0
-    let retryTimeout: ReturnType<typeof setTimeout> | null = null
+    // Fast-follow: split into separate timers to allow clearing each independently and
+    // ensure no cross-talk between rebuild cooldown and failure-retry backoff.
+    let rebuildTimeout: ReturnType<typeof setTimeout> | null = null
+    let failureRetryTimeout: ReturnType<typeof setTimeout> | null = null
     // Counts every loss-/visibility-triggered rebuild attempt (scheduled, not necessarily
     // successful) — never reset within the mount, unlike `failureCount`. This is what actually
     // bounds the success->loss->success flapping loop from the iPhone incident.
@@ -73,8 +80,9 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         return
       }
       rebuildCount += 1
-      retryTimeout = setTimeout(() => {
-        retryTimeout = null
+      if (rebuildTimeout) clearTimeout(rebuildTimeout)
+      rebuildTimeout = setTimeout(() => {
+        rebuildTimeout = null
         if (!cancelled) init()
         else rebuilding = false
       }, REBUILD_COOLDOWN_MS)
@@ -134,9 +142,14 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           // left `rebuilding` stuck `true` forever — no live map left to ever fire another
           // `webglcontextlost`, and `onVisibilityChange` bailed on the flag on every future
           // check. Schedule one bounded retry instead of just giving up silently.
-          if (failureCount < 3) {
-            retryTimeout = setTimeout(() => {
-              retryTimeout = null
+          // Fast-follow: count failure retries against the rebuild cap. Only schedule a
+          // retry if we have both capacity (rebuildCount < cap) and haven't hit the
+          // consecutive-failure limit (failureCount < 3).
+          if (failureCount < 3 && rebuildCount < MAX_REBUILDS_PER_MOUNT) {
+            rebuildCount += 1
+            if (failureRetryTimeout) clearTimeout(failureRetryTimeout)
+            failureRetryTimeout = setTimeout(() => {
+              failureRetryTimeout = null
               if (!cancelled) init()
             }, 3000)
           }
@@ -168,7 +181,8 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
 
     return () => {
       cancelled = true
-      if (retryTimeout) clearTimeout(retryTimeout)
+      if (rebuildTimeout) clearTimeout(rebuildTimeout)
+      if (failureRetryTimeout) clearTimeout(failureRetryTimeout)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       mapRef.current?.remove()
       mapRef.current = null
