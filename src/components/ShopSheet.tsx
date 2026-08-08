@@ -19,8 +19,6 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
   const [linkCopied, setLinkCopied] = useState(false)
   const [iosChooser, setIosChooser] = useState(false)
 
-  const shareUrl = `${window.location.origin}/c/${shop.slug}`
-
   const onDirections = () => {
     const p = platform()
     if (p === 'android') window.location.href = geoUri(shop.lat, shop.lng, shop.name)
@@ -35,6 +33,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
   }
 
   const onShare = async () => {
+    const shareUrl = `${window.location.origin}/c/${shop.slug}`
     if (navigator.share) {
       try {
         await navigator.share({ title: shop.name, url: shareUrl })
