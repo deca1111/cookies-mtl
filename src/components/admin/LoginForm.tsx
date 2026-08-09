@@ -7,7 +7,7 @@ export function LoginForm() {
   const [state, action, pending] = useActionState(login, undefined)
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-5 p-6">
-      <h1 className="font-display text-[26px] leading-tight text-[color:var(--text-strong)]">🍪 Admin Cookies Club</h1>
+      <h1 className="font-display text-[24px] leading-tight text-[color:var(--text-strong)]">Admin Cookies Club</h1>
       <form
         action={action}
         className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-chip)]"

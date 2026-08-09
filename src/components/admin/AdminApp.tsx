@@ -8,6 +8,7 @@ import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
 import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
 import type { Shop } from '@/lib/shops'
+import { AdminHeader } from './AdminHeader'
 import { PlaceSearch, type PickedPlace } from './PlaceSearch'
 import { RatingInput } from './RatingInput'
 
@@ -149,7 +150,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 p-5 pb-16">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="font-display text-[24px] leading-none text-[color:var(--text-strong)]">🍪 Admin</h1>
+        <AdminHeader />
         <button
           onClick={() => logout()}
           className="text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
