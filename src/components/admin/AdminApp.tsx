@@ -9,6 +9,7 @@ import { createShopAction, deleteShopAction, updateShopAction } from '@/app/acti
 import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
 import { sortShops, type SortDir } from '@/lib/shop-sort'
 import type { Shop } from '@/lib/shops'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { AdminHeader } from './AdminHeader'
 import { PlaceSearch, type PickedPlace } from './PlaceSearch'
 import { RatingInput } from './RatingInput'
@@ -183,15 +184,19 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     'text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]'
 
   return (
-    <main className="mx-auto flex max-w-lg flex-col gap-6 p-5 pb-16">
-      <header className="flex items-center justify-between gap-4">
+    <main className="mx-auto flex w-full max-w-lg flex-col gap-6 p-4 pb-16 sm:max-w-xl sm:p-5 lg:max-w-2xl">
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <AdminHeader />
-        <button
-          onClick={() => logout()}
-          className="text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
-        >
-          Se déconnecter
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Retour QA v1.1 : le toggle sombre/clair manquait à l'admin. */}
+          <ThemeToggle className="flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
+          <button
+            onClick={() => logout()}
+            className="text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
+          >
+            Se déconnecter
+          </button>
+        </div>
       </header>
 
       <section className={card}>
@@ -335,7 +340,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
                   {String(shop.rating).replace('.', ',')} / 5
                 </span>
               </div>
-              <div className="flex shrink-0 gap-3 text-[13px]">
+              <div className="flex shrink-0 flex-col items-end gap-1.5 text-[13px] sm:flex-row sm:items-center sm:gap-3">
                 <button
                   onClick={() => openDraft({ ...shop, id: shop.id })}
                   className="text-[color:var(--text-body)] underline underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)]"
