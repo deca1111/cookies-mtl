@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
 import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
+import { sortShops, type SortDir } from '@/lib/shop-sort'
 import type { Shop } from '@/lib/shops'
 import { AdminHeader } from './AdminHeader'
 import { PlaceSearch, type PickedPlace } from './PlaceSearch'
@@ -22,6 +23,8 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   const [manualName, setManualName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sortKey, setSortKey] = useState<'name' | 'rating'>('rating')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const mapDiv = useRef<HTMLDivElement>(null)
   const markerRef = useRef<maplibregl.Marker | null>(null)
 
@@ -118,6 +121,14 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       setError('server')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const pickSort = (k: 'name' | 'rating') => {
+    if (k === sortKey) setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
+    else {
+      setSortKey(k)
+      setSortDir(k === 'name' ? 'asc' : 'desc')
     }
   }
 
@@ -227,9 +238,32 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       )}
 
       <section className={card}>
-        <h2 className={eyebrow}>Les cookies ({shops.length})</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className={eyebrow}>Les cookies ({shops.length})</h2>
+          <div className="flex gap-1.5">
+            {(['name', 'rating'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => pickSort(k)}
+                aria-pressed={sortKey === k}
+                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
+                  sortKey === k
+                    ? 'border-[color:var(--accent)] text-[color:var(--accent-ink)]'
+                    : 'border-[color:var(--border-strong)] text-[color:var(--text-muted)] hover:text-[color:var(--text-body)]'
+                }`}
+              >
+                {k === 'name' ? 'Nom' : 'Note'}
+                {sortKey === k && (
+                  <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" className={sortDir === 'asc' ? 'rotate-180' : ''}>
+                    <path d="M1 3 L5 7 L9 3" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
+                  </svg>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
         <ul className="-my-1 divide-y divide-[color:var(--border)]">
-          {shops.map((shop) => (
+          {sortShops(shops, sortKey, sortDir).map((shop) => (
             <li key={shop.id} className="flex items-center justify-between gap-4 py-3">
               <div className="min-w-0">
                 <span className="font-display block truncate text-[17px] text-[color:var(--text-strong)]">
