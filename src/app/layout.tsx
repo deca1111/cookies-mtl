@@ -1,45 +1,55 @@
 import type { Metadata } from "next";
-import { Fraunces, Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
+import { Comfortaa } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/components/LangProvider";
+import { CookieSprite } from "@/components/CookieSprite";
+import { SITE_URL, SITE_NAME, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/site";
+import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-// Display face: shop names and page titles. SOFT/opsz are tuned in globals.css
-// so the same variable font can be warm at 22px and still crisp at 13px.
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
+// Titres et marque : la Gill Sans Ultra Bold fournie par Léo (licence perso, self-host).
+const gillSans = localFont({
+  src: "../fonts/gill-sans-ultra-bold.otf",
+  variable: "--font-title",
+  weight: "700",
   display: "swap",
-  axes: ["SOFT", "WONK", "opsz"],
+});
+
+const comfortaa = Comfortaa({
+  variable: "--font-body",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : "http://localhost:3000"
-  ),
-  title: "Cookies MTL",
-  description: "La carte des cookies de Montréal · Montreal's cookie map",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: "/" },
+  keywords: ["cookie map", "cookies montréal", "cookie montreal", "cookies mtl", "meilleurs cookies montréal", "best cookies montreal"],
+  openGraph: {
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    type: "website",
+    locale: "fr_CA",
+    alternateLocale: "en_CA",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning : le script anti-FOUC pose `data-theme` sur <html>
+    // avant l'hydratation, le HTML serveur ne peut pas le connaître — mismatch
+    // volontaire et borné à cet élément (même approche que next-themes).
     <html
       lang="fr"
-      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${gillSans.variable} ${comfortaa.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <CookieSprite />
         <LangProvider>{children}</LangProvider>
       </body>
     </html>

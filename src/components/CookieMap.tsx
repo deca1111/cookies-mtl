@@ -7,10 +7,14 @@ import { useEffect, useRef, useState } from 'react'
 import { currentTheme, getMapStyleUrl, buildMapStyle, type MapTheme } from '@/lib/map-style'
 import { preferredRenderer, markRasterPreferred, clearRasterPreference } from '@/lib/map-renderer'
 import { viewportTileUrls } from '@/lib/tile-math'
+import { cookieMarkerHtml } from '@/lib/cookie-marker'
+import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
+import { MapChrome } from './MapChrome'
 import { RasterMap } from './RasterMap'
 import { ShopSheet } from './ShopSheet'
+import { ThemeToggle } from './ThemeToggle'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 
@@ -160,7 +164,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       import('./RasterMap').catch(() => {})
       const base = process.env.NEXT_PUBLIC_TILES_BASE_URL ?? ''
       const c = map.getCenter()
-      for (const url of viewportTileUrls(base, theme, c.lng, c.lat, map.getZoom())) {
+      for (const url of viewportTileUrls(base, currentTheme(), c.lng, c.lat, map.getZoom())) {
         fetch(url).catch(() => {})
       }
     }
@@ -247,6 +251,14 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           maxTileCacheSize: MAX_TILE_CACHE_SIZE,
         })
         mapRef.current = map
+        // Retour QA v1.1 : l'attribution compacte (<details>) s'ouvre d'elle-même à
+        // l'init et chevauche le crédit bas-gauche sur mobile — refermée par défaut,
+        // le bouton ⓘ reste accessible pour la consulter.
+        const attrib = containerRef.current.querySelector('details.maplibregl-ctrl-attrib')
+        if (attrib instanceof HTMLDetailsElement) {
+          attrib.open = false
+          attrib.classList.remove('maplibregl-compact-show')
+        }
         failureCount = 0
         setMapError(false)
 
@@ -256,15 +268,15 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'top-left')
 
         for (const shop of shops) {
-          const el = document.createElement('button')
-          el.className = 'cmtl-pin'
-          el.setAttribute('aria-label', shop.name)
+          const holder = document.createElement('div')
+          holder.innerHTML = cookieMarkerHtml(shop.name)
+          const el = holder.firstElementChild as HTMLElement
           el.addEventListener('click', (e) => {
             e.stopPropagation()
             setSelected(shop)
             map.easeTo({ center: [shop.lng, shop.lat] })
           })
-          new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([shop.lng, shop.lat]).addTo(map)
+          new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([shop.lng, shop.lat]).addTo(map)
         }
         map.on('click', () => setSelected(null))
 
@@ -332,6 +344,22 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapSession, renderer])
 
+  // Le toggle thème recharge le style sans démonter la carte : la caméra, les
+  // marqueurs DOM et l'état de sélection survivent au changement.
+  useEffect(() => {
+    return onThemeChange((theme) => {
+      const map = mapRef.current
+      if (!map) return
+      getRecoloredStyle(theme, getMapStyleUrl(theme))
+        .then((style) => {
+          if (mapRef.current === map) map.setStyle(style)
+        })
+        .catch(() => {
+          /* le style courant reste affiché ; le prochain toggle retentera */
+        })
+    })
+  }, [])
+
   return (
     <div className="relative h-dvh w-full overflow-hidden">
       {renderer === 'raster' ? (
@@ -350,13 +378,15 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           </button>
         </div>
       )}
+      <MapChrome />
       <button
         onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-2 font-mono text-[11px] font-medium tracking-[0.14em] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
+        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-2 text-[11px] font-medium tracking-[0.14em] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
         aria-label={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
       >
         {lang === 'fr' ? 'EN' : 'FR'}
       </button>
+      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top)+44px)] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
       {selected && <ShopSheet shop={selected} onClose={() => setSelected(null)} />}
     </div>
   )

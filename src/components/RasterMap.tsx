@@ -3,6 +3,8 @@
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
 import { currentTheme } from '@/lib/map-style'
+import { onThemeChange } from '@/lib/theme'
+import { cookieMarkerHtml } from '@/lib/cookie-marker'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 
@@ -31,6 +33,7 @@ export function RasterMap({
   onRetryWebgl: () => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const tileLayerRef = useRef<import('leaflet').TileLayer | null>(null)
   const { t } = useLang()
 
   // Le composant est monté une fois par session raster ; la sélection vit dans
@@ -54,7 +57,7 @@ export function RasterMap({
         sel ? 15 : 12
       )
       map.setMaxBounds(MTL_BOUNDS)
-      L.tileLayer(`${TILES_BASE}/tiles/v1/${theme}/{z}/{x}/{y}.webp`, {
+      const layer = L.tileLayer(`${TILES_BASE}/tiles/v1/${theme}/{z}/{x}/{y}.webp`, {
         minZoom: 11,
         maxNativeZoom: 16, // au-delà : sur-zoom (agrandissement de la tuile z16)
         maxZoom: 18,
@@ -62,19 +65,20 @@ export function RasterMap({
         // viewport large à faible zoom demande des tuiles hors pyramide (404)
         bounds: MTL_BOUNDS,
         attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · style Cookies MTL',
-      }).addTo(map)
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · style Cookies Club',
+      })
+      tileLayerRef.current = layer
+      layer.addTo(map)
 
       for (const shop of shops) {
-        // Mêmes pins DOM que la carte MapLibre : la classe .cmtl-pin de globals.css
-        // s'applique telle quelle (thème via prefers-color-scheme, comme partout).
+        // Même markup de marqueur que la carte MapLibre (src/lib/cookie-marker.ts) :
         // vrai <button> comme sur MapLibre : focusable, activable clavier, mêmes
-        // styles .cmtl-pin (hover/focus-visible compris)
+        // styles .cmtl-pin-cookie (hover/focus-visible compris)
         const icon = L.divIcon({
           className: '',
-          html: `<button class="cmtl-pin" aria-label="${shop.name.replaceAll('"', '&quot;')}"></button>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 22],
+          html: cookieMarkerHtml(shop.name),
+          iconSize: [34, 34],
+          iconAnchor: [17, 17], // centre : le cookie n'a pas de pointe
         })
         L.marker([shop.lat, shop.lng], { icon })
           .addTo(map)
@@ -95,7 +99,7 @@ export function RasterMap({
           const btn = document.createElement('button')
           btn.className = 'cmtl-geolocate leaflet-bar'
           btn.setAttribute('aria-label', 'Me localiser')
-          btn.textContent = '◎'
+          btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
           btn.onclick = () =>
             navigator.geolocation?.getCurrentPosition((pos) =>
               map?.setView([pos.coords.latitude, pos.coords.longitude], Math.max(map.getZoom(), 14))
@@ -113,6 +117,13 @@ export function RasterMap({
     }
     // même modèle que CookieMap : effet monté une fois, la sélection vit au-dessus
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Bascule de pyramide au toggle (les deux thèmes de tuiles sont pré-rendus).
+  useEffect(() => {
+    return onThemeChange((theme) => {
+      tileLayerRef.current?.setUrl(`${TILES_BASE}/tiles/v1/${theme}/{z}/{x}/{y}.webp`)
+    })
   }, [])
 
   return (

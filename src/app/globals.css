@@ -32,9 +32,6 @@
   --btn-bg-hover: #503a2a;
   --btn-text: #faf5ec;
 
-  --pin: #3b2a1f; /* [spec] espresso drop */
-  --pin-chip: #c79a63; /* the caramel chip inside the drop */
-  --pin-ring: #fffdf9;
   --pin-shadow: rgba(59, 42, 31, 0.34);
 
   --danger: #9a3b2a; /* terracotta — a warning that belongs to this palette */
@@ -52,73 +49,61 @@
   --foreground: var(--text-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
+:root[data-theme='dark'] {
+  color-scheme: dark;
 
-    --bg: #241a13; /* [spec] chocolat */
-    --surface: #2c2018;
-    --surface-2: #362920;
+  --bg: #241a13; /* [spec] chocolat */
+  --surface: #2c2018;
+  --surface-2: #362920;
 
-    --text-strong: #f4ebdd;
-    --text-body: #dccdb9;
-    --text-muted: #a49081;
+  --text-strong: #f4ebdd;
+  --text-body: #dccdb9;
+  --text-muted: #a49081;
 
-    --accent: #d29a55; /* [spec] caramel doré */
-    --accent-ink: #dfa96a;
-    --accent-wash: rgba(210, 154, 85, 0.14);
+  --accent: #d29a55; /* [spec] caramel doré */
+  --accent-ink: #dfa96a;
+  --accent-wash: rgba(210, 154, 85, 0.14);
 
-    --border: #493829;
-    --border-strong: #634d38;
+  --border: #493829;
+  --border-strong: #634d38;
 
-    --btn-bg: #d29a55;
-    --btn-bg-hover: #e0aa68;
-    --btn-text: #241a13;
+  --btn-bg: #d29a55;
+  --btn-bg-hover: #e0aa68;
+  --btn-text: #241a13;
 
-    --pin: #d29a55;
-    --pin-chip: #3a2415;
-    --pin-ring: #17100b;
-    --pin-shadow: rgba(0, 0, 0, 0.55);
+  --pin-shadow: rgba(0, 0, 0, 0.55);
 
-    --danger: #e5907a;
+  --danger: #e5907a;
 
-    --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
-    --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);
-    --shadow-chip: 0 2px 10px rgba(0, 0, 0, 0.4);
-  }
+  --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
+  --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);
+  --shadow-chip: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-serif: var(--font-fraunces);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-title);
 }
 
 body {
   background: var(--bg);
   color: var(--text-body);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body), ui-rounded, ui-sans-serif, system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Fraunces carries the personality: high optical size for display cuts, a
-   touch of SOFT to keep the terminals warm, WONK off so it stays classical. */
-.font-serif {
-  font-variation-settings: "opsz" 48, "SOFT" 28, "WONK" 0;
-  letter-spacing: -0.015em;
-  font-weight: 500;
+/* La Gill Sans Ultra Bold est déjà très noire : on la laisse respirer. */
+.font-display {
+  letter-spacing: 0.01em;
 }
 
-/* The review is the point of the whole site, so it is set as a verdict rather
-   than as UI text: the display face in italic, one step up in size. It is the
-   only italic in the app — the single place the design raises its voice. */
+/* L'avis reste la voix du site : Comfortaa en italique synthétique, un cran au-dessus. */
 .cmtl-verdict {
-  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-family: var(--font-body), ui-rounded, system-ui, sans-serif;
   font-style: italic;
-  font-variation-settings: "opsz" 28, "SOFT" 40, "WONK" 0;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.005em;
 }
 
@@ -134,55 +119,42 @@ body {
   color: var(--text-strong);
 }
 
-/* --- Map marker ----------------------------------------------------------
-   A drop whose tip points at the address, carrying one caramel chip. The same
-   caramel dot is the rating mark in the sheet, so pin and score speak the same
-   language. Radius on the bottom-right corner + 45° rotation puts the point
-   straight down; translateY compensates the rotated bounding box so the tip,
-   not the box, sits on the coordinate. */
-.cmtl-pin {
-  position: relative;
+/* --- Marqueur cookie ------------------------------------------------------
+   Le cookie de la marque, centré sur l'adresse (pas de pointe : ancre centre).
+   Le bouton est la cible tactile (34px) ; le svg dessine. */
+.cmtl-pin-cookie {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
   padding: 0;
+  border: none;
+  background: none;
   appearance: none;
-  background: var(--pin);
-  border: 2px solid var(--pin-ring);
-  border-radius: 50% 50% 3px 50%;
-  transform: translateY(-4px) rotate(45deg);
-  box-shadow: 0 3px 10px var(--pin-shadow);
   cursor: pointer;
+  filter: drop-shadow(0 3px 6px var(--pin-shadow));
   transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.cmtl-pin::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
-  border-radius: 50%;
-  background: var(--pin-chip);
+.cmtl-pin-cookie svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.cmtl-pin:hover,
-.cmtl-pin:focus-visible {
-  transform: translateY(-6px) rotate(45deg) scale(1.12);
+.cmtl-pin-cookie:hover,
+.cmtl-pin-cookie:focus-visible {
+  transform: translateY(-2px) scale(1.1);
 }
 
-.cmtl-pin:focus-visible {
+.cmtl-pin-cookie:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+  border-radius: 50%;
 }
 
-@media (prefers-color-scheme: dark) {
-  /* « légèrement lumineux » — the gold drop lifts off the chocolate ground. */
-  .cmtl-pin {
-    box-shadow: 0 3px 10px var(--pin-shadow), 0 0 14px rgba(210, 154, 85, 0.34);
-  }
+:root[data-theme='dark'] .cmtl-pin-cookie {
+  /* « légèrement lumineux » : le cookie doit décoller du fond chocolat. */
+  filter: drop-shadow(0 3px 6px var(--pin-shadow)) drop-shadow(0 0 10px rgba(210, 154, 85, 0.4));
 }
 
 /* --- Bottom sheet --------------------------------------------------------- */
@@ -244,11 +216,9 @@ body {
   opacity: 0.72;
 }
 
-@media (prefers-color-scheme: dark) {
-  .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
-    filter: invert(1) brightness(1.1);
-    opacity: 0.66;
-  }
+:root[data-theme='dark'] .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1) brightness(1.1);
+  opacity: 0.66;
 }
 
 .maplibregl-ctrl-attrib.maplibregl-compact {
@@ -276,11 +246,23 @@ body {
   opacity: 0.9;
 }
 
-@media (prefers-color-scheme: dark) {
-  .maplibregl-ctrl-attrib-button {
-    filter: invert(1);
-    opacity: 0.38;
-  }
+:root[data-theme='dark'] .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+  opacity: 0.38;
+}
+
+/* La pastille logo (MapChrome, ~102px + marges) occupe le coin haut-gauche :
+   les contrôles carte de ce coin démarrent sous elle, sur les deux moteurs.
+   !important obligatoire : les feuilles maplibre-gl.css/leaflet.css sont importées
+   par les composants et arrivent APRÈS globals.css dans la cascade — sans lui,
+   leur `top: 0` regagnait et le bouton de géolocalisation restait sous le logo
+   (bug constaté en QA v1.1). */
+.maplibregl-ctrl-top-left {
+  top: calc(126px + env(safe-area-inset-top)) !important;
+}
+
+.leaflet-top.leaflet-left {
+  top: calc(126px + env(safe-area-inset-top)) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

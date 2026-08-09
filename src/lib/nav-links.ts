@@ -13,3 +13,7 @@ export function googleDirectionsUrl(lat: number, lng: number): string {
 export function googleListingSearchUrl(name: string, address: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${name} ${address}`)}`
 }
+
+export function wazeUrl(lat: number, lng: number): string {
+  return `https://waze.com/ul?ll=${encodeURIComponent(`${lat},${lng}`)}&navigate=yes`
+}

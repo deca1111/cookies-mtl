@@ -8,6 +8,7 @@ import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
 import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
 import type { Shop } from '@/lib/shops'
+import { AdminHeader } from './AdminHeader'
 import { PlaceSearch, type PickedPlace } from './PlaceSearch'
 import { RatingInput } from './RatingInput'
 
@@ -144,12 +145,12 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   const card =
     'flex flex-col gap-4 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-5 shadow-[var(--shadow-chip)]'
   const eyebrow =
-    'font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]'
+    'text-[11px] font-medium uppercase tracking-[0.14em] text-[color:var(--text-muted)]'
 
   return (
     <main className="mx-auto flex max-w-lg flex-col gap-6 p-5 pb-16">
       <header className="flex items-center justify-between gap-4">
-        <h1 className="font-serif text-[26px] leading-none text-[color:var(--text-strong)]">🍪 Admin</h1>
+        <AdminHeader />
         <button
           onClick={() => logout()}
           className="text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
@@ -231,10 +232,10 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
           {shops.map((shop) => (
             <li key={shop.id} className="flex items-center justify-between gap-4 py-3">
               <div className="min-w-0">
-                <span className="font-serif block truncate text-[17px] text-[color:var(--text-strong)]">
+                <span className="font-display block truncate text-[17px] text-[color:var(--text-strong)]">
                   {shop.name}
                 </span>
-                <span className="font-serif text-[13px] text-[color:var(--text-muted)]">
+                <span className="text-[13px] text-[color:var(--text-muted)]">
                   {String(shop.rating).replace('.', ',')} / 5
                 </span>
               </div>
