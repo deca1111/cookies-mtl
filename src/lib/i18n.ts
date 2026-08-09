@@ -17,6 +17,10 @@ export const dict = {
     retryDetailedMap: 'Réessayer la carte détaillée',
     themeToDark: 'Passer en mode sombre',
     themeToLight: 'Passer en mode clair',
+    directionsTitle: 'S’y rendre avec…',
+    waze: 'Waze',
+    plansShort: 'Apple Plans',
+    googleMapsShort: 'Google Maps',
   },
   en: {
     directions: 'Directions',
@@ -34,6 +38,10 @@ export const dict = {
     retryDetailedMap: 'Retry the detailed map',
     themeToDark: 'Switch to dark mode',
     themeToLight: 'Switch to light mode',
+    directionsTitle: 'Get there with…',
+    waze: 'Waze',
+    plansShort: 'Apple Plans',
+    googleMapsShort: 'Google Maps',
   },
 } as const satisfies Record<Lang, Record<string, string>>
 

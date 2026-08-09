@@ -2,30 +2,18 @@
 
 import { useState } from 'react'
 import type { Shop } from '@/lib/shops'
-import { appleMapsUrl, geoUri, googleDirectionsUrl } from '@/lib/nav-links'
+import { DirectionsModal } from './DirectionsModal'
 import { useLang } from './LangProvider'
 import { RatingCookies } from './RatingCookies'
 import { IconCheck, IconClose, IconCopy, IconDirections, IconExternal, IconShare } from './icons'
-
-function platform(): 'android' | 'ios' | 'desktop' {
-  if (typeof navigator === 'undefined') return 'desktop'
-  if (/android/i.test(navigator.userAgent)) return 'android'
-  if (/iphone|ipad|ipod/i.test(navigator.userAgent)) return 'ios'
-  return 'desktop'
-}
 
 export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }) {
   const { t } = useLang()
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
-  const [iosChooser, setIosChooser] = useState(false)
+  const [directionsOpen, setDirectionsOpen] = useState(false)
 
-  const onDirections = () => {
-    const p = platform()
-    if (p === 'android') window.location.href = geoUri(shop.lat, shop.lng, shop.name)
-    else if (p === 'ios') setIosChooser(true)
-    else window.open(googleDirectionsUrl(shop.lat, shop.lng), '_blank', 'noopener')
-  }
+  const onDirections = () => setDirectionsOpen(true)
 
   const onCopy = async () => {
     await navigator.clipboard.writeText(shop.address)
@@ -115,24 +103,11 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
             <span className="inline-flex items-center gap-1">{t('googleListing')} <IconExternal size={13} /></span>
           </a>
         </div>
-
-        {iosChooser && (
-          <div className="mt-3 flex gap-2 border-t border-[color:var(--border)] pt-3">
-            <a
-              href={appleMapsUrl(shop.lat, shop.lng)}
-              className="rounded-full border border-[color:var(--border-strong)] px-4 py-2 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)]"
-            >
-              {t('openInPlans')}
-            </a>
-            <a
-              href={googleDirectionsUrl(shop.lat, shop.lng)}
-              className="rounded-full border border-[color:var(--border-strong)] px-4 py-2 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)]"
-            >
-              {t('openInGoogleMaps')}
-            </a>
-          </div>
-        )}
       </div>
+
+      {directionsOpen && (
+        <DirectionsModal lat={shop.lat} lng={shop.lng} onClose={() => setDirectionsOpen(false)} />
+      )}
     </div>
   )
 }
