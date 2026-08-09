@@ -31,11 +31,12 @@ export function currentTheme(): MapTheme {
 // and waterway/ferry lines. Each is interpolated between the already-approved ground and
 // road tones of its theme, so new layers read as the same system rather than a new colour.
 // Retour couleurs v1.2.1 (Léo) : parcs du thème clair verdis (« trop plat et blanc »),
-// et fond de carte SOMBRE éclairci d'un cran — l'UI moka (--bg reste #241a13)
-// ressort mieux sur une carte un peu plus claire. ⚠️ Toute retouche ici doit être
-// répercutée sur --map-bg (globals.css) et, après validation de Léo (mobile incluse),
-// sur les tuiles du fallback via `npm run tiles:render` — d'ici là le fallback
-// garde l'ancienne teinte, c'est assumé.
+// et fond de carte SOMBRE éclairci de DEUX crans depuis le #241a13 d'origine — l'UI
+// moka (surfaces #2c2018) ressort en éléments posés sur une carte plus claire.
+// ⚠️ Toute retouche du background doit être répercutée sur --map-bg ET --bg sombre
+// (globals.css, anti-flicker au chargement) et, après validation de Léo (mobile
+// incluse), sur les tuiles du fallback via `npm run tiles:render` — d'ici là le
+// fallback garde l'ancienne teinte, c'est assumé.
 const PALETTES = {
   light: {
     background: '#f3ede3',
@@ -50,16 +51,16 @@ const PALETTES = {
     waterway: '#c7bda2',
   },
   dark: {
-    background: '#2e2318',
-    water: '#1d1510',
-    roads: '#463527',
-    parks: '#2f3b27',
+    background: '#392c1d',
+    water: '#221a12',
+    roads: '#524030',
+    parks: '#3a4630',
     text: '#bcaa98',
-    building: '#392b1e',
-    buildingOutline: '#554130',
-    roadCasing: '#362a1e',
-    landuseAlt: '#34271b',
-    waterway: '#281e14',
+    building: '#443426',
+    buildingOutline: '#5f4a37',
+    roadCasing: '#413225',
+    landuseAlt: '#3f3022',
+    waterway: '#2f2418',
   },
 }
 

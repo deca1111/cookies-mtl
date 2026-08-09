@@ -60,7 +60,7 @@ test('buildMapStyle pose le halo thème sur toutes les couches symbol restantes'
     expect(s.paint?.['text-halo-width']).toBe(1.5)
   }
   const dark = buildMapStyle(fixture(), 'dark')
-  expect(dark.layers.find((l) => l.id === 'label_city')?.paint?.['text-halo-color']).toBe('#2e2318')
+  expect(dark.layers.find((l) => l.id === 'label_city')?.paint?.['text-halo-color']).toBe('#392c1d')
 })
 
 test('buildMapStyle applique aussi la palette (via applyPalette)', () => {

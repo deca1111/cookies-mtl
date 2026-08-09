@@ -37,9 +37,11 @@
   --danger: #9a3b2a; /* terracotta — a warning that belongs to this palette */
 
   /* Accents v1.2.1 issus du logo (retour couleurs de Léo) */
-  --accent-blue: #4560a9; /* le bleu du logo, tel quel — lisible sur crème */
-  --brand-peach: #f3c787; /* « orange crème » du logo (pâte à cookie) */
-  --brand-peach-ink: #502712; /* le brun du logo, pour écrire sur le peach */
+  --accent-blue: #4560a9; /* le bleu du logo, LE MÊME dans les deux thèmes (choix Léo) */
+  /* Doré du bouton liste : la teinte du thème sombre (--btn-bg dark), que Léo a
+     validée — identique dans les deux thèmes. */
+  --accent-gold: #d29a55;
+  --accent-gold-ink: #241a13;
 
   /* Fond de la CARTE (peut diverger du fond de page --bg : en sombre, la carte
      est un cran plus claire pour laisser respirer l'UI moka — retour Léo). Doit
@@ -62,7 +64,12 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg: #241a13; /* [spec] chocolat */
+  /* Aligné sur le fond de CARTE sombre (retour couleurs : carte éclaircie de 2
+     crans depuis le #241a13 d'origine) — même valeur que --map-bg, sinon la page
+     flashe une teinte différente le temps que les tuiles peignent. Les surfaces
+     moka (#2c2018) restent plus sombres que ce fond : c'est voulu, elles
+     ressortent en éléments posés SUR la carte. */
+  --bg: #392c1d;
   --surface: #2c2018;
   --surface-2: #362920;
 
@@ -85,11 +92,7 @@
 
   --danger: #e5907a;
 
-  /* Bleu du logo éclairci pour rester lisible sur le chocolat (le #4560a9 brut
-     manque de contraste en petit corps sur fond sombre). */
-  --accent-blue: #7b93d4;
-
-  --map-bg: #2e2318; /* = PALETTES.dark.background — carte plus claire que l'UI */
+  --map-bg: #392c1d; /* = PALETTES.dark.background — carte plus claire que l'UI */
 
   --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
   --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);
