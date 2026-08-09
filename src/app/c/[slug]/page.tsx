@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { CookieMap } from '@/components/CookieMap'
+import { shopJsonLd } from '@/lib/jsonld'
 import { getShopBySlug, listShops } from '@/lib/shops'
 import { SITE_NAME, shopTitle, shopDescription } from '@/lib/site'
 
@@ -32,5 +33,10 @@ async function MapForShop({ params }: { params: PageProps<'/c/[slug]'>['params']
   const shop = await getShopBySlug(slug)
   if (!shop) notFound()
   const shops = await listShops()
-  return <CookieMap shops={shops} initialSlug={slug} />
+  return (
+    <>
+      <CookieMap shops={shops} initialSlug={slug} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(shopJsonLd(shop)) }} />
+    </>
+  )
 }
