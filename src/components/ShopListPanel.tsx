@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Shop } from '@/lib/shops'
 import { distanceMeters, formatDistance, sortShops, type Origin, type SortDir, type SortKey } from '@/lib/shop-sort'
 import { useLang } from './LangProvider'
@@ -9,6 +9,10 @@ import { RatingCookies } from './RatingCookies'
 // Panneau liste (spec v1.2 §6, variante « riche » validée sur maquette) : drawer
 // gauche par-dessus la carte, tri note/A–Z/distance, tap = fiche sur la carte.
 const DEFAULT_DIR: Record<SortKey, SortDir> = { distance: 'asc', name: 'asc', rating: 'desc' }
+
+// Durée de fermeture (cmtl-drawer-out) + marge — fallback minuterie si
+// animationend ne vient pas (jsdom, prefers-reduced-motion).
+const CLOSE_ANIMATION_MS = 320
 
 function SortArrow({ dir }: { dir: SortDir }) {
   return (
@@ -34,15 +38,38 @@ export function ShopListPanel({
   const [dir, setDir] = useState<SortDir>('desc')
   const [origin, setOrigin] = useState<Origin | null>(null)
   const [geoError, setGeoError] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
+
+  // Même précaution que l'IntroPopup : `closing` retombe à false quand la
+  // fermeture aboutit, sinon la réouverture flasherait une frame « fermée ».
+  const finishClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    setClosing(false)
+    onClose()
+  }
+
+  const requestClose = () => {
+    if (closing) return
+    setClosing(true)
+    closeTimer.current = setTimeout(finishClose, CLOSE_ANIMATION_MS)
+  }
 
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') requestClose()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, closing])
 
   if (!open) return null
 
@@ -88,16 +115,25 @@ export function ShopListPanel({
   return (
     <>
       {/* Voile : tap = fermer (validé sur maquette). */}
-      <div className="fixed inset-0 z-30 bg-black/20" onClick={onClose} aria-hidden="true" />
+      <div
+        data-closing={closing || undefined}
+        className="cmtl-drawer-scrim fixed inset-0 z-30 bg-black/20"
+        onClick={requestClose}
+        aria-hidden="true"
+      />
       <section
         aria-label={t('listTitle')}
+        data-closing={closing || undefined}
+        onAnimationEnd={() => {
+          if (closing) finishClose()
+        }}
         className="cmtl-drawer fixed inset-y-0 left-0 z-40 flex w-[86%] max-w-[360px] flex-col bg-[color:var(--surface)] shadow-[var(--shadow-float)]"
       >
         <header className="flex items-center justify-between px-4 pb-2 pt-[calc(1rem+env(safe-area-inset-top))]">
           <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">{t('listTitle')}</h2>
           <button
             aria-label={t('listClose')}
-            onClick={onClose}
+            onClick={requestClose}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)]"
           >
             <svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true">
@@ -118,7 +154,12 @@ export function ShopListPanel({
           {sorted.map((shop) => (
             <li key={shop.id}>
               <button
-                onClick={() => onPick(shop)}
+                onClick={() => {
+                  // La fiche s'ouvre tout de suite (la caméra part) pendant que
+                  // le drawer glisse vers la gauche.
+                  onPick(shop)
+                  requestClose()
+                }}
                 aria-label={`${shop.name} — ${t('seeDetails')}`}
                 className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[color:var(--surface-2)]"
               >

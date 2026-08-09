@@ -44,11 +44,20 @@ export function IntroPopup({
     }
   }, [])
 
+  // `closing` DOIT retomber à false au moment où la fermeture aboutit : le
+  // composant reste monté entre deux ouvertures, et un `closing` résiduel
+  // faisait flasher une frame « fermée » à la réouverture (QA round 2).
+  const finishClose = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    setClosing(false)
+    onClose()
+  }
+
   const requestClose = () => {
     if (closing) return
     setClosing(true)
     // Fallback si animationend ne fire pas ; sinon onAnimationEnd ferme avant.
-    closeTimer.current = setTimeout(onClose, CLOSE_ANIMATION_MS)
+    closeTimer.current = setTimeout(finishClose, CLOSE_ANIMATION_MS)
   }
 
   useEffect(() => {
@@ -92,10 +101,7 @@ export function IntroPopup({
         data-closing={closing || undefined}
         onClick={(e) => e.stopPropagation()}
         onAnimationEnd={() => {
-          if (closing) {
-            if (closeTimer.current) clearTimeout(closeTimer.current)
-            onClose()
-          }
+          if (closing) finishClose()
         }}
         className="cmtl-intro-card relative w-full max-w-[380px] rounded-[var(--radius-sheet)] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-[var(--shadow-float)]"
       >

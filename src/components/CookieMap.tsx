@@ -441,7 +441,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         onClose={() => setListOpen(false)}
         onPick={(shop) => {
           // Même chemin caméra que le tap marqueur (spec §1) via l'effet [selected].
-          setListOpen(false)
+          // Le panneau gère sa propre fermeture animée (onClose arrive après le slide).
           setSelected(shop)
         }}
       />

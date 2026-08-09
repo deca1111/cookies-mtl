@@ -261,24 +261,43 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .cmtl-intro-overlay,
-  .cmtl-intro-card {
+  .cmtl-intro-card,
+  .cmtl-drawer,
+  .cmtl-drawer-scrim {
     animation: none !important;
   }
 }
 
-/* Drawer liste : glisse depuis la gauche, discret et rapide. */
+/* Drawer liste : vrai slide complet depuis le bord gauche, cadence posée
+   (retour QA v1.2 round 2 : « ralentir un peu », fermeture animée ajoutée). */
 .cmtl-drawer {
-  animation: cmtl-drawer-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: cmtl-drawer-in 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cmtl-drawer[data-closing='true'] {
+  animation: cmtl-drawer-out 300ms ease-in forwards;
+}
+
+.cmtl-drawer-scrim {
+  animation: cmtl-fade-in 360ms ease-out;
+}
+
+.cmtl-drawer-scrim[data-closing='true'] {
+  animation: cmtl-fade-out 300ms ease-in forwards;
 }
 
 @keyframes cmtl-drawer-in {
   from {
-    transform: translateX(-24px);
-    opacity: 0.6;
+    transform: translateX(-100%);
   }
   to {
     transform: translateX(0);
-    opacity: 1;
+  }
+}
+
+@keyframes cmtl-drawer-out {
+  to {
+    transform: translateX(-100%);
   }
 }
 

@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LangProvider } from '../LangProvider'
 import { ShopListPanel } from '../ShopListPanel'
 import type { Shop } from '@/lib/shops'
@@ -76,12 +76,14 @@ test('géolocalisation refusée : message sobre, tri inchangé', async () => {
   expect(rowNames()[0]).toContain('Éclair')
 })
 
-test('Échap et chevron ferment le panneau', () => {
+test('Échap et chevron ferment le panneau (fermeture animée, différée)', async () => {
   let closed = 0
   renderPanel({ onClose: () => { closed += 1 } })
   fireEvent.keyDown(document, { key: 'Escape' })
+  expect(screen.getByRole('button', { name: 'Fermer la liste' }).closest('section')?.getAttribute('data-closing')).toBe('true')
+  await waitFor(() => expect(closed).toBe(1))
   fireEvent.click(screen.getByRole('button', { name: 'Fermer la liste' }))
-  expect(closed).toBe(2)
+  await waitFor(() => expect(closed).toBe(2))
 })
 
 test('fermé : rien n’est rendu', () => {
