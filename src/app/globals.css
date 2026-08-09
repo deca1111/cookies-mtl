@@ -123,6 +123,7 @@ body {
    Le cookie de la marque, centré sur l'adresse (pas de pointe : ancre centre).
    Le bouton est la cible tactile (34px) ; le svg dessine. */
 .cmtl-pin-cookie {
+  position: relative;
   display: block;
   width: 34px;
   height: 34px;
@@ -131,19 +132,26 @@ body {
   background: none;
   appearance: none;
   cursor: pointer;
-  filter: drop-shadow(0 3px 6px var(--pin-shadow));
-  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* Retour QA v1.1 : halo « trop prononcé » sous les cookies — ombre raccourcie
+     et adoucie (avant : 0 3px 6px, plus lueur 10px/0.4 en sombre). */
+  filter: drop-shadow(0 2px 4px var(--pin-shadow));
+  transition: filter 220ms ease;
 }
 
 .cmtl-pin-cookie svg {
   width: 100%;
   height: 100%;
   display: block;
+  /* Le scale ET l'estompe portent sur le svg : MapLibre pilote transform et
+     opacity INLINE sur le bouton lui-même (positionnement du Marker + occlusion),
+     y toucher serait écrasé — retour QA v1.2 round 1. */
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
+  transform-origin: center;
 }
 
-.cmtl-pin-cookie:hover,
-.cmtl-pin-cookie:focus-visible {
-  transform: translateY(-2px) scale(1.1);
+.cmtl-pin-cookie:hover svg,
+.cmtl-pin-cookie:focus-visible svg {
+  transform: scale(1.1);
 }
 
 .cmtl-pin-cookie:focus-visible {
@@ -152,9 +160,161 @@ body {
   border-radius: 50%;
 }
 
+/* Sélection (spec v1.2 §1, variante C validée) : 34 → ~50 px, ombre un peu
+   renforcée, au-dessus des voisins ; les autres s'estompent. */
+.cmtl-pin-cookie[data-selected='true'] {
+  z-index: 5;
+  filter: drop-shadow(0 4px 8px var(--pin-shadow));
+}
+
+.cmtl-pin-cookie[data-selected='true'] svg {
+  transform: scale(1.47);
+}
+
+.cmtl-pin-cookie[data-dimmed='true'] svg {
+  opacity: 0.55;
+}
+
+/* Pastille nom sous le cookie sélectionné. */
+.cmtl-pin-name {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  white-space: nowrap;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 11px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-chip);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.cmtl-pin-cookie[data-selected='true'] .cmtl-pin-name {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 :root[data-theme='dark'] .cmtl-pin-cookie {
-  /* « légèrement lumineux » : le cookie doit décoller du fond chocolat. */
-  filter: drop-shadow(0 3px 6px var(--pin-shadow)) drop-shadow(0 0 10px rgba(210, 154, 85, 0.4));
+  /* « légèrement lumineux » : le cookie décolle du fond chocolat — lueur atténuée (QA v1.1). */
+  filter: drop-shadow(0 2px 4px var(--pin-shadow)) drop-shadow(0 0 6px rgba(210, 154, 85, 0.25));
+}
+
+:root[data-theme='dark'] .cmtl-pin-cookie[data-selected='true'] {
+  filter: drop-shadow(0 4px 8px var(--pin-shadow)) drop-shadow(0 0 6px rgba(210, 154, 85, 0.25));
+}
+
+/* Popup explicative : elle naît du logo (haut-gauche) et y retourne à la
+   fermeture — sauf à l'ouverture automatique de première visite (data-origin
+   'auto' : pas d'animation d'entrée, rien ne ralentit la première peinture). */
+.cmtl-intro-overlay {
+  animation: cmtl-fade-in 200ms ease-out;
+}
+
+.cmtl-intro-overlay[data-closing='true'] {
+  animation: cmtl-fade-out 200ms ease-in forwards;
+}
+
+.cmtl-intro-card[data-origin='logo'] {
+  animation: cmtl-intro-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cmtl-intro-card[data-closing='true'] {
+  animation: cmtl-intro-out 200ms ease-in forwards;
+}
+
+@keyframes cmtl-intro-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(-50vw + 90px), calc(-50vh + 110px)) scale(0.15);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes cmtl-intro-out {
+  to {
+    opacity: 0;
+    transform: translate(calc(-50vw + 90px), calc(-50vh + 110px)) scale(0.15);
+  }
+}
+
+@keyframes cmtl-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cmtl-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmtl-intro-overlay,
+  .cmtl-intro-card,
+  .cmtl-drawer,
+  .cmtl-drawer-scrim {
+    animation: none !important;
+  }
+}
+
+/* Drawer liste : vrai slide complet depuis le bord gauche, cadence posée
+   (retour QA v1.2 round 2 : « ralentir un peu », fermeture animée ajoutée). */
+.cmtl-drawer {
+  animation: cmtl-drawer-in 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cmtl-drawer[data-closing='true'] {
+  animation: cmtl-drawer-out 300ms ease-in forwards;
+}
+
+.cmtl-drawer-scrim {
+  animation: cmtl-fade-in 360ms ease-out;
+}
+
+.cmtl-drawer-scrim[data-closing='true'] {
+  animation: cmtl-fade-out 300ms ease-in forwards;
+}
+
+@keyframes cmtl-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes cmtl-drawer-out {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+/* Toast « Adresse copiée » : apparition douce, disparition gérée par le state (2 s). */
+.cmtl-toast {
+  animation: cmtl-toast-in 200ms ease-out;
+}
+
+@keyframes cmtl-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
 }
 
 /* --- Bottom sheet --------------------------------------------------------- */

@@ -4,7 +4,8 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
 import { currentTheme } from '@/lib/map-style'
 import { onThemeChange } from '@/lib/theme'
-import { cookieMarkerHtml } from '@/lib/cookie-marker'
+import { SHEET_CAMERA_OFFSET_Y, shopFocusZoom } from '@/lib/camera'
+import { applyMarkerSelection, cookieMarkerHtml } from '@/lib/cookie-marker'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 
@@ -34,12 +35,18 @@ export function RasterMap({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const tileLayerRef = useRef<import('leaflet').TileLayer | null>(null)
+  const mapRef = useRef<import('leaflet').Map | null>(null)
   const { t } = useLang()
 
   // Le composant est monté une fois par session raster ; la sélection vit dans
-  // CookieMap (mêmes raisons que l'effet unique de la carte MapLibre). selectedRef
-  // n'est pas nécessaire ici : pas de rebuild interne.
+  // CookieMap (mêmes raisons que l'effet unique de la carte MapLibre).
   const initialSelected = useRef(selected)
+  // Miroir vivant de `selected` pour l'init async (les marqueurs se créent après
+  // le chargement dynamique de Leaflet, la prop aurait pu changer entre-temps).
+  const selectedLiveRef = useRef(selected)
+  useEffect(() => {
+    selectedLiveRef.current = selected
+  }, [selected])
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -56,6 +63,7 @@ export function RasterMap({
         sel ? [sel.lat, sel.lng] : MTL_CENTER,
         sel ? 15 : 12
       )
+      mapRef.current = map
       map.setMaxBounds(MTL_BOUNDS)
       const layer = L.tileLayer(`${TILES_BASE}/tiles/v1/${theme}/{z}/{x}/{y}.webp`, {
         minZoom: 11,
@@ -76,20 +84,22 @@ export function RasterMap({
         // styles .cmtl-pin-cookie (hover/focus-visible compris)
         const icon = L.divIcon({
           className: '',
-          html: cookieMarkerHtml(shop.name),
+          html: cookieMarkerHtml(shop.name, shop.slug),
           iconSize: [34, 34],
           iconAnchor: [17, 17], // centre : le cookie n'a pas de pointe
         })
         L.marker([shop.lat, shop.lng], { icon })
           .addTo(map)
           .on('click', () => {
+            // La caméra suit via l'effet [selected] — même chemin que MapLibre (spec v1.2 §1).
             onSelect(shop)
-            // même comportement que easeTo({center}) sur MapLibre : recentrer sans
-            // changer le zoom
-            map?.panTo([shop.lat, shop.lng])
           })
       }
       map.on('click', () => onSelect(null))
+      // Reflète la sélection courante sur les marqueurs fraîchement créés.
+      if (containerRef.current) {
+        applyMarkerSelection(containerRef.current, selectedLiveRef.current?.slug ?? null)
+      }
 
       // Équivalent minimal du GeolocateControl MapLibre (spec §3) : centre la carte
       // sur la position, sans suivi continu. Même coin haut-gauche que sur MapLibre.
@@ -114,10 +124,23 @@ export function RasterMap({
       cancelled = true
       map?.remove()
       map = null
+      mapRef.current = null
     }
     // même modèle que CookieMap : effet monté une fois, la sélection vit au-dessus
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Spec v1.2 §1 : même caméra que MapLibre — zoom plancher + point remonté
+  // au-dessus de la fiche. En pixels : le centre visé est 120 px SOUS le cookie
+  // (y croît vers le bas), donc subtract(offset négatif).
+  useEffect(() => {
+    if (containerRef.current) applyMarkerSelection(containerRef.current, selected?.slug ?? null)
+    const map = mapRef.current
+    if (!selected || !map) return
+    const zoom = shopFocusZoom(map.getZoom())
+    const centerPt = map.project([selected.lat, selected.lng], zoom).subtract([0, SHEET_CAMERA_OFFSET_Y])
+    map.setView(map.unproject(centerPt, zoom), zoom, { animate: true })
+  }, [selected])
 
   // Bascule de pyramide au toggle (les deux thèmes de tuiles sont pré-rendus).
   useEffect(() => {

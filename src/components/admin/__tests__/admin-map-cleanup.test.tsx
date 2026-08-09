@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 // This file has two tests that both render <AdminApp> with identical markup (same
 // placeholders/button labels); without an explicit unmount between them, `screen`
@@ -88,8 +88,9 @@ test('mini-map is destroyed immediately when a draft is saved successfully', asy
 
   fireEvent.click(screen.getByText('Enregistrer'))
 
-  // createShopAction resolves asynchronously; wait for the draft-closing state update.
-  await screen.findByText('Ajouter un cookie')
+  // createShopAction resolves asynchronously; depuis la v1.2 le formulaire vit dans
+  // un modal — le signal de fermeture est la disparition du dialog.
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
   expect(removeSpy).toHaveBeenCalledTimes(1)
 })

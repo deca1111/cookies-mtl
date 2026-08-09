@@ -1,13 +1,27 @@
-export function RatingCookies({ rating, size = 'sm' }: { rating: number; size?: 'sm' | 'lg' }) {
-  const px = size === 'lg' ? 32 : 18
-  const label = `${String(rating).replace('.', ',')} / 5`
+// Échelle de cookies + note chiffrée. Layout validé v1.2 pour la fiche (`sheet`) :
+// cookies dominants (27 px) puis chiffre en Gill Sans 30 px avec « /5 » discret.
+// `row` = version compacte du panneau liste ; `lg` = look historique de l'admin.
+export function RatingCookies({
+  rating,
+  variant = 'sheet',
+}: {
+  rating: number
+  variant?: 'sheet' | 'row' | 'lg'
+}) {
+  const px = variant === 'sheet' ? 27 : variant === 'lg' ? 32 : 13
+  const num = String(rating).replace('.', ',')
+  const label = `${num} / 5`
   const kinds = Array.from({ length: 5 }, (_, i) => {
     if (rating >= i + 1) return 'full' as const
     if (rating >= i + 0.5) return 'half' as const
     return 'empty' as const
   })
   return (
-    <span role="img" aria-label={label} className="inline-flex items-center gap-2.5">
+    <span
+      role="img"
+      aria-label={label}
+      className={`inline-flex items-center ${variant === 'sheet' ? 'gap-3' : variant === 'lg' ? 'gap-2.5' : 'gap-1.5'}`}
+    >
       <span aria-hidden className="inline-flex items-center gap-1">
         {kinds.map((kind, i) => (
           <svg key={i} width={px} height={px} viewBox="0 0 300 300" data-cookie={kind}>
@@ -15,9 +29,20 @@ export function RatingCookies({ rating, size = 'sm' }: { rating: number; size?: 
           </svg>
         ))}
       </span>
-      <span aria-hidden className="text-[14px] font-semibold leading-none text-[color:var(--text-muted)]">
-        {String(rating).replace('.', ',')}
-      </span>
+      {variant === 'sheet' ? (
+        <span aria-hidden className="font-display text-[30px] leading-none text-[color:var(--accent-ink)]">
+          {num}
+          <span className="text-[14px] text-[color:var(--text-muted)]"> /5</span>
+        </span>
+      ) : variant === 'lg' ? (
+        <span aria-hidden className="text-[14px] font-semibold leading-none text-[color:var(--text-muted)]">
+          {num}
+        </span>
+      ) : (
+        <span aria-hidden className="font-display text-[12px] leading-none text-[color:var(--accent-ink)]">
+          {num}
+        </span>
+      )}
     </span>
   )
 }

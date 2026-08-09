@@ -103,27 +103,28 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
         {shop.review && (
           <p className="cmtl-verdict mt-3 text-[17px] leading-[1.45] text-[color:var(--text-body)]">{shop.review}</p>
         )}
-        <p className="mt-3 border-t border-[color:var(--border)] pt-3 pb-1 text-[13px] leading-snug text-[color:var(--text-muted)]">
-          {shop.address}
-        </p>
+        {/* Retour QA v1.1 : « Copier » incompris en CTA — l'icône vit désormais
+            contre l'adresse qu'elle copie, avec toast de confirmation. */}
+        <div className="mt-3 flex items-center gap-2 border-t border-[color:var(--border)] pt-3 pb-1">
+          <p className="min-w-0 flex-1 text-[13px] leading-snug text-[color:var(--text-muted)]">{shop.address}</p>
+          <button
+            onClick={onCopy}
+            aria-label={t('copyAddressFull')}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:var(--border-strong)] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
+          >
+            {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+          </button>
+        </div>
       </div>
 
       <div className="shrink-0 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 sm:pb-6">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onDirections}
             className="inline-flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[color:var(--btn-bg)] px-3 text-[13px] font-medium text-[color:var(--btn-text)] transition-colors hover:bg-[color:var(--btn-bg-hover)] active:scale-[0.98]"
           >
             <IconDirections size={15} />
             {t('directions')}
-          </button>
-          <button
-            onClick={onCopy}
-            aria-label={t('copyAddressFull')}
-            className="inline-flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--border-strong)] px-3 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
-          >
-            {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
-            {copied ? t('copied') : t('copyAddress')}
           </button>
           <button
             onClick={onShare}
@@ -139,6 +140,15 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
           </a>
         </div>
       </div>
+
+      {copied && (
+        <div
+          role="status"
+          className="cmtl-toast absolute -top-14 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-[color:var(--btn-bg)] px-4 py-2 text-[13px] font-medium text-[color:var(--btn-text)] shadow-[var(--shadow-chip)]"
+        >
+          {t('addressCopied')}
+        </div>
+      )}
 
       {directionsOpen && (
         <DirectionsModal lat={shop.lat} lng={shop.lng} onClose={() => setDirectionsOpen(false)} />

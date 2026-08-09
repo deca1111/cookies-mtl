@@ -88,6 +88,34 @@ export function IconShare({ size = 16 }: IconProps) {
   )
 }
 
+export function IconInstagram({ size = 16 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M17.5 6.5h.01" />
+    </svg>
+  )
+}
+
+export function IconMail({ size = 16 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+    </svg>
+  )
+}
+
+export function IconList({ size = 16 }: IconProps) {
+  return (
+    <svg {...base(size)}>
+      <path d="M8 6h13M8 12h13M8 18h13" />
+      <path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
+    </svg>
+  )
+}
+
 export function IconCheck({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>

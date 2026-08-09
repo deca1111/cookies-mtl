@@ -2,12 +2,17 @@ import { BrandLogo } from './BrandLogo'
 
 // Habillage variante A (validée sur maquette, mémoire projet) : logo haut-gauche,
 // crédit bas-gauche. B (bandeau) et C (crédit sous logo) sont en réserve.
-export function MapChrome() {
+// Depuis la v1.2, la pastille logo ouvre la popup explicative (spec §5).
+export function MapChrome({ onLogoClick }: { onLogoClick?: () => void }) {
   return (
     <>
-      <div className="absolute left-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1.5 shadow-[var(--shadow-chip)]">
+      <button
+        onClick={onLogoClick}
+        aria-label="Cookies Club"
+        className="absolute left-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 cursor-pointer rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-1.5 shadow-[var(--shadow-chip)]"
+      >
         <BrandLogo size={88} />
-      </div>
+      </button>
       {/* Premier plan (z-30, au-dessus de la fiche) : le crédit est minuscule et ne
           recouvre rien d'interactif — retour QA v1.1. */}
       <a

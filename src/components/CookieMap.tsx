@@ -7,14 +7,18 @@ import { useEffect, useRef, useState } from 'react'
 import { currentTheme, getMapStyleUrl, buildMapStyle, type MapTheme } from '@/lib/map-style'
 import { preferredRenderer, markRasterPreferred, clearRasterPreference } from '@/lib/map-renderer'
 import { viewportTileUrls } from '@/lib/tile-math'
-import { cookieMarkerHtml } from '@/lib/cookie-marker'
+import { SHEET_CAMERA_OFFSET_Y, shopFocusZoom } from '@/lib/camera'
+import { applyMarkerSelection, cookieMarkerHtml } from '@/lib/cookie-marker'
 import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
+import { INTRO_SEEN_KEY, IntroPopup } from './IntroPopup'
 import { MapChrome } from './MapChrome'
 import { RasterMap } from './RasterMap'
+import { ShopListPanel } from './ShopListPanel'
 import { ShopSheet } from './ShopSheet'
 import { ThemeToggle } from './ThemeToggle'
+import { IconList } from './icons'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 
@@ -97,7 +101,26 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
   // starts over with fresh closured counters (failureCount, rebuildCount, etc. are `let`s
   // local to the effect, so a re-run gets a clean budget for free) and calls init() again.
   const [mapSession, setMapSession] = useState(0)
-  const { t, lang, setLang } = useLang()
+  const [introOpen, setIntroOpen] = useState(false)
+  // 'auto' (1re visite) : pas d'animation d'entrée ; 'logo' : la popup naît du logo.
+  const [introOrigin, setIntroOrigin] = useState<'auto' | 'logo'>('logo')
+  const [listOpen, setListOpen] = useState(false)
+  const { t } = useLang()
+
+  // Popup explicative : auto-ouverture à la première visite uniquement (spec v1.2 §5).
+  useEffect(() => {
+    try {
+      if (!localStorage.getItem(INTRO_SEEN_KEY)) {
+        // Hydratation volontaire, même motif que le renderer : décision client post-montage.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIntroOrigin('auto')
+        setIntroOpen(true)
+        localStorage.setItem(INTRO_SEEN_KEY, '1')
+      }
+    } catch {
+      /* localStorage indisponible : pas d'auto-ouverture, le logo reste la porte d'entrée */
+    }
+  }, [])
 
   // Kept in sync below so the map effect (deps: [mapSession]) can read the CURRENT selected
   // shop when rebuilding the map after a WebGL context loss, instead of the stale value
@@ -269,16 +292,20 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
 
         for (const shop of shops) {
           const holder = document.createElement('div')
-          holder.innerHTML = cookieMarkerHtml(shop.name)
+          holder.innerHTML = cookieMarkerHtml(shop.name, shop.slug)
           const el = holder.firstElementChild as HTMLElement
           el.addEventListener('click', (e) => {
             e.stopPropagation()
             setSelected(shop)
-            map.easeTo({ center: [shop.lng, shop.lat] })
           })
           new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([shop.lng, shop.lat]).addTo(map)
         }
         map.on('click', () => setSelected(null))
+        // Reflète la sélection courante sur les marqueurs fraîchement créés
+        // (cas initialSlug et rebuild après retry) — même chemin que l'effet [selected].
+        if (containerRef.current) {
+          applyMarkerSelection(containerRef.current, selectedRef.current?.slug ?? null)
+        }
 
         // Task 17b bug 1 / Round 3: mobile OSes reclaim GPU memory from backgrounded tabs (and
         // cap simultaneous live WebGL contexts, ~8 on iOS Safari), which can leave this map's
@@ -344,6 +371,20 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapSession, renderer])
 
+  // Spec v1.2 §1 : chemin caméra + état visuel UNIFIÉ — tap marqueur, tap dans le
+  // panneau liste et fermeture de fiche passent tous par l'état `selected`.
+  useEffect(() => {
+    if (containerRef.current) applyMarkerSelection(containerRef.current, selected?.slug ?? null)
+    const map = mapRef.current
+    if (!selected || !map) return
+    map.easeTo({
+      center: [selected.lng, selected.lat],
+      zoom: shopFocusZoom(map.getZoom()),
+      offset: [0, SHEET_CAMERA_OFFSET_Y],
+      duration: 600,
+    })
+  }, [selected])
+
   // Le toggle thème recharge le style sans démonter la carte : la caméra, les
   // marqueurs DOM et l'état de sélection survivent au changement.
   useEffect(() => {
@@ -378,15 +419,33 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           </button>
         </div>
       )}
-      <MapChrome />
+      <MapChrome
+        onLogoClick={() => {
+          setIntroOrigin('logo')
+          setIntroOpen(true)
+        }}
+      />
+      {/* Onglet accroché au bord gauche, à mi-hauteur : le panneau liste sort de ce
+          côté — le bouton vit là où l'UI s'ouvre (retour QA v1.2 round 1). */}
       <button
-        onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
-        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-2 text-[11px] font-medium tracking-[0.14em] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
-        aria-label={lang === 'fr' ? 'Switch to English' : 'Passer en français'}
+        onClick={() => setListOpen(true)}
+        aria-label={t('listOpen')}
+        className="absolute left-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
       >
-        {lang === 'fr' ? 'EN' : 'FR'}
+        <IconList size={16} />
       </button>
-      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top)+44px)] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
+      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
+      <ShopListPanel
+        shops={shops}
+        open={listOpen}
+        onClose={() => setListOpen(false)}
+        onPick={(shop) => {
+          // Même chemin caméra que le tap marqueur (spec §1) via l'effet [selected].
+          // Le panneau gère sa propre fermeture animée (onClose arrive après le slide).
+          setSelected(shop)
+        }}
+      />
+      <IntroPopup open={introOpen} origin={introOrigin} onClose={() => setIntroOpen(false)} />
       {selected && <ShopSheet shop={selected} onClose={() => setSelected(null)} />}
     </div>
   )
