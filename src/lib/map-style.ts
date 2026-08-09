@@ -38,29 +38,32 @@ export function currentTheme(): MapTheme {
 // incluse), sur les tuiles du fallback via `npm run tiles:render` — d'ici là le
 // fallback garde l'ancienne teinte, c'est assumé.
 const PALETTES = {
+  // Clair = variante C du proto (validée par Léo) : fond taupe prononcé, les
+  // routes reprennent le crème historique — fini le « blanc partout ».
   light: {
-    background: '#f3ede3',
-    water: '#dbd3c2',
-    roads: '#fffdf8',
+    background: '#dcd2bf',
+    water: '#c6bba5',
+    roads: '#f3ede3',
     parks: '#dce4c6',
     text: '#5b4a38',
-    building: '#e8dcc8',
-    buildingOutline: '#cbb897',
-    roadCasing: '#d9cbb0',
-    landuseAlt: '#ece2d0',
-    waterway: '#c7bda2',
+    building: '#d2c6b0',
+    buildingOutline: '#b5a488',
+    roadCasing: '#bfb096',
+    landuseAlt: '#d6cbb6',
+    waterway: '#b0a189',
   },
+  // Sombre = variante E du proto (+1 cran, le +2 était trop clair).
   dark: {
-    background: '#392c1d',
-    water: '#221a12',
-    roads: '#524030',
-    parks: '#3a4630',
+    background: '#2e2318',
+    water: '#1d1510',
+    roads: '#463527',
+    parks: '#2f3b27',
     text: '#bcaa98',
-    building: '#443426',
-    buildingOutline: '#5f4a37',
-    roadCasing: '#413225',
-    landuseAlt: '#3f3022',
-    waterway: '#2f2418',
+    building: '#392b1e',
+    buildingOutline: '#554130',
+    roadCasing: '#362a1e',
+    landuseAlt: '#34271b',
+    waterway: '#281e14',
   },
 }
 

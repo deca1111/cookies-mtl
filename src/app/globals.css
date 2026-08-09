@@ -13,7 +13,10 @@
 :root {
   color-scheme: light;
 
-  --bg: #f3ede3; /* [spec] crème — map ground + page ground */
+  /* Variante C validée (proto palettes) : fond taupe prononcé, aligné sur
+     PALETTES.light.background (anti-flicker au chargement). Les surfaces lin
+     ressortent dessus — réponse au « trop plat et blanc partout ». */
+  --bg: #dcd2bf;
   --surface: #fffdf9; /* [spec] lin — sheet, cards, controls */
   --surface-2: #f6f0e6; /* inset fields, hover wash */
 
@@ -28,9 +31,12 @@
   --border: #e3d9c9; /* hairlines whisper */
   --border-strong: #cfc0a8;
 
-  --btn-bg: #3b2a1f; /* [spec] espresso */
-  --btn-bg-hover: #503a2a;
-  --btn-text: #faf5ec;
+  /* Doré = accent d'action des DEUX thèmes (décision Léo, retours couleurs) :
+     CTA Itinéraire, chips de tri, Enregistrer admin, toast… — même teinte que
+     le --btn-bg du sombre. */
+  --btn-bg: #d29a55;
+  --btn-bg-hover: #c48a45;
+  --btn-text: #241a13;
 
   --pin-shadow: rgba(59, 42, 31, 0.34);
 
@@ -43,10 +49,9 @@
   --accent-gold: #d29a55;
   --accent-gold-ink: #241a13;
 
-  /* Fond de la CARTE (peut diverger du fond de page --bg : en sombre, la carte
-     est un cran plus claire pour laisser respirer l'UI moka — retour Léo). Doit
-     rester aligné sur PALETTES[theme].background (src/lib/map-style.ts). */
-  --map-bg: #f3ede3;
+  /* Fond de la CARTE — TOUJOURS égal à --bg et à PALETTES[theme].background
+     (src/lib/map-style.ts) : le moindre écart flashe au chargement. */
+  --map-bg: #dcd2bf;
 
   --radius-sheet: 28px;
   --radius-card: 18px;
@@ -64,12 +69,12 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  /* Aligné sur le fond de CARTE sombre (retour couleurs : carte éclaircie de 2
-     crans depuis le #241a13 d'origine) — même valeur que --map-bg, sinon la page
-     flashe une teinte différente le temps que les tuiles peignent. Les surfaces
-     moka (#2c2018) restent plus sombres que ce fond : c'est voulu, elles
-     ressortent en éléments posés SUR la carte. */
-  --bg: #392c1d;
+  /* Aligné sur le fond de CARTE sombre (retour couleurs : +1 cran depuis le
+     #241a13 d'origine — le +2 testé au proto était trop) — même valeur que
+     --map-bg, sinon la page flashe une teinte différente le temps que les tuiles
+     peignent. Les surfaces moka (#2c2018) restent plus sombres que ce fond :
+     c'est voulu, elles ressortent en éléments posés SUR la carte. */
+  --bg: #2e2318;
   --surface: #2c2018;
   --surface-2: #362920;
 
@@ -92,7 +97,7 @@
 
   --danger: #e5907a;
 
-  --map-bg: #392c1d; /* = PALETTES.dark.background — carte plus claire que l'UI */
+  --map-bg: #2e2318; /* = PALETTES.dark.background — carte plus claire que l'UI */
 
   --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
   --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);

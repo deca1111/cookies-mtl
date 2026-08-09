@@ -8,7 +8,9 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'La carte des cookies de Montréal · Montreal cookie map',
     start_url: '/',
     display: 'standalone',
-    background_color: '#f3ede3',
+    // Splash PWA = fond de page clair (variante C taupe, retours couleurs v1.2.1).
+    background_color: '#dcd2bf',
+    // Chrome navigateur : espresso de la marque (indépendant du doré des boutons).
     theme_color: '#3b2a1f',
     icons: [
       { src: '/favicon.ico', sizes: 'any', type: 'image/x-icon' },

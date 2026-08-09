@@ -311,7 +311,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
                 aria-pressed={sortKey === k}
                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
                   sortKey === k
-                    ? 'border-[color:var(--accent)] text-[color:var(--accent-ink)]'
+                    ? 'border-[color:var(--accent-gold)] bg-[color:var(--accent-gold)] text-[color:var(--accent-gold-ink)]'
                     : 'border-[color:var(--border-strong)] text-[color:var(--text-muted)] hover:text-[color:var(--text-body)]'
                 }`}
               >

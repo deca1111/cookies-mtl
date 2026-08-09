@@ -103,7 +103,7 @@ export function ShopListPanel({
       aria-pressed={key === k}
       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${
         key === k
-          ? 'border-[color:var(--accent)] bg-[color:var(--accent)] text-[color:var(--btn-text)]'
+          ? 'border-[color:var(--accent-gold)] bg-[color:var(--accent-gold)] text-[color:var(--accent-gold-ink)]'
           : 'border-[color:var(--border-strong)] text-[color:var(--text-body)] hover:bg-[color:var(--surface-2)]'
       }`}
     >
