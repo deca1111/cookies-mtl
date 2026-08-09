@@ -62,7 +62,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
         onClick={onClose}
         className="absolute right-3 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-2)] hover:text-[color:var(--text-strong)] sm:top-3"
       >
-        <IconClose size={20} />
+        <IconClose />
       </button>
 
       {/* Scrollable region: `touch-pan-y` + `overscroll-contain` keep vertical drags native
