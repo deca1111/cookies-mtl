@@ -23,18 +23,20 @@ function renderSheet() {
   )
 }
 
-test('les 3 CTA vivent dans une grille à colonnes égales, avec icône', () => {
+test('la grille CTA a 2 boutons (Itinéraire, Partager), chacun avec icône', () => {
   const { container } = renderSheet()
-  const grid = container.querySelector('.grid.grid-cols-3')
+  const grid = container.querySelector('.grid.grid-cols-2')
   expect(grid).not.toBeNull()
-  expect(grid!.querySelectorAll('button')).toHaveLength(3)
-  expect(grid!.querySelectorAll('svg')).toHaveLength(3)
+  expect(grid!.querySelectorAll('button')).toHaveLength(2)
+  expect(grid!.querySelectorAll('svg')).toHaveLength(2)
 })
 
-test('copier garde sa colonne : la structure ne bouge pas au clic', async () => {
-  Object.assign(navigator, { clipboard: { writeText: async () => {} } })
+test('l’icône copier vit à côté de l’adresse et déclenche le toast', async () => {
+  let written = ''
+  Object.assign(navigator, { clipboard: { writeText: async (s: string) => { written = s } } })
   renderSheet()
-  const btn = screen.getByRole('button', { name: "Copier l’adresse" })
-  fireEvent.click(btn)
-  expect(screen.getByRole('button', { name: "Copier l’adresse" })).toBe(btn) // aria stable
+  fireEvent.click(screen.getByRole('button', { name: "Copier l’adresse" }))
+  expect(await screen.findByRole('status')).toBeDefined()
+  expect(screen.getByRole('status').textContent).toBe('Adresse copiée')
+  expect(written).toBe('1 rue Test')
 })

@@ -209,6 +209,22 @@ body {
   filter: drop-shadow(0 4px 8px var(--pin-shadow)) drop-shadow(0 0 6px rgba(210, 154, 85, 0.25));
 }
 
+/* Toast « Adresse copiée » : apparition douce, disparition gérée par le state (2 s). */
+.cmtl-toast {
+  animation: cmtl-toast-in 200ms ease-out;
+}
+
+@keyframes cmtl-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
 /* --- Bottom sheet --------------------------------------------------------- */
 .cmtl-sheet::before {
   content: "";
