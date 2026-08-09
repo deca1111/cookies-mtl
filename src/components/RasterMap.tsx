@@ -3,6 +3,7 @@
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
 import { currentTheme } from '@/lib/map-style'
+import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 
@@ -31,6 +32,7 @@ export function RasterMap({
   onRetryWebgl: () => void
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const tileLayerRef = useRef<import('leaflet').TileLayer | null>(null)
   const { t } = useLang()
 
   // Le composant est monté une fois par session raster ; la sélection vit dans
@@ -54,7 +56,7 @@ export function RasterMap({
         sel ? 15 : 12
       )
       map.setMaxBounds(MTL_BOUNDS)
-      L.tileLayer(`${TILES_BASE}/tiles/v1/${theme}/{z}/{x}/{y}.webp`, {
+      const layer = L.tileLayer(`${TILES_BASE}/tiles/v1/${theme}/{z}/{x}/{y}.webp`, {
         minZoom: 11,
         maxNativeZoom: 16, // au-delà : sur-zoom (agrandissement de la tuile z16)
         maxZoom: 18,
@@ -63,7 +65,9 @@ export function RasterMap({
         bounds: MTL_BOUNDS,
         attribution:
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · style Cookies Club',
-      }).addTo(map)
+      })
+      tileLayerRef.current = layer
+      layer.addTo(map)
 
       for (const shop of shops) {
         // Mêmes pins DOM que la carte MapLibre : la classe .cmtl-pin de globals.css
@@ -113,6 +117,13 @@ export function RasterMap({
     }
     // même modèle que CookieMap : effet monté une fois, la sélection vit au-dessus
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Bascule de pyramide au toggle (les deux thèmes de tuiles sont pré-rendus).
+  useEffect(() => {
+    return onThemeChange((theme) => {
+      tileLayerRef.current?.setUrl(`${TILES_BASE}/tiles/v1/${theme}/{z}/{x}/{y}.webp`)
+    })
   }, [])
 
   return (

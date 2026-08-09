@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { currentTheme, getMapStyleUrl, buildMapStyle, type MapTheme } from '@/lib/map-style'
 import { preferredRenderer, markRasterPreferred, clearRasterPreference } from '@/lib/map-renderer'
 import { viewportTileUrls } from '@/lib/tile-math'
+import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 import { RasterMap } from './RasterMap'
@@ -161,7 +162,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       import('./RasterMap').catch(() => {})
       const base = process.env.NEXT_PUBLIC_TILES_BASE_URL ?? ''
       const c = map.getCenter()
-      for (const url of viewportTileUrls(base, theme, c.lng, c.lat, map.getZoom())) {
+      for (const url of viewportTileUrls(base, currentTheme(), c.lng, c.lat, map.getZoom())) {
         fetch(url).catch(() => {})
       }
     }
@@ -332,6 +333,22 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapSession, renderer])
+
+  // Le toggle thème recharge le style sans démonter la carte : la caméra, les
+  // marqueurs DOM et l'état de sélection survivent au changement.
+  useEffect(() => {
+    return onThemeChange((theme) => {
+      const map = mapRef.current
+      if (!map) return
+      getRecoloredStyle(theme, getMapStyleUrl(theme))
+        .then((style) => {
+          if (mapRef.current === map) map.setStyle(style)
+        })
+        .catch(() => {
+          /* le style courant reste affiché ; le prochain toggle retentera */
+        })
+    })
+  }, [])
 
   return (
     <div className="relative h-dvh w-full overflow-hidden">
