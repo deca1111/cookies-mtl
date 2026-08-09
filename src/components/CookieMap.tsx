@@ -425,16 +425,17 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           setIntroOpen(true)
         }}
       />
-      {/* Onglet accroché au bord gauche, à mi-hauteur : le panneau liste sort de ce
-          côté — le bouton vit là où l'UI s'ouvre (retour QA v1.2 round 1). */}
+      {/* Onglet accroché au bord DROIT, à mi-hauteur : le panneau liste sort de ce
+          côté (QA round 3). Fond espresso plein : les chips ton sur ton se perdaient
+          sur la carte crème — celui-ci doit se voir, c'est la porte d'entrée de la liste. */}
       <button
         onClick={() => setListOpen(true)}
         aria-label={t('listOpen')}
-        className="absolute left-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
+        className="absolute right-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-l-2xl bg-[color:var(--btn-bg)] text-[color:var(--btn-text)] shadow-[var(--shadow-float)] transition-colors hover:bg-[color:var(--btn-bg-hover)]"
       >
         <IconList size={16} />
       </button>
-      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
+      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
       <ShopListPanel
         shops={shops}
         open={listOpen}

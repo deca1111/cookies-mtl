@@ -127,7 +127,7 @@ export function ShopListPanel({
         onAnimationEnd={() => {
           if (closing) finishClose()
         }}
-        className="cmtl-drawer fixed inset-y-0 left-0 z-40 flex w-[86%] max-w-[360px] flex-col bg-[color:var(--surface)] shadow-[var(--shadow-float)]"
+        className="cmtl-drawer fixed inset-y-0 right-0 z-40 flex w-[86%] max-w-[360px] flex-col bg-[color:var(--surface)] shadow-[var(--shadow-float)]"
       >
         <header className="flex items-center justify-between px-4 pb-2 pt-[calc(1rem+env(safe-area-inset-top))]">
           <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">{t('listTitle')}</h2>
@@ -136,8 +136,9 @@ export function ShopListPanel({
             onClick={requestClose}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)]"
           >
+            {/* Chevron vers la droite : le panneau se replie vers ce bord. */}
             <svg width="12" height="12" viewBox="0 0 10 10" aria-hidden="true">
-              <path d="M6.5 1 L2.5 5 L6.5 9" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M3.5 1 L7.5 5 L3.5 9" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
         </header>

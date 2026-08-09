@@ -36,9 +36,6 @@ export const SITE_DESCRIPTION =
 
 // Lien Instagram affiché dans la popup explicative (et nulle part ailleurs).
 export const SITE_INSTAGRAM_URL = 'https://www.instagram.com/zucchinistudio/'
-// Adresse du lien « Nous écrire » de la popup explicative (et nulle part ailleurs).
-// Placeholder v1.2 — vraie adresse à fournir par Léo.
-export const SITE_CONTACT_EMAIL = 'bonjour@cookiesclub.example'
 
 // Titre d'une fiche cookie (/c/[slug]). Impacte : l'onglet navigateur, le titre
 // Google et og:title de CHAQUE fiche partagée.

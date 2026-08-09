@@ -22,7 +22,6 @@ export const dict = {
     introBody:
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit — texte de présentation à venir. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
     introInstagram: 'Instagram',
-    introEmail: 'Nous écrire',
     listOpen: 'Ouvrir la liste des cookies',
     listTitle: 'Tous les cookies',
     listClose: 'Fermer la liste',
@@ -53,7 +52,6 @@ export const dict = {
     introBody:
       'Lorem ipsum dolor sit amet, consectetur adipiscing elit — presentation text coming soon. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
     introInstagram: 'Instagram',
-    introEmail: 'Email us',
     listOpen: 'Open the cookie list',
     listTitle: 'All the cookies',
     listClose: 'Close the list',

@@ -59,7 +59,9 @@ export function RasterMap({
       if (cancelled || !containerRef.current) return
 
       const sel = initialSelected.current
-      map = L.map(containerRef.current, { zoomControl: true }).setView(
+      // zoomControl retiré (QA v1.2 round 3) : le pinch/double-tap suffit, et la
+      // carte MapLibre n'a pas de boutons de zoom non plus — parité visuelle.
+      map = L.map(containerRef.current, { zoomControl: false }).setView(
         sel ? [sel.lat, sel.lng] : MTL_CENTER,
         sel ? 15 : 12
       )
@@ -102,18 +104,36 @@ export function RasterMap({
       }
 
       // Équivalent minimal du GeolocateControl MapLibre (spec §3) : centre la carte
-      // sur la position, sans suivi continu. Même coin haut-gauche que sur MapLibre.
+      // sur la position ET pose un point de position (QA v1.2 round 3 — il manquait),
+      // sans suivi continu. Même coin haut-gauche que sur MapLibre. Le chrome
+      // `leaflet-bar` par défaut est remplacé par le chip de marque (.cmtl-geolocate).
+      let geoMarker: import('leaflet').Marker | null = null
       const GeoButton = L.Control.extend({
         options: { position: 'topleft' },
         onAdd() {
           const btn = document.createElement('button')
-          btn.className = 'cmtl-geolocate leaflet-bar'
+          btn.className = 'cmtl-geolocate'
           btn.setAttribute('aria-label', 'Me localiser')
           btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>'
           btn.onclick = () =>
-            navigator.geolocation?.getCurrentPosition((pos) =>
-              map?.setView([pos.coords.latitude, pos.coords.longitude], Math.max(map.getZoom(), 14))
-            )
+            navigator.geolocation?.getCurrentPosition((pos) => {
+              if (!map) return
+              const ll: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+              if (geoMarker) {
+                geoMarker.setLatLng(ll)
+              } else {
+                geoMarker = L.marker(ll, {
+                  interactive: false,
+                  icon: L.divIcon({
+                    className: '',
+                    html: '<span class="cmtl-geo-dot" aria-hidden="true"></span>',
+                    iconSize: [18, 18],
+                    iconAnchor: [9, 9],
+                  }),
+                }).addTo(map)
+              }
+              map.setView(ll, Math.max(map.getZoom(), 14))
+            })
           return btn
         },
       })
