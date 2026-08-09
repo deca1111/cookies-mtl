@@ -6,10 +6,12 @@ test('le nom textuel du site est Cookies Club — Montréal', () => {
   expect(SITE_URL).toBe('https://cookies.zucchinistudio.com')
 })
 
-test('le title couvre les requêtes FR et EN', () => {
+test('le title couvre les requêtes FR et EN (wording de Léo, v1.2)', () => {
   expect(SITE_TITLE).toContain('Cookies Club — Montréal')
-  expect(SITE_TITLE.toLowerCase()).toContain('cookie map')
-  expect(SITE_DESCRIPTION).toContain('MTL')
+  expect(SITE_TITLE.toLowerCase()).toContain('carte des cookies de montréal')
+  expect(SITE_TITLE.toLowerCase()).toContain('montreal cookies')
+  expect(SITE_DESCRIPTION).toContain('Montréal')
+  expect(SITE_DESCRIPTION).toContain('Montreal')
 })
 
 test('titre et description de fiche', () => {

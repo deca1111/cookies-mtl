@@ -4,7 +4,7 @@
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cookies.zucchinistudio.com'
 export const SITE_NAME = 'Cookies Club — Montréal'
 export const SITE_BRAND = 'Cookies Club'
-export const SITE_TITLE = "Cookies Club — Montréal · Ma carte des cookies de Montréal· My map of Montreal cookies"
+export const SITE_TITLE = 'Cookies Club — Montréal · Ma carte des cookies de Montréal · My map of Montreal cookies'
 export const SITE_DESCRIPTION =
   'Les meilleurs cookies de Montréal, goûtés, notés et cartographiés. ' +
   'The best cookies in Montreal, tasted, rated and mapped.'
