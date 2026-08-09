@@ -11,6 +11,7 @@ import { cookieMarkerHtml } from '@/lib/cookie-marker'
 import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
+import { MapChrome } from './MapChrome'
 import { RasterMap } from './RasterMap'
 import { ShopSheet } from './ShopSheet'
 import { ThemeToggle } from './ThemeToggle'
@@ -369,6 +370,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           </button>
         </div>
       )}
+      <MapChrome />
       <button
         onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')}
         className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-3.5 py-2 text-[11px] font-medium tracking-[0.14em] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
