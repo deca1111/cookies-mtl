@@ -268,8 +268,8 @@ body {
   }
 }
 
-/* Drawer liste : vrai slide complet depuis le bord gauche, cadence posée
-   (retour QA v1.2 round 2 : « ralentir un peu », fermeture animée ajoutée). */
+/* Drawer liste : vrai slide complet depuis le bord DROIT (QA round 3), cadence
+   posée (QA round 2 : « ralentir un peu », fermeture animée ajoutée). */
 .cmtl-drawer {
   animation: cmtl-drawer-in 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -288,7 +288,7 @@ body {
 
 @keyframes cmtl-drawer-in {
   from {
-    transform: translateX(-100%);
+    transform: translateX(100%);
   }
   to {
     transform: translateX(0);
@@ -297,7 +297,7 @@ body {
 
 @keyframes cmtl-drawer-out {
   to {
-    transform: translateX(-100%);
+    transform: translateX(100%);
   }
 }
 
@@ -355,10 +355,91 @@ body {
 /* --- MapLibre chrome, brought into the palette ---------------------------- */
 .maplibregl-ctrl-group {
   background: var(--surface) !important;
-  border: 1px solid var(--border) !important;
+  /* border-strong (QA round 3) : les chips ton sur ton se perdaient sur la carte. */
+  border: 1px solid var(--border-strong) !important;
   border-radius: 999px !important;
   box-shadow: var(--shadow-chip) !important;
   overflow: hidden;
+}
+
+/* Attribution compacte du fallback Leaflet (QA round 4) : même esprit que le ⓘ
+   MapLibre — un bouton rond, fermé par défaut, texte déplié au tap, thème. */
+.cmtl-attrib {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-radius: 999px;
+  box-shadow: var(--shadow-chip);
+  min-height: 24px;
+}
+
+.cmtl-attrib-text {
+  display: none;
+  padding: 2px 2px 2px 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.cmtl-attrib-text a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cmtl-attrib-open .cmtl-attrib-text {
+  display: inline;
+}
+
+.cmtl-attrib button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.cmtl-attrib button:hover {
+  opacity: 1;
+}
+
+/* Bouton géoloc du fallback Leaflet : même chip que les contrôles MapLibre
+   (QA round 3 — il n'avait que le chrome leaflet-bar par défaut). */
+.cmtl-geolocate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--surface);
+  color: var(--text-body);
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  box-shadow: var(--shadow-chip);
+  cursor: pointer;
+}
+
+.cmtl-geolocate:hover {
+  background: var(--surface-2);
+}
+
+/* Point de position du fallback Leaflet — équivalent du dot du GeolocateControl
+   MapLibre, aux couleurs de la marque. */
+.cmtl-geo-dot {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 3px solid var(--surface);
+  box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(0, 0, 0, 0.25);
 }
 
 .maplibregl-ctrl-group button {

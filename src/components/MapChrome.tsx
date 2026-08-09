@@ -13,13 +13,14 @@ export function MapChrome({ onLogoClick }: { onLogoClick?: () => void }) {
       >
         <BrandLogo size={88} />
       </button>
-      {/* Premier plan (z-30, au-dessus de la fiche) : le crédit est minuscule et ne
-          recouvre rien d'interactif — retour QA v1.1. */}
+      {/* z-[15] : au-dessus de la carte mais SOUS la fiche (z-20) et le panneau
+          liste — il intersectait leurs coins (QA v1.2 round 3). Quand une surface
+          s'ouvre, elle recouvre le crédit ; carte nue, il reste visible. */}
       <a
         href="https://zucchinistudio.com"
         target="_blank"
         rel="noopener noreferrer"
-        className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-3 z-30 rounded-full bg-[color:var(--surface)]/80 px-2.5 py-1 text-[10px] text-[color:var(--text-muted)] transition-colors hover:text-[color:var(--accent-ink)] hover:underline underline-offset-2"
+        className="absolute bottom-[calc(0.5rem+env(safe-area-inset-bottom))] left-3 z-[15] rounded-full bg-[color:var(--surface)]/80 px-2.5 py-1 text-[10px] text-[color:var(--text-muted)] transition-colors hover:text-[color:var(--accent-ink)] hover:underline underline-offset-2"
       >
         with love by Zucchini Studio
       </a>

@@ -274,14 +274,21 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           maxTileCacheSize: MAX_TILE_CACHE_SIZE,
         })
         mapRef.current = map
-        // Retour QA v1.1 : l'attribution compacte (<details>) s'ouvre d'elle-même à
-        // l'init et chevauche le crédit bas-gauche sur mobile — refermée par défaut,
-        // le bouton ⓘ reste accessible pour la consulter.
-        const attrib = containerRef.current.querySelector('details.maplibregl-ctrl-attrib')
-        if (attrib instanceof HTMLDetailsElement) {
-          attrib.open = false
-          attrib.classList.remove('maplibregl-compact-show')
+        // Retour QA v1.1 + round 4 v1.2 : l'attribution compacte (<details>) s'ouvre
+        // d'elle-même — une première fois à l'init, puis MapLibre la ROUVRE quand le
+        // style finit de charger (d'où le « ouvert au refresh » constaté en QA).
+        // On la referme donc aux deux moments ; le bouton ⓘ reste accessible.
+        const closeAttrib = () => {
+          const attrib = containerRef.current?.querySelector('details.maplibregl-ctrl-attrib')
+          if (attrib instanceof HTMLDetailsElement) {
+            attrib.open = false
+            attrib.classList.remove('maplibregl-compact-show')
+          }
         }
+        closeAttrib()
+        // Garde `typeof` : le mock maplibre des tests n'implémente pas `once`
+        // (même précaution que la mini-carte admin).
+        if (typeof map.once === 'function') map.once('load', closeAttrib)
         failureCount = 0
         setMapError(false)
 
@@ -425,16 +432,17 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           setIntroOpen(true)
         }}
       />
-      {/* Onglet accroché au bord gauche, à mi-hauteur : le panneau liste sort de ce
-          côté — le bouton vit là où l'UI s'ouvre (retour QA v1.2 round 1). */}
+      {/* Onglet accroché au bord DROIT, à mi-hauteur : le panneau liste sort de ce
+          côté (QA round 3). Fond espresso plein : les chips ton sur ton se perdaient
+          sur la carte crème — celui-ci doit se voir, c'est la porte d'entrée de la liste. */}
       <button
         onClick={() => setListOpen(true)}
         aria-label={t('listOpen')}
-        className="absolute left-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
+        className="absolute right-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-l-2xl bg-[color:var(--btn-bg)] text-[color:var(--btn-text)] shadow-[var(--shadow-float)] transition-colors hover:bg-[color:var(--btn-bg-hover)]"
       >
         <IconList size={16} />
       </button>
-      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
+      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
       <ShopListPanel
         shops={shops}
         open={listOpen}

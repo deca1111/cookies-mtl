@@ -17,14 +17,14 @@ function renderPopup(onClose = () => {}) {
   )
 }
 
-test('dialogue accessible avec Instagram, mail et fermeture (animée, donc différée)', async () => {
+test('dialogue accessible avec Instagram (sans mail — QA round 3) et fermeture animée', async () => {
   let closed = false
   renderPopup(() => {
     closed = true
   })
   expect(screen.getByRole('dialog')).toBeDefined()
   expect(screen.getByRole('link', { name: /Instagram/ })).toBeDefined()
-  expect(screen.getByRole('link', { name: /Nous écrire/ })).toBeDefined()
+  expect(screen.queryByRole('link', { name: /Nous écrire|Email/ })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
   expect(screen.getByRole('dialog').getAttribute('data-closing')).toBe('true')
   await waitFor(() => expect(closed).toBe(true))
@@ -54,8 +54,15 @@ test('l’animation d’entrée vient du logo, sauf à l’ouverture automatique
 test('le toggle FR/EN dans la popup change la langue globale', async () => {
   renderPopup()
   fireEvent.click(screen.getByRole('button', { name: 'English' }))
-  expect(await screen.findByRole('link', { name: /Email us/ })).toBeDefined()
+  expect(await screen.findByText(/based on my preferences/)).toBeDefined()
   expect(localStorage.getItem('cmtl_lang')).toBe('en')
+})
+
+test('les [mots] du texte passent en typo titre', () => {
+  renderPopup()
+  const dialog = screen.getByRole('dialog')
+  const display = Array.from(dialog.querySelectorAll('p .font-display')).map((el) => el.textContent)
+  expect(display).toContain('mes goûts')
 })
 
 test('open=false ne rend rien', () => {

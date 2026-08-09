@@ -18,11 +18,11 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
-    // Placeholder v1.2 — vraie valeur fournie par Léo (texte de présentation).
+    // Texte de Léo (v1.2). Mini-format (lib/intro-markup) : \n = saut de ligne,
+    // ligne vide (\n\n) = nouveau paragraphe, [mots] = typo titre Gill Sans.
     introBody:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit — texte de présentation à venir. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      'Bienvenue sur ma carte avec tous les cookies que j’ai goûtés à Montréal !\nAttention, elle est basée sur mes préférences, mon mood du jour et surtout [mes goûts]. \nSi tu veux m’en conseiller un, écris-moi sur Insta :)',
     introInstagram: 'Instagram',
-    introEmail: 'Nous écrire',
     listOpen: 'Ouvrir la liste des cookies',
     listTitle: 'Tous les cookies',
     listClose: 'Fermer la liste',
@@ -49,11 +49,10 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
-    // Placeholder v1.2 — vraie valeur fournie par Léo (texte de présentation).
+    // Traduction EN du texte de Léo — à valider par lui. Même mini-format que le FR.
     introBody:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit — presentation text coming soon. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      'Welcome to my map of all the cookies I’ve tasted in Montréal!\nKeep in mind, this is based on my preferences, my mood that day, and above all, [my tastes].\nIf you want to recommend one, message me on Insta :)',
     introInstagram: 'Instagram',
-    introEmail: 'Email us',
     listOpen: 'Open the cookie list',
     listTitle: 'All the cookies',
     listClose: 'Close the list',

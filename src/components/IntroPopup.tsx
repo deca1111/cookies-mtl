@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { SITE_BRAND, SITE_CONTACT_EMAIL, SITE_INSTAGRAM_URL } from '@/lib/site'
+import { SITE_BRAND, SITE_INSTAGRAM_URL } from '@/lib/site'
+import { parseIntroParagraphs } from '@/lib/intro-markup'
 import { useLang } from './LangProvider'
-import { IconClose, IconInstagram, IconMail } from './icons'
+import { IconClose, IconInstagram } from './icons'
 
 // Clé localStorage : la popup ne s'auto-ouvre qu'à la première visite (spec v1.2 §5) ;
 // ensuite elle reste accessible via la pastille logo.
@@ -113,8 +114,22 @@ export function IntroPopup({
           <IconClose />
         </button>
         <h2 className="font-display pr-8 text-[24px] leading-tight text-[color:var(--text-strong)]">{SITE_BRAND}</h2>
-        <p className="mt-3 text-[14px] leading-relaxed text-[color:var(--text-body)]">{t('introBody')}</p>
-        <div className="mt-5 flex flex-col gap-2.5">
+        {/* Mini-format du texte (lib/intro-markup) : ligne vide = paragraphe,
+            \n = saut de ligne (whitespace-pre-line), [mots] = typo titre. */}
+        {parseIntroParagraphs(t('introBody')).map((para, i) => (
+          <p key={i} className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-[color:var(--text-body)]">
+            {para.map((seg, j) =>
+              seg.display ? (
+                <span key={j} className="font-display text-[color:var(--text-strong)]">
+                  {seg.text}
+                </span>
+              ) : (
+                <span key={j}>{seg.text}</span>
+              )
+            )}
+          </p>
+        ))}
+        <div className="mt-5">
           <a
             href={SITE_INSTAGRAM_URL}
             target="_blank"
@@ -122,12 +137,6 @@ export function IntroPopup({
             className="inline-flex items-center gap-2 text-[14px] text-[color:var(--accent-ink)] underline-offset-4 hover:underline"
           >
             <IconInstagram size={15} /> {t('introInstagram')}
-          </a>
-          <a
-            href={`mailto:${SITE_CONTACT_EMAIL}`}
-            className="inline-flex items-center gap-2 text-[14px] text-[color:var(--accent-ink)] underline-offset-4 hover:underline"
-          >
-            <IconMail size={15} /> {t('introEmail')}
           </a>
         </div>
         <div className="mt-5 flex items-center gap-1 border-t border-[color:var(--border)] pt-4">
