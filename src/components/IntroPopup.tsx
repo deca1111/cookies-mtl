@@ -113,7 +113,8 @@ export function IntroPopup({
           <IconClose />
         </button>
         <h2 className="font-display pr-8 text-[24px] leading-tight text-[color:var(--text-strong)]">{SITE_BRAND}</h2>
-        <p className="mt-3 text-[14px] leading-relaxed text-[color:var(--text-body)]">{t('introBody')}</p>
+        {/* whitespace-pre-line : le texte de Léo contient un vrai retour à la ligne. */}
+        <p className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-[color:var(--text-body)]">{t('introBody')}</p>
         <div className="mt-5">
           <a
             href={SITE_INSTAGRAM_URL}

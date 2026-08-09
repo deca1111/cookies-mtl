@@ -54,7 +54,7 @@ test('l’animation d’entrée vient du logo, sauf à l’ouverture automatique
 test('le toggle FR/EN dans la popup change la langue globale', async () => {
   renderPopup()
   fireEvent.click(screen.getByRole('button', { name: 'English' }))
-  expect(await screen.findByText(/presentation text coming soon/)).toBeDefined()
+  expect(await screen.findByText(/based on my tastes/)).toBeDefined()
   expect(localStorage.getItem('cmtl_lang')).toBe('en')
 })
 

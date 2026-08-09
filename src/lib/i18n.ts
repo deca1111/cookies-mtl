@@ -18,9 +18,9 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
-    // Placeholder v1.2 — vraie valeur fournie par Léo (texte de présentation).
+    // Texte de Léo (v1.2). Le \n est rendu par whitespace-pre-line dans IntroPopup.
     introBody:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit — texte de présentation à venir. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      'Bienvenue sur ma carte avec tous les cookies que j’ai goûtés à Montréal !\nATTENTION, elle est basée sur mes goûts, mes préférences et surtout mon mood. Si tu veux m’en conseiller un, écris-moi sur Insta :)',
     introInstagram: 'Instagram',
     listOpen: 'Ouvrir la liste des cookies',
     listTitle: 'Tous les cookies',
@@ -48,9 +48,9 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
-    // Placeholder v1.2 — vraie valeur fournie par Léo (texte de présentation).
+    // Traduction EN du texte de Léo — à valider par lui.
     introBody:
-      'Lorem ipsum dolor sit amet, consectetur adipiscing elit — presentation text coming soon. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+      'Welcome to my map of all the cookies I’ve tasted in Montréal!\nWARNING: it’s based on my tastes, my preferences and, above all, my mood. If you want to recommend one, message me on Insta :)',
     introInstagram: 'Instagram',
     listOpen: 'Open the cookie list',
     listTitle: 'All the cookies',
