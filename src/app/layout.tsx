@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Comfortaa } from "next/font/google";
 import "./globals.css";
 import { LangProvider } from "@/components/LangProvider";
+import { CookieSprite } from "@/components/CookieSprite";
 import { SITE_URL, SITE_TITLE, SITE_DESCRIPTION } from "@/lib/site";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -34,6 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col">
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <CookieSprite />
         <LangProvider>{children}</LangProvider>
       </body>
     </html>
