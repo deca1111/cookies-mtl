@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Shop } from '@/lib/shops'
 import { DirectionsModal } from './DirectionsModal'
 import { useLang } from './LangProvider'
@@ -12,8 +12,35 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [directionsOpen, setDirectionsOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [dragY, setDragY] = useState(0)
+  const dragRef = useRef<{ startY: number; startT: number } | null>(null)
 
   const onDirections = () => setDirectionsOpen(true)
+
+  // Deux crans : compact (70dvh) et étendu (92dvh), pilotés par un geste vertical
+  // sur la zone de poignée. Vers le haut on agrandit au relâcher ; vers le bas la
+  // fiche suit le doigt (indice visuel) puis réduit ou ferme selon le cran courant.
+  const onDragStart = (e: React.PointerEvent) => {
+    dragRef.current = { startY: e.clientY, startT: e.timeStamp }
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+  }
+  const onDragMove = (e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    setDragY(e.clientY - dragRef.current.startY)
+  }
+  const onDragEnd = (e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    const dy = e.clientY - dragRef.current.startY
+    const vy = dy / Math.max(1, e.timeStamp - dragRef.current.startT) // px/ms
+    dragRef.current = null
+    setDragY(0)
+    if (dy < -50 || vy < -0.4) setExpanded(true)
+    else if (dy > 50 || vy > 0.4) {
+      if (expanded) setExpanded(false)
+      else onClose()
+    }
+  }
 
   const onCopy = async () => {
     await navigator.clipboard.writeText(shop.address)
@@ -44,11 +71,26 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
     // part that can grow — title/rating/review/address) plus a `shrink-0` footer (the action
     // row + iOS chooser) that always stays visible below it. Same split on the sm: desktop
     // floating card.
-    <div className="cmtl-sheet fixed inset-x-0 bottom-0 z-20 flex max-h-[70dvh] flex-col rounded-t-[var(--radius-sheet)] border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 shadow-[var(--shadow-sheet)] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-h-[min(70vh,640px)] sm:w-[380px] sm:rounded-[var(--radius-sheet)] sm:border sm:shadow-[var(--shadow-float)]">
+    <div
+      className={`cmtl-sheet fixed inset-x-0 bottom-0 z-20 flex ${expanded ? 'h-[92dvh] max-h-[92dvh]' : 'max-h-[70dvh]'} transition-[max-height,height] duration-200 flex-col rounded-t-[var(--radius-sheet)] border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 shadow-[var(--shadow-sheet)] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-h-[min(70vh,640px)] sm:w-[380px] sm:rounded-[var(--radius-sheet)] sm:border sm:shadow-[var(--shadow-float)]`}
+      data-expanded={expanded ? 'true' : 'false'}
+      style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined, transition: dragY ? 'none' : undefined }}
+    >
+      {/* Poignée de drag : couvre la bande du handle + le haut de l'en-tête. touch-none
+          pour que le navigateur n'interprète pas le geste comme un scroll. Cachée en
+          desktop (sm:) où la fiche est une carte flottante sans crans. */}
+      <div
+        data-drag-zone
+        onPointerDown={onDragStart}
+        onPointerMove={onDragMove}
+        onPointerUp={onDragEnd}
+        onPointerCancel={onDragEnd}
+        className="absolute inset-x-0 top-0 z-10 h-10 cursor-grab touch-none sm:hidden"
+      />
       <button
         aria-label={t('close')}
         onClick={onClose}
-        className="absolute right-3 top-4 flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-2)] hover:text-[color:var(--text-strong)] sm:top-3"
+        className="absolute right-3 top-4 z-20 flex h-8 w-8 items-center justify-center rounded-full text-[13px] text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-2)] hover:text-[color:var(--text-strong)] sm:top-3"
       >
         <IconClose />
       </button>
