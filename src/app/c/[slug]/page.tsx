@@ -1,16 +1,21 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { CookieMap } from '@/components/CookieMap'
 import { getShopBySlug, listShops } from '@/lib/shops'
-import { SITE_NAME, shopTitle } from '@/lib/site'
+import { SITE_NAME, shopTitle, shopDescription } from '@/lib/site'
 
-export async function generateMetadata({ params }: PageProps<'/c/[slug]'>) {
+export async function generateMetadata({ params }: PageProps<'/c/[slug]'>): Promise<Metadata> {
   const { slug } = await params
   const shop = await getShopBySlug(slug)
   if (!shop) return { title: SITE_NAME }
+  const title = shopTitle(shop.name)
+  const description = shopDescription(shop)
   return {
-    title: shopTitle(shop.name),
-    description: `${String(shop.rating).replace('.', ',')} / 5 · ${shop.review.slice(0, 140)}`,
+    title,
+    description,
+    alternates: { canonical: `/c/${slug}` },
+    openGraph: { title, description, siteName: SITE_NAME, type: 'article' },
   }
 }
 
