@@ -3,9 +3,8 @@ export type Lang = 'fr' | 'en'
 export const dict = {
   fr: {
     directions: 'Itinéraire',
-    copyAddress: 'Copier',
     copyAddressFull: "Copier l’adresse",
-    copied: 'Copié',
+    addressCopied: 'Adresse copiée',
     share: 'Partager',
     googleListing: 'Fiche Google',
     mapUnavailable: 'La carte fait une pause cookie. Réessaie dans un instant !',
@@ -19,12 +18,24 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
+    // Placeholder v1.2 — vraie valeur fournie par Léo (texte de présentation).
+    introBody:
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit — texte de présentation à venir. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    introInstagram: 'Instagram',
+    introEmail: 'Nous écrire',
+    listOpen: 'Ouvrir la liste des cookies',
+    listTitle: 'Tous les cookies',
+    listClose: 'Fermer la liste',
+    sortDistance: 'Distance',
+    sortName: 'A–Z',
+    sortRating: 'Note',
+    geoUnavailable: 'Position indisponible — le tri par distance a besoin de ta localisation.',
+    seeDetails: 'Voir l’avis',
   },
   en: {
     directions: 'Directions',
-    copyAddress: 'Copy',
     copyAddressFull: 'Copy address',
-    copied: 'Copied',
+    addressCopied: 'Address copied',
     share: 'Share',
     googleListing: 'Google listing',
     mapUnavailable: 'The map is on a cookie break. Try again in a moment!',
@@ -38,6 +49,19 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
+    // Placeholder v1.2 — vraie valeur fournie par Léo (texte de présentation).
+    introBody:
+      'Lorem ipsum dolor sit amet, consectetur adipiscing elit — presentation text coming soon. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+    introInstagram: 'Instagram',
+    introEmail: 'Email us',
+    listOpen: 'Open the cookie list',
+    listTitle: 'All the cookies',
+    listClose: 'Close the list',
+    sortDistance: 'Distance',
+    sortName: 'A–Z',
+    sortRating: 'Rating',
+    geoUnavailable: 'Location unavailable — sorting by distance needs your location.',
+    seeDetails: 'See the review',
   },
 } as const satisfies Record<Lang, Record<string, string>>
 

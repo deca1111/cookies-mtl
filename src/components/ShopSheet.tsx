@@ -123,7 +123,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
             className="inline-flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--border-strong)] px-3 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
           >
             {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
-            {copied ? t('copied') : t('copyAddress')}
+            {t('copyAddressFull')}
           </button>
           <button
             onClick={onShare}

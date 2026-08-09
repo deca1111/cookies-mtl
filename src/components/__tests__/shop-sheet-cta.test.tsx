@@ -31,11 +31,10 @@ test('les 3 CTA vivent dans une grille à colonnes égales, avec icône', () => 
   expect(grid!.querySelectorAll('svg')).toHaveLength(3)
 })
 
-test('copier garde sa colonne : le libellé change, pas la structure', async () => {
+test('copier garde sa colonne : la structure ne bouge pas au clic', async () => {
   Object.assign(navigator, { clipboard: { writeText: async () => {} } })
   renderSheet()
   const btn = screen.getByRole('button', { name: "Copier l’adresse" })
   fireEvent.click(btn)
-  expect(await screen.findByText('Copié')).toBeDefined()
   expect(screen.getByRole('button', { name: "Copier l’adresse" })).toBe(btn) // aria stable
 })
