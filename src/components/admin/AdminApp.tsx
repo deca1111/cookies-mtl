@@ -170,15 +170,27 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
         </button>
       </header>
 
-      {!draft && (
-        <section className={card}>
-          <h2 className={eyebrow}>Ajouter un cookie</h2>
-          <PlaceSearch onPick={(p) => openDraft({ ...p, rating: 0, review: '' })} onManualRequest={startManual} />
-        </section>
-      )}
+      <section className={card}>
+        <h2 className={eyebrow}>Ajouter un cookie</h2>
+        <PlaceSearch onPick={(p) => openDraft({ ...p, rating: 0, review: '' })} onManualRequest={startManual} />
+      </section>
 
+      {/* Création et édition partagent le MÊME modal (spec v1.2 §7, style unifié). */}
       {draft && (
-        <section className={card}>
+        <div
+          className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/35 p-4 sm:items-center"
+          onClick={() => {
+            closeDraft()
+            setError(null)
+          }}
+        >
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-label={draft.id ? 'Modifier un cookie' : 'Ajouter un cookie'}
+          onClick={(e) => e.stopPropagation()}
+          className={`${card} my-6 w-full max-w-lg sm:my-0`}
+        >
           <h2 className={eyebrow}>{draft.id ? 'Modifier' : 'C’est bien ici ?'}</h2>
           <input
             value={draft.name}
@@ -235,6 +247,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
             </button>
           </div>
         </section>
+        </div>
       )}
 
       <section className={card}>
@@ -264,7 +277,11 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
         </div>
         <ul className="-my-1 divide-y divide-[color:var(--border)]">
           {sortShops(shops, sortKey, sortDir).map((shop) => (
-            <li key={shop.id} className="flex items-center justify-between gap-4 py-3">
+            <li
+              key={shop.id}
+              data-editing={draft?.id === shop.id || undefined}
+              className="flex items-center justify-between gap-4 py-3 data-[editing]:-mx-2 data-[editing]:rounded-lg data-[editing]:border-l-2 data-[editing]:border-[color:var(--accent)] data-[editing]:bg-[color:var(--accent-wash)] data-[editing]:px-2"
+            >
               <div className="min-w-0">
                 <span className="font-display block truncate text-[17px] text-[color:var(--text-strong)]">
                   {shop.name}

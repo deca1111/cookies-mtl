@@ -1,5 +1,10 @@
-import { expect, test, vi, beforeEach } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, expect, test, vi, beforeEach } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+
+// v1.2 : la carte PlaceSearch est visible en permanence (le formulaire est un modal
+// par-dessus) — sans cleanup entre les tests, les deux arbres montés dupliquent ses
+// placeholders.
+afterEach(cleanup)
 
 const mapConstructor = vi.fn()
 const markerConstructor = vi.fn()
