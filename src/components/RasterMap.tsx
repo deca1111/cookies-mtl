@@ -61,7 +61,9 @@ export function RasterMap({
       const sel = initialSelected.current
       // zoomControl retiré (QA v1.2 round 3) : le pinch/double-tap suffit, et la
       // carte MapLibre n'a pas de boutons de zoom non plus — parité visuelle.
-      map = L.map(containerRef.current, { zoomControl: false }).setView(
+      // attributionControl retiré (round 4) : le bandeau blanc Leaflet jurait sur le
+      // thème — remplacé par le contrôle compact maison (ⓘ, fermé par défaut).
+      map = L.map(containerRef.current, { zoomControl: false, attributionControl: false }).setView(
         sel ? [sel.lat, sel.lng] : MTL_CENTER,
         sel ? 15 : 12
       )
@@ -74,8 +76,6 @@ export function RasterMap({
         // ne demander QUE les tuiles intersectant la zone pré-rendue — sans ça, un
         // viewport large à faible zoom demande des tuiles hors pyramide (404)
         bounds: MTL_BOUNDS,
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors · style Cookies Club',
       })
       tileLayerRef.current = layer
       layer.addTo(map)
@@ -138,6 +138,27 @@ export function RasterMap({
         },
       })
       map.addControl(new GeoButton())
+
+      // Attribution compacte maison (QA round 4) : même comportement que le ⓘ
+      // MapLibre — fermée par défaut, un tap déplie le texte, aux couleurs du thème.
+      const Attrib = L.Control.extend({
+        options: { position: 'bottomright' },
+        onAdd() {
+          const wrap = document.createElement('div')
+          wrap.className = 'cmtl-attrib'
+          wrap.innerHTML =
+            '<span class="cmtl-attrib-text">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors · style Cookies Club · <a href="https://leafletjs.com" target="_blank" rel="noopener noreferrer">Leaflet</a></span>' +
+            '<button type="button" aria-label="Attributions" aria-expanded="false"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></button>'
+          const btn = wrap.querySelector('button')!
+          btn.onclick = () => {
+            const open = wrap.classList.toggle('cmtl-attrib-open')
+            btn.setAttribute('aria-expanded', String(open))
+          }
+          L.DomEvent.disableClickPropagation(wrap)
+          return wrap
+        },
+      })
+      map.addControl(new Attrib())
     })()
 
     return () => {
@@ -179,9 +200,11 @@ export function RasterMap({
           leaflet.css pose `background:#ddd` sur .leaflet-container (classe ajoutée
           par L.map à ce div) et gagnerait sur toute classe utilitaire. */}
       <div ref={containerRef} className="h-full w-full" style={{ background: 'var(--bg)' }} />
+      {/* bottom-14 (QA round 4) : à bottom-6 il chevauchait le crédit « with love »
+          et l'attribution sur les écrans étroits. */}
       <button
         onClick={onRetryWebgl}
-        className="absolute bottom-6 left-1/2 z-[1000] -translate-x-1/2 rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-2 text-[12px] text-[color:var(--text-muted)] shadow-[var(--shadow-chip)] transition-colors hover:text-[color:var(--text-body)]"
+        className="absolute bottom-14 left-1/2 z-[1000] -translate-x-1/2 rounded-full border border-[color:var(--border-strong)] bg-[color:var(--surface)] px-4 py-2 text-[12px] text-[color:var(--text-muted)] shadow-[var(--shadow-chip)] transition-colors hover:text-[color:var(--text-body)]"
       >
         {t('retryDetailedMap')}
       </button>

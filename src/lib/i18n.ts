@@ -51,7 +51,7 @@ export const dict = {
     googleMapsShort: 'Google Maps',
     // Traduction EN du texte de Léo — à valider par lui. Même mini-format que le FR.
     introBody:
-      'Welcome to my map of all the cookies I’ve tasted in Montréal!\nWarning: it’s based on my preferences, my mood of the day and above all [my taste].\nIf you want to recommend one, message me on Insta :)',
+      'Welcome to my map of all the cookies I’ve tasted in Montréal!\nKeep in mind, this is based on my preferences, my mood that day, and above all, [my tastes].\nIf you want to recommend one, message me on Insta :)',
     introInstagram: 'Instagram',
     listOpen: 'Open the cookie list',
     listTitle: 'All the cookies',

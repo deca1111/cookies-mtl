@@ -274,14 +274,21 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           maxTileCacheSize: MAX_TILE_CACHE_SIZE,
         })
         mapRef.current = map
-        // Retour QA v1.1 : l'attribution compacte (<details>) s'ouvre d'elle-même à
-        // l'init et chevauche le crédit bas-gauche sur mobile — refermée par défaut,
-        // le bouton ⓘ reste accessible pour la consulter.
-        const attrib = containerRef.current.querySelector('details.maplibregl-ctrl-attrib')
-        if (attrib instanceof HTMLDetailsElement) {
-          attrib.open = false
-          attrib.classList.remove('maplibregl-compact-show')
+        // Retour QA v1.1 + round 4 v1.2 : l'attribution compacte (<details>) s'ouvre
+        // d'elle-même — une première fois à l'init, puis MapLibre la ROUVRE quand le
+        // style finit de charger (d'où le « ouvert au refresh » constaté en QA).
+        // On la referme donc aux deux moments ; le bouton ⓘ reste accessible.
+        const closeAttrib = () => {
+          const attrib = containerRef.current?.querySelector('details.maplibregl-ctrl-attrib')
+          if (attrib instanceof HTMLDetailsElement) {
+            attrib.open = false
+            attrib.classList.remove('maplibregl-compact-show')
+          }
         }
+        closeAttrib()
+        // Garde `typeof` : le mock maplibre des tests n'implémente pas `once`
+        // (même précaution que la mini-carte admin).
+        if (typeof map.once === 'function') map.once('load', closeAttrib)
         failureCount = 0
         setMapError(false)
 

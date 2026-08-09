@@ -362,6 +362,54 @@ body {
   overflow: hidden;
 }
 
+/* Attribution compacte du fallback Leaflet (QA round 4) : même esprit que le ⓘ
+   MapLibre — un bouton rond, fermé par défaut, texte déplié au tap, thème. */
+.cmtl-attrib {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border-radius: 999px;
+  box-shadow: var(--shadow-chip);
+  min-height: 24px;
+}
+
+.cmtl-attrib-text {
+  display: none;
+  padding: 2px 2px 2px 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.cmtl-attrib-text a {
+  color: var(--text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cmtl-attrib-open .cmtl-attrib-text {
+  display: inline;
+}
+
+.cmtl-attrib button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--text-muted);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.cmtl-attrib button:hover {
+  opacity: 1;
+}
+
 /* Bouton géoloc du fallback Leaflet : même chip que les contrôles MapLibre
    (QA round 3 — il n'avait que le chrome leaflet-bar par défaut). */
 .cmtl-geolocate {
