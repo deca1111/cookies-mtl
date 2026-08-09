@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { SITE_BRAND, SITE_CONTACT_EMAIL, SITE_INSTAGRAM_URL } from '@/lib/site'
 import { useLang } from './LangProvider'
 import { IconClose, IconInstagram, IconMail } from './icons'
@@ -9,17 +9,57 @@ import { IconClose, IconInstagram, IconMail } from './icons'
 // ensuite elle reste accessible via la pastille logo.
 export const INTRO_SEEN_KEY = 'cmtl_intro_seen'
 
-export function IntroPopup({ open, onClose }: { open: boolean; onClose: () => void }) {
+// Durée de l'animation de fermeture (cmtl-intro-out) + marge : le démontage réel
+// attend la fin de l'animation, avec un fallback minuterie si animationend ne
+// vient pas (jsdom, prefers-reduced-motion).
+const CLOSE_ANIMATION_MS = 240
+
+export function IntroPopup({
+  open,
+  onClose,
+  origin = 'logo',
+}: {
+  open: boolean
+  onClose: () => void
+  // 'logo' : apparition/fermeture animées depuis la pastille logo.
+  // 'auto' : ouverture de première visite — PAS d'animation d'entrée (rien ne doit
+  // ralentir la première peinture), la fermeture reste animée.
+  origin?: 'auto' | 'logo'
+}) {
   const { t, lang, setLang } = useLang()
+  const [closing, setClosing] = useState(false)
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Réarmement à chaque réouverture (le composant reste monté entre deux).
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setClosing(false)
+    }
+  }, [open])
+
+  useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
+
+  const requestClose = () => {
+    if (closing) return
+    setClosing(true)
+    // Fallback si animationend ne fire pas ; sinon onAnimationEnd ferme avant.
+    closeTimer.current = setTimeout(onClose, CLOSE_ANIMATION_MS)
+  }
 
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') requestClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, closing])
 
   if (!open) return null
 
@@ -39,17 +79,29 @@ export function IntroPopup({ open, onClose }: { open: boolean; onClose: () => vo
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-5" onClick={onClose}>
+    <div
+      data-closing={closing || undefined}
+      className="cmtl-intro-overlay fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-5"
+      onClick={requestClose}
+    >
       <div
         role="dialog"
         aria-modal="true"
         aria-label={SITE_BRAND}
+        data-origin={origin}
+        data-closing={closing || undefined}
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-[380px] rounded-[var(--radius-sheet)] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-[var(--shadow-float)]"
+        onAnimationEnd={() => {
+          if (closing) {
+            if (closeTimer.current) clearTimeout(closeTimer.current)
+            onClose()
+          }
+        }}
+        className="cmtl-intro-card relative w-full max-w-[380px] rounded-[var(--radius-sheet)] border border-[color:var(--border)] bg-[color:var(--surface)] p-6 shadow-[var(--shadow-float)]"
       >
         <button
           aria-label={t('close')}
-          onClick={onClose}
+          onClick={requestClose}
           className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-[color:var(--text-muted)] transition-colors hover:bg-[color:var(--surface-2)] hover:text-[color:var(--text-strong)]"
         >
           <IconClose />

@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { LangProvider } from '../LangProvider'
 import { IntroPopup } from '../IntroPopup'
 
@@ -17,7 +17,7 @@ function renderPopup(onClose = () => {}) {
   )
 }
 
-test('dialogue accessible avec Instagram, mail et fermeture', () => {
+test('dialogue accessible avec Instagram, mail et fermeture (animée, donc différée)', async () => {
   let closed = false
   renderPopup(() => {
     closed = true
@@ -26,16 +26,29 @@ test('dialogue accessible avec Instagram, mail et fermeture', () => {
   expect(screen.getByRole('link', { name: /Instagram/ })).toBeDefined()
   expect(screen.getByRole('link', { name: /Nous écrire/ })).toBeDefined()
   fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
-  expect(closed).toBe(true)
+  expect(screen.getByRole('dialog').getAttribute('data-closing')).toBe('true')
+  await waitFor(() => expect(closed).toBe(true))
 })
 
-test('Échap ferme la popup', () => {
+test('Échap ferme la popup (différé par l’animation)', async () => {
   let closed = false
   renderPopup(() => {
     closed = true
   })
   fireEvent.keyDown(document, { key: 'Escape' })
-  expect(closed).toBe(true)
+  await waitFor(() => expect(closed).toBe(true))
+})
+
+test('l’animation d’entrée vient du logo, sauf à l’ouverture automatique', () => {
+  const { unmount } = renderPopup()
+  expect(screen.getByRole('dialog').getAttribute('data-origin')).toBe('logo')
+  unmount()
+  render(
+    <LangProvider>
+      <IntroPopup open origin="auto" onClose={() => {}} />
+    </LangProvider>
+  )
+  expect(screen.getByRole('dialog').getAttribute('data-origin')).toBe('auto')
 })
 
 test('le toggle FR/EN dans la popup change la langue globale', async () => {

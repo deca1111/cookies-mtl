@@ -102,6 +102,8 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
   // local to the effect, so a re-run gets a clean budget for free) and calls init() again.
   const [mapSession, setMapSession] = useState(0)
   const [introOpen, setIntroOpen] = useState(false)
+  // 'auto' (1re visite) : pas d'animation d'entrée ; 'logo' : la popup naît du logo.
+  const [introOrigin, setIntroOrigin] = useState<'auto' | 'logo'>('logo')
   const [listOpen, setListOpen] = useState(false)
   const { t } = useLang()
 
@@ -111,6 +113,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       if (!localStorage.getItem(INTRO_SEEN_KEY)) {
         // Hydratation volontaire, même motif que le renderer : décision client post-montage.
         // eslint-disable-next-line react-hooks/set-state-in-effect
+        setIntroOrigin('auto')
         setIntroOpen(true)
         localStorage.setItem(INTRO_SEEN_KEY, '1')
       }
@@ -416,16 +419,22 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           </button>
         </div>
       )}
-      <MapChrome onLogoClick={() => setIntroOpen(true)} />
-      {/* Emplacement libéré par l'ancien bouton EN (le toggle langue vit dans la popup). */}
+      <MapChrome
+        onLogoClick={() => {
+          setIntroOrigin('logo')
+          setIntroOpen(true)
+        }}
+      />
+      {/* Onglet accroché au bord gauche, à mi-hauteur : le panneau liste sort de ce
+          côté — le bouton vit là où l'UI s'ouvre (retour QA v1.2 round 1). */}
       <button
         onClick={() => setListOpen(true)}
         aria-label={t('listOpen')}
-        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
+        className="absolute left-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-r-2xl border border-l-0 border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
       >
         <IconList size={16} />
       </button>
-      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top)+44px)] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
+      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
       <ShopListPanel
         shops={shops}
         open={listOpen}
@@ -436,7 +445,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           setSelected(shop)
         }}
       />
-      <IntroPopup open={introOpen} onClose={() => setIntroOpen(false)} />
+      <IntroPopup open={introOpen} origin={introOrigin} onClose={() => setIntroOpen(false)} />
       {selected && <ShopSheet shop={selected} onClose={() => setSelected(null)} />}
     </div>
   )

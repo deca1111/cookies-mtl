@@ -135,16 +135,17 @@ body {
   /* Retour QA v1.1 : halo « trop prononcé » sous les cookies — ombre raccourcie
      et adoucie (avant : 0 3px 6px, plus lueur 10px/0.4 en sombre). */
   filter: drop-shadow(0 2px 4px var(--pin-shadow));
-  transition: opacity 220ms ease, filter 220ms ease;
+  transition: filter 220ms ease;
 }
 
 .cmtl-pin-cookie svg {
   width: 100%;
   height: 100%;
   display: block;
-  /* Le scale porte sur le svg : MapLibre pilote transform sur le bouton lui-même
-     (positionnement du Marker), y toucher casserait l'ancrage. */
-  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* Le scale ET l'estompe portent sur le svg : MapLibre pilote transform et
+     opacity INLINE sur le bouton lui-même (positionnement du Marker + occlusion),
+     y toucher serait écrasé — retour QA v1.2 round 1. */
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease;
   transform-origin: center;
 }
 
@@ -170,7 +171,7 @@ body {
   transform: scale(1.47);
 }
 
-.cmtl-pin-cookie[data-dimmed='true'] {
+.cmtl-pin-cookie[data-dimmed='true'] svg {
   opacity: 0.55;
 }
 
@@ -207,6 +208,62 @@ body {
 
 :root[data-theme='dark'] .cmtl-pin-cookie[data-selected='true'] {
   filter: drop-shadow(0 4px 8px var(--pin-shadow)) drop-shadow(0 0 6px rgba(210, 154, 85, 0.25));
+}
+
+/* Popup explicative : elle naît du logo (haut-gauche) et y retourne à la
+   fermeture — sauf à l'ouverture automatique de première visite (data-origin
+   'auto' : pas d'animation d'entrée, rien ne ralentit la première peinture). */
+.cmtl-intro-overlay {
+  animation: cmtl-fade-in 200ms ease-out;
+}
+
+.cmtl-intro-overlay[data-closing='true'] {
+  animation: cmtl-fade-out 200ms ease-in forwards;
+}
+
+.cmtl-intro-card[data-origin='logo'] {
+  animation: cmtl-intro-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cmtl-intro-card[data-closing='true'] {
+  animation: cmtl-intro-out 200ms ease-in forwards;
+}
+
+@keyframes cmtl-intro-in {
+  from {
+    opacity: 0;
+    transform: translate(calc(-50vw + 90px), calc(-50vh + 110px)) scale(0.15);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes cmtl-intro-out {
+  to {
+    opacity: 0;
+    transform: translate(calc(-50vw + 90px), calc(-50vh + 110px)) scale(0.15);
+  }
+}
+
+@keyframes cmtl-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cmtl-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmtl-intro-overlay,
+  .cmtl-intro-card {
+    animation: none !important;
+  }
 }
 
 /* Drawer liste : glisse depuis la gauche, discret et rapide. */
