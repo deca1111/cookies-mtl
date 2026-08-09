@@ -2,16 +2,20 @@ import { expect, test, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { RatingInput } from '../RatingInput'
 
-test('clicking right half of 4th cookie yields 4, left half yields 3.5', () => {
+test('slider 0→5 par pas de 0,5, câblé à onChange', () => {
   const onChange = vi.fn()
-  render(<RatingInput value={0} onChange={onChange} />)
-  fireEvent.click(screen.getByTestId('rating-4-full'))
-  expect(onChange).toHaveBeenCalledWith(4)
-  fireEvent.click(screen.getByTestId('rating-4-half'))
+  render(<RatingInput value={3} onChange={onChange} />)
+  const slider = screen.getByTestId('rating-slider') as HTMLInputElement
+  expect(slider.min).toBe('0')
+  expect(slider.max).toBe('5')
+  expect(slider.step).toBe('0.5')
+  fireEvent.change(slider, { target: { value: '3.5' } })
   expect(onChange).toHaveBeenCalledWith(3.5)
 })
 
-test('renders current value accessibly', () => {
-  render(<RatingInput value={2.5} onChange={() => {}} />)
-  expect(screen.getByRole('group', { name: 'Note : 2,5 / 5' })).toBeDefined()
+test('la visualisation cookies reflète la valeur', () => {
+  const { container } = render(<RatingInput value={3.5} onChange={() => {}} />)
+  expect(container.querySelectorAll('[data-cookie="full"]')).toHaveLength(3)
+  expect(container.querySelectorAll('[data-cookie="half"]')).toHaveLength(1)
+  expect(container.textContent).toContain('3,5')
 })
