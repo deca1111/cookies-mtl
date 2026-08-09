@@ -36,6 +36,16 @@
 
   --danger: #9a3b2a; /* terracotta — a warning that belongs to this palette */
 
+  /* Accents v1.2.1 issus du logo (retour couleurs de Léo) */
+  --accent-blue: #4560a9; /* le bleu du logo, tel quel — lisible sur crème */
+  --brand-peach: #f3c787; /* « orange crème » du logo (pâte à cookie) */
+  --brand-peach-ink: #502712; /* le brun du logo, pour écrire sur le peach */
+
+  /* Fond de la CARTE (peut diverger du fond de page --bg : en sombre, la carte
+     est un cran plus claire pour laisser respirer l'UI moka — retour Léo). Doit
+     rester aligné sur PALETTES[theme].background (src/lib/map-style.ts). */
+  --map-bg: #f3ede3;
+
   --radius-sheet: 28px;
   --radius-card: 18px;
   --radius-field: 12px;
@@ -74,6 +84,12 @@
   --pin-shadow: rgba(0, 0, 0, 0.55);
 
   --danger: #e5907a;
+
+  /* Bleu du logo éclairci pour rester lisible sur le chocolat (le #4560a9 brut
+     manque de contraste en petit corps sur fond sombre). */
+  --accent-blue: #7b93d4;
+
+  --map-bg: #2e2318; /* = PALETTES.dark.background — carte plus claire que l'UI */
 
   --shadow-sheet: 0 -2px 40px rgba(0, 0, 0, 0.5);
   --shadow-float: 0 10px 34px rgba(0, 0, 0, 0.45);

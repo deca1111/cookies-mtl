@@ -433,12 +433,12 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         }}
       />
       {/* Onglet accroché au bord DROIT, à mi-hauteur : le panneau liste sort de ce
-          côté (QA round 3). Fond espresso plein : les chips ton sur ton se perdaient
-          sur la carte crème — celui-ci doit se voir, c'est la porte d'entrée de la liste. */}
+          côté (QA round 3). « Orange crème » du logo (retour couleurs) : il se voit
+          sur les deux fonds de carte, c'est la porte d'entrée de la liste. */}
       <button
         onClick={() => setListOpen(true)}
         aria-label={t('listOpen')}
-        className="absolute right-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-l-2xl bg-[color:var(--btn-bg)] text-[color:var(--btn-text)] shadow-[var(--shadow-float)] transition-colors hover:bg-[color:var(--btn-bg-hover)]"
+        className="absolute right-0 top-1/2 z-10 flex h-12 w-10 -translate-y-1/2 items-center justify-center rounded-l-2xl bg-[color:var(--brand-peach)] text-[color:var(--brand-peach-ink)] shadow-[var(--shadow-float)] transition-[filter] hover:brightness-95"
       >
         <IconList size={16} />
       </button>
