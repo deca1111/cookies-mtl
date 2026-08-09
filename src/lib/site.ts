@@ -9,6 +9,11 @@ export const SITE_DESCRIPTION =
   'Les meilleurs cookies de Montréal (MTL), goûtés, notés et cartographiés. ' +
   'The best cookies in Montreal, tasted, rated and mapped by Cookies Club.'
 
+// Placeholder v1.2 — vraie valeur fournie par Léo (handle Instagram réel).
+export const SITE_INSTAGRAM_URL = 'https://www.instagram.com/cookiesclub.mtl'
+// Placeholder v1.2 — vraie valeur fournie par Léo (adresse de contact réelle).
+export const SITE_CONTACT_EMAIL = 'bonjour@cookiesclub.example'
+
 export function shopTitle(name: string): string {
   return `${name} — Cookies Club Montréal`
 }
