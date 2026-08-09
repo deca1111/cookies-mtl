@@ -25,6 +25,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   const [error, setError] = useState<string | null>(null)
   const [sortKey, setSortKey] = useState<'name' | 'rating'>('rating')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [relocating, setRelocating] = useState(false)
   const mapDiv = useRef<HTMLDivElement>(null)
   const markerRef = useRef<maplibregl.Marker | null>(null)
 
@@ -50,6 +51,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   const closeDraft = () => {
     setDraft(null)
     setManualName(null)
+    setRelocating(false)
     setDraftSession((s) => s + 1)
   }
 
@@ -90,7 +92,9 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     const marker = new maplibregl.Marker({ draggable: true }).setLngLat([draft.lng, draft.lat]).addTo(map)
     marker.on('dragend', () => {
       const { lat, lng } = marker.getLngLat()
-      setDraft((d) => (d ? { ...d, lat, lng } : d))
+      // Adresse vidée exprès : l'effet de géocodage inverse la re-dérive des
+      // nouvelles coordonnées (spec v1.2 §8 — l'adresse n'est jamais saisie).
+      setDraft((d) => (d ? { ...d, lat, lng, address: '' } : d))
     })
     markerRef.current = marker
     return () => {
@@ -99,6 +103,26 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftSession])
+
+  // Spec v1.2 §8 : coordonnées sans adresse (lien Google, manuel, drag du pin)
+  // → géocodage inverse Photon via /api/places. `stale` neutralise les réponses
+  // en retard quand le point a rebougé entre-temps.
+  useEffect(() => {
+    if (!draft || draft.address !== '') return
+    const { lat, lng } = draft
+    let stale = false
+    fetch(`/api/places?lat=${lat}&lng=${lng}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { address?: string | null } | null) => {
+        if (stale || !data?.address) return
+        setDraft((d) => (d && d.lat === lat && d.lng === lng ? { ...d, address: data.address as string } : d))
+      })
+      .catch(() => {})
+    return () => {
+      stale = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft?.lat, draft?.lng, draft?.address])
 
   const startManual = (typedName: string) => {
     setManualName(typedName)
@@ -143,7 +167,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
 
   const errorLabels: Record<string, string> = {
     name: 'Le nom est requis.',
-    address: 'L’adresse est requise.',
+    address: 'Adresse introuvable — déplace le point ou relance une recherche.',
     position: 'La position doit être à Montréal.',
     rating: 'Choisis une note (0 à 5, par demi-cookie).',
     googleMapsUrl: 'Le lien Google est invalide.',
@@ -198,12 +222,33 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
             placeholder="Nom du magasin"
             className={field}
           />
-          <input
-            value={draft.address}
-            onChange={(e) => setDraft({ ...draft, address: e.target.value })}
-            placeholder="Adresse"
-            className={field}
-          />
+          {/* Spec v1.2 §8 : adresse + position = bloc atomique. L'adresse s'affiche
+              en lecture seule et ne change qu'en re-passant par la recherche (ou par
+              géocodage inverse après un drag du pin) — jamais de saisie libre. */}
+          <div className="flex items-center justify-between gap-3 rounded-[var(--radius-field)] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3">
+            <p className="min-w-0 flex-1 text-[14px] text-[color:var(--text-body)]">
+              {draft.address || 'Adresse en cours de recherche…'}
+            </p>
+            <button
+              type="button"
+              onClick={() => setRelocating(true)}
+              className="shrink-0 text-[13px] text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)]"
+            >
+              Changer le lieu
+            </button>
+          </div>
+          {relocating && (
+            <PlaceSearch
+              onPick={(p) => {
+                // Bloc atomique : adresse + lat + lng remplacés ensemble. Nom et
+                // lien Google conservés (éditables à part).
+                setDraft((d) => (d ? { ...d, address: p.address, lat: p.lat, lng: p.lng } : d))
+                setRelocating(false)
+                setDraftSession((s) => s + 1) // recentre la mini-carte sur le nouveau lieu
+              }}
+              onManualRequest={() => setRelocating(false)}
+            />
+          )}
           <div
             ref={mapDiv}
             className="h-52 w-full overflow-hidden rounded-[var(--radius-field)] border border-[color:var(--border-strong)]"
