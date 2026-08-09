@@ -30,30 +30,40 @@ export function currentTheme(): MapTheme {
 // colours — building fills, bridge/tunnel casings, non-park landuse & landcover fills,
 // and waterway/ferry lines. Each is interpolated between the already-approved ground and
 // road tones of its theme, so new layers read as the same system rather than a new colour.
+// Retour couleurs v1.2.1 (Léo) : parcs du thème clair verdis (« trop plat et blanc »),
+// et fond de carte SOMBRE éclairci de DEUX crans depuis le #241a13 d'origine — l'UI
+// moka (surfaces #2c2018) ressort en éléments posés sur une carte plus claire.
+// ⚠️ Toute retouche du background doit être répercutée sur --map-bg ET --bg sombre
+// (globals.css, anti-flicker au chargement) et, après validation de Léo (mobile
+// incluse), sur les tuiles du fallback via `npm run tiles:render` — d'ici là le
+// fallback garde l'ancienne teinte, c'est assumé.
 const PALETTES = {
+  // Clair = variante C du proto (validée par Léo) : fond taupe prononcé, les
+  // routes reprennent le crème historique — fini le « blanc partout ».
   light: {
-    background: '#f3ede3',
-    water: '#dbd3c2',
-    roads: '#fffdf8',
-    parks: '#e5e5d2',
+    background: '#dcd2bf',
+    water: '#c6bba5',
+    roads: '#f3ede3',
+    parks: '#dce4c6',
     text: '#5b4a38',
-    building: '#e8dcc8',
-    buildingOutline: '#cbb897',
-    roadCasing: '#d9cbb0',
-    landuseAlt: '#ece2d0',
-    waterway: '#c7bda2',
+    building: '#d2c6b0',
+    buildingOutline: '#b5a488',
+    roadCasing: '#bfb096',
+    landuseAlt: '#d6cbb6',
+    waterway: '#b0a189',
   },
+  // Sombre = variante E du proto (+1 cran, le +2 était trop clair).
   dark: {
-    background: '#241a13',
-    water: '#181109',
-    roads: '#3a2b1f',
-    parks: '#25301f',
+    background: '#2e2318',
+    water: '#1d1510',
+    roads: '#463527',
+    parks: '#2f3b27',
     text: '#bcaa98',
-    building: '#2f2116',
-    buildingOutline: '#4a3624',
-    roadCasing: '#2b1f15',
-    landuseAlt: '#2a1d13',
-    waterway: '#20170f',
+    building: '#392b1e',
+    buildingOutline: '#554130',
+    roadCasing: '#362a1e',
+    landuseAlt: '#34271b',
+    waterway: '#281e14',
   },
 }
 

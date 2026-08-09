@@ -56,15 +56,15 @@ test('buildMapStyle pose le halo thème sur toutes les couches symbol restantes'
   const symbols = light.layers.filter((l) => l.type === 'symbol')
   expect(symbols.length).toBeGreaterThan(0)
   for (const s of symbols) {
-    expect(s.paint?.['text-halo-color']).toBe('#f3ede3') // PALETTES.light.background
+    expect(s.paint?.['text-halo-color']).toBe('#dcd2bf') // PALETTES.light.background (variante C)
     expect(s.paint?.['text-halo-width']).toBe(1.5)
   }
   const dark = buildMapStyle(fixture(), 'dark')
-  expect(dark.layers.find((l) => l.id === 'label_city')?.paint?.['text-halo-color']).toBe('#241a13')
+  expect(dark.layers.find((l) => l.id === 'label_city')?.paint?.['text-halo-color']).toBe('#2e2318')
 })
 
 test('buildMapStyle applique aussi la palette (via applyPalette)', () => {
   const style = buildMapStyle(fixture(), 'light')
-  expect(style.layers.find((l) => l.id === 'background')?.paint?.['background-color']).toBe('#f3ede3')
-  expect(style.layers.find((l) => l.id === 'water')?.paint?.['fill-color']).toBe('#dbd3c2')
+  expect(style.layers.find((l) => l.id === 'background')?.paint?.['background-color']).toBe('#dcd2bf')
+  expect(style.layers.find((l) => l.id === 'water')?.paint?.['fill-color']).toBe('#c6bba5')
 })

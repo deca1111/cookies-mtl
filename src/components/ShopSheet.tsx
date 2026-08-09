@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Shop } from '@/lib/shops'
 import { DirectionsModal } from './DirectionsModal'
 import { useLang } from './LangProvider'
@@ -9,7 +9,9 @@ import { IconCheck, IconClose, IconCopy, IconDirections, IconExternal, IconShare
 
 export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }) {
   const { t } = useLang()
-  const [copied, setCopied] = useState(false)
+  // Cycle du toast de copie : shown (2 s) → closing (animation de sortie) → hidden.
+  const [copyToast, setCopyToast] = useState<'hidden' | 'shown' | 'closing'>('hidden')
+  const copyTimers = useRef<ReturnType<typeof setTimeout>[]>([])
   const [linkCopied, setLinkCopied] = useState(false)
   const [directionsOpen, setDirectionsOpen] = useState(false)
   const [dragY, setDragY] = useState(0)
@@ -37,10 +39,18 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
     if (dy > 50 || vy > 0.4) onClose()
   }
 
+  useEffect(() => {
+    return () => copyTimers.current.forEach(clearTimeout)
+  }, [])
+
   const onCopy = async () => {
     await navigator.clipboard.writeText(shop.address)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    copyTimers.current.forEach(clearTimeout)
+    setCopyToast('shown')
+    copyTimers.current = [
+      setTimeout(() => setCopyToast('closing'), 1800),
+      setTimeout(() => setCopyToast('hidden'), 2050),
+    ]
   }
 
   const onShare = async () => {
@@ -112,7 +122,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
             aria-label={t('copyAddressFull')}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[color:var(--border-strong)] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
           >
-            {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+            {copyToast !== 'hidden' ? <IconCheck size={15} /> : <IconCopy size={15} />}
           </button>
         </div>
       </div>
@@ -141,10 +151,15 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
         </div>
       </div>
 
-      {copied && (
+      {/* Bas-centre de l'ÉCRAN, au premier plan (retour Léo). Centré par
+          inset-x-0 + mx-auto, PAS par translate : Tailwind v4 pose `translate`
+          (propriété) pendant que l'animation anime `transform` — les deux se
+          cumulaient et le toast apparaissait décalé à gauche. */}
+      {copyToast !== 'hidden' && (
         <div
           role="status"
-          className="cmtl-toast absolute -top-14 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-[color:var(--btn-bg)] px-4 py-2 text-[13px] font-medium text-[color:var(--btn-text)] shadow-[var(--shadow-chip)]"
+          data-closing={copyToast === 'closing' || undefined}
+          className="cmtl-toast fixed inset-x-0 bottom-[calc(1.25rem+env(safe-area-inset-bottom))] z-50 mx-auto w-fit whitespace-nowrap rounded-full bg-[color:var(--btn-bg)] px-4 py-2 text-[13px] font-medium text-[color:var(--btn-text)] shadow-[var(--shadow-float)]"
         >
           {t('addressCopied')}
         </div>

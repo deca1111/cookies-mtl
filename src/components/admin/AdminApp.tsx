@@ -29,11 +29,14 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   const [relocating, setRelocating] = useState(false)
   const mapDiv = useRef<HTMLDivElement>(null)
   const markerRef = useRef<maplibregl.Marker | null>(null)
+  // Clé « lat,lng » du dernier géocodage inverse tenté — voir l'effet plus bas.
+  const reverseAttempted = useRef<string | null>(null)
 
   // Opens a draft and bumps the session counter, so the mini-map effect (keyed on
   // draftSession) only rebuilds the map when a NEW draft is opened — not on every
   // keystroke of the in-form fields (name, address, review, etc.).
   const openDraft = (d: Draft) => {
+    reverseAttempted.current = null
     setDraft(d)
     setDraftSession((s) => s + 1)
   }
@@ -107,15 +110,26 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
 
   // Spec v1.2 §8 : coordonnées sans adresse (lien Google, manuel, drag du pin)
   // → géocodage inverse Photon via /api/places. `stale` neutralise les réponses
-  // en retard quand le point a rebougé entre-temps.
+  // en retard quand le point a rebougé entre-temps. S'applique AUSSI aux adresses
+  // sans numéro civique (cas « Bernice » : la fiche Photon n'en portait pas) —
+  // l'inverse s'accroche au point adresse le plus proche, qui a le numéro.
+  // `reverseAttempted` (clé lat,lng) évite de boucler si l'inverse n'a pas mieux.
   useEffect(() => {
-    if (!draft || draft.address !== '') return
+    if (!draft) return
+    const hadAddress = draft.address !== ''
+    if (hadAddress && /^\d/.test(draft.address)) return
+    const key = `${draft.lat},${draft.lng}`
+    if (reverseAttempted.current === key) return
+    reverseAttempted.current = key
     const { lat, lng } = draft
     let stale = false
     fetch(`/api/places?lat=${lat}&lng=${lng}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { address?: string | null } | null) => {
         if (stale || !data?.address) return
+        // Une adresse existante (sans numéro) n'est remplacée que si l'inverse
+        // apporte réellement le numéro — sinon on garde le libellé Photon.
+        if (hadAddress && !/^\d/.test(data.address)) return
         setDraft((d) => (d && d.lat === lat && d.lng === lng ? { ...d, address: data.address as string } : d))
       })
       .catch(() => {})
@@ -311,7 +325,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
                 aria-pressed={sortKey === k}
                 className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
                   sortKey === k
-                    ? 'border-[color:var(--accent)] text-[color:var(--accent-ink)]'
+                    ? 'border-[color:var(--accent-gold)] bg-[color:var(--accent-gold)] text-[color:var(--accent-gold-ink)]'
                     : 'border-[color:var(--border-strong)] text-[color:var(--text-muted)] hover:text-[color:var(--text-body)]'
                 }`}
               >

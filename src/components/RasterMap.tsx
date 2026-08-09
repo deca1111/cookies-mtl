@@ -195,11 +195,12 @@ export function RasterMap({
     // 600, contrôles 1000) dans ce stacking context — sans ça ils passaient
     // au-dessus de la ShopSheet (z-20, fixed) qui s'ouvrait invisible sous la carte.
     <div className="relative isolate z-0 h-full w-full">
-      {/* Fond au ton du thème : au-delà de la zone pré-rendue, la carte fond dans le
-          crème/chocolat au lieu du gris Leaflet. Style INLINE obligatoirement :
-          leaflet.css pose `background:#ddd` sur .leaflet-container (classe ajoutée
-          par L.map à ce div) et gagnerait sur toute classe utilitaire. */}
-      <div ref={containerRef} className="h-full w-full" style={{ background: 'var(--bg)' }} />
+      {/* Fond au ton de la CARTE (--map-bg, pas --bg : en sombre la carte est un
+          cran plus claire que l'UI depuis le retour couleurs) : au-delà de la zone
+          pré-rendue, la carte fond dans la même teinte que les tuiles. Style INLINE
+          obligatoirement : leaflet.css pose `background:#ddd` sur .leaflet-container
+          (classe ajoutée par L.map à ce div) et gagnerait sur toute classe utilitaire. */}
+      <div ref={containerRef} className="h-full w-full" style={{ background: 'var(--map-bg)' }} />
       {/* bottom-14 (QA round 4) : à bottom-6 il chevauchait le crédit « with love »
           et l'attribution sur les écrans étroits. */}
       <button

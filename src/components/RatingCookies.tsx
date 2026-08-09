@@ -30,9 +30,11 @@ export function RatingCookies({
         ))}
       </span>
       {variant === 'sheet' ? (
-        <span aria-hidden className="font-display text-[30px] leading-none text-[color:var(--accent-ink)]">
+        // 22px = la taille du nom du commerce dans la fiche (retour Léo : la note
+        // ne doit pas dominer le titre).
+        <span aria-hidden className="font-display text-[22px] leading-none text-[color:var(--accent-ink)]">
           {num}
-          <span className="text-[14px] text-[color:var(--text-muted)]"> /5</span>
+          <span className="text-[13px] text-[color:var(--text-muted)]"> /5</span>
         </span>
       ) : variant === 'lg' ? (
         <span aria-hidden className="text-[14px] font-semibold leading-none text-[color:var(--text-muted)]">
