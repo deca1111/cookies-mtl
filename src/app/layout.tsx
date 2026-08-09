@@ -39,8 +39,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // suppressHydrationWarning : le script anti-FOUC pose `data-theme` sur <html>
+    // avant l'hydratation, le HTML serveur ne peut pas le connaître — mismatch
+    // volontaire et borné à cet élément (même approche que next-themes).
     <html
       lang="fr"
+      suppressHydrationWarning
       className={`${gillSans.variable} ${comfortaa.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">

@@ -30,12 +30,20 @@ const files = [
   // Filename must match exactly: maplibre-gl-worker.mjs imports it via the relative
   // specifier `./maplibre-gl-shared.mjs`, resolved by the browser at runtime.
   { src: 'maplibre-gl-shared.mjs', dest: 'maplibre-gl-shared.mjs' },
+  // Sourcemaps: both files end with `//# sourceMappingURL=…` — without these copies,
+  // devtools request them and log a 404 in the dev server (harmless but noisy).
+  { src: 'maplibre-gl-worker.mjs.map', dest: 'maplibre-gl-worker.mjs.map', optional: true },
+  { src: 'maplibre-gl-shared.mjs.map', dest: 'maplibre-gl-shared.mjs.map', optional: true },
 ]
 
 mkdirSync(destDir, { recursive: true })
-for (const { src, dest } of files) {
+for (const { src, dest, optional } of files) {
   const srcPath = join(distDir, src)
   if (!existsSync(srcPath)) {
+    if (optional) {
+      console.warn(`[copy-maplibre-worker] optional source missing, skipped: ${src}`)
+      continue
+    }
     console.error(`[copy-maplibre-worker] source not found: ${srcPath} — maplibre-gl dist layout changed — update scripts/copy-maplibre-worker.mjs`)
     process.exit(1)
   }
