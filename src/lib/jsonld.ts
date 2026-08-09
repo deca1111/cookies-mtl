@@ -40,3 +40,9 @@ export function homeJsonLd(shops: Shop[]): object {
     })),
   }
 }
+
+// Escape < to prevent closing the JSON-LD script tag via shop.name or shop.review.
+// Defense-in-depth: writes are admin-gated today, but escaping is one line.
+export function jsonLdString(ld: object): string {
+  return JSON.stringify(ld).replace(/</g, '\\u003c')
+}

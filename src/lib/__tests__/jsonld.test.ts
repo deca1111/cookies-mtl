@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { homeJsonLd, shopJsonLd } from '../jsonld'
+import { homeJsonLd, shopJsonLd, jsonLdString } from '../jsonld'
 
 const shop = {
   id: 1, slug: 'felix', name: 'Félix', address: '1 rue Rachel E',
@@ -21,4 +21,10 @@ test('ItemList ordonné des fiches', () => {
   expect(ld['@type']).toBe('ItemList')
   const items = ld.itemListElement as Array<Record<string, unknown>>
   expect(items[0].url).toBe('https://cookies.zucchinistudio.com/c/felix')
+})
+
+test('jsonLdString échappe les < pour éviter fermer le script tag', () => {
+  const result = jsonLdString({ x: '</script>' })
+  expect(result).not.toContain('<')
+  expect(result).toContain('\\u003c')
 })

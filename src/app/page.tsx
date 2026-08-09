@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { CookieMap } from '@/components/CookieMap'
-import { homeJsonLd } from '@/lib/jsonld'
+import { homeJsonLd, jsonLdString } from '@/lib/jsonld'
 import { listShops } from '@/lib/shops'
 
 export default function Home() {
@@ -16,7 +16,7 @@ async function MapWithShops() {
   return (
     <>
       <CookieMap shops={shops} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd(shops)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdString(homeJsonLd(shops)) }} />
     </>
   )
 }
