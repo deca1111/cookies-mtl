@@ -5,7 +5,7 @@ import type { Shop } from '@/lib/shops'
 import { appleMapsUrl, geoUri, googleDirectionsUrl } from '@/lib/nav-links'
 import { useLang } from './LangProvider'
 import { RatingCookies } from './RatingCookies'
-import { IconClose, IconExternal } from './icons'
+import { IconCheck, IconClose, IconCopy, IconDirections, IconExternal, IconShare } from './icons'
 
 function platform(): 'android' | 'ios' | 'desktop' {
   if (typeof navigator === 'undefined') return 'desktop'
@@ -86,31 +86,32 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
       </div>
 
       <div className="shrink-0 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 sm:pb-6">
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-3 gap-2">
           <button
             onClick={onDirections}
-            className="rounded-full bg-[color:var(--btn-bg)] px-5 py-2.5 text-[14px] font-medium text-[color:var(--btn-text)] transition-colors hover:bg-[color:var(--btn-bg-hover)] active:scale-[0.98]"
+            className="inline-flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[color:var(--btn-bg)] px-3 text-[13px] font-medium text-[color:var(--btn-text)] transition-colors hover:bg-[color:var(--btn-bg-hover)] active:scale-[0.98]"
           >
+            <IconDirections size={15} />
             {t('directions')}
           </button>
           <button
             onClick={onCopy}
-            className="rounded-full border border-[color:var(--border-strong)] px-4 py-2.5 text-[14px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
+            aria-label={t('copyAddressFull')}
+            className="inline-flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--border-strong)] px-3 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
           >
+            {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
             {copied ? t('copied') : t('copyAddress')}
           </button>
           <button
             onClick={onShare}
-            className="rounded-full border border-[color:var(--border-strong)] px-4 py-2.5 text-[14px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
+            className="inline-flex h-11 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[color:var(--border-strong)] px-3 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)] active:scale-[0.98]"
           >
+            {linkCopied ? <IconCheck size={15} /> : <IconShare size={15} />}
             {linkCopied ? t('linkCopied') : t('share')}
           </button>
-          <a
-            href={shop.googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="ml-auto py-2.5 text-[13px] text-[color:var(--text-muted)] underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)] hover:underline"
-          >
+        </div>
+        <div className="mt-2 text-right">
+          <a href={shop.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="py-2.5 text-[13px] text-[color:var(--text-muted)] underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)] hover:underline">
             <span className="inline-flex items-center gap-1">{t('googleListing')} <IconExternal size={13} /></span>
           </a>
         </div>

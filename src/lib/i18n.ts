@@ -3,7 +3,8 @@ export type Lang = 'fr' | 'en'
 export const dict = {
   fr: {
     directions: 'Itinéraire',
-    copyAddress: "Copier l'adresse",
+    copyAddress: 'Copier',
+    copyAddressFull: "Copier l'adresse",
     copied: 'Copié',
     share: 'Partager',
     googleListing: 'Fiche Google',
@@ -19,7 +20,8 @@ export const dict = {
   },
   en: {
     directions: 'Directions',
-    copyAddress: 'Copy address',
+    copyAddress: 'Copy',
+    copyAddressFull: 'Copy address',
     copied: 'Copied',
     share: 'Share',
     googleListing: 'Google listing',
