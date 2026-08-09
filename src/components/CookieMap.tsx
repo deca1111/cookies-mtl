@@ -11,6 +11,7 @@ import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 import { RasterMap } from './RasterMap'
 import { ShopSheet } from './ShopSheet'
+import { ThemeToggle } from './ThemeToggle'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 
@@ -357,6 +358,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
       >
         {lang === 'fr' ? 'EN' : 'FR'}
       </button>
+      <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top)+44px)] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
       {selected && <ShopSheet shop={selected} onClose={() => setSelected(null)} />}
     </div>
   )
