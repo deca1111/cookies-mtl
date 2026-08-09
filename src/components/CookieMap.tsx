@@ -15,8 +15,10 @@ import { useLang } from './LangProvider'
 import { INTRO_SEEN_KEY, IntroPopup } from './IntroPopup'
 import { MapChrome } from './MapChrome'
 import { RasterMap } from './RasterMap'
+import { ShopListPanel } from './ShopListPanel'
 import { ShopSheet } from './ShopSheet'
 import { ThemeToggle } from './ThemeToggle'
+import { IconList } from './icons'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 
@@ -100,6 +102,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
   // local to the effect, so a re-run gets a clean budget for free) and calls init() again.
   const [mapSession, setMapSession] = useState(0)
   const [introOpen, setIntroOpen] = useState(false)
+  const [listOpen, setListOpen] = useState(false)
   const { t } = useLang()
 
   // Popup explicative : auto-ouverture à la première visite uniquement (spec v1.2 §5).
@@ -414,7 +417,25 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         </div>
       )}
       <MapChrome onLogoClick={() => setIntroOpen(true)} />
+      {/* Emplacement libéré par l'ancien bouton EN (le toggle langue vit dans la popup). */}
+      <button
+        onClick={() => setListOpen(true)}
+        aria-label={t('listOpen')}
+        className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]"
+      >
+        <IconList size={16} />
+      </button>
       <ThemeToggle className="absolute right-3 top-[calc(0.75rem+env(safe-area-inset-top)+44px)] z-10 flex h-[34px] w-[46px] items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--surface)] text-[color:var(--text-body)] shadow-[var(--shadow-chip)] transition-colors hover:bg-[color:var(--surface-2)]" />
+      <ShopListPanel
+        shops={shops}
+        open={listOpen}
+        onClose={() => setListOpen(false)}
+        onPick={(shop) => {
+          // Même chemin caméra que le tap marqueur (spec §1) via l'effet [selected].
+          setListOpen(false)
+          setSelected(shop)
+        }}
+      />
       <IntroPopup open={introOpen} onClose={() => setIntroOpen(false)} />
       {selected && <ShopSheet shop={selected} onClose={() => setSelected(null)} />}
     </div>
