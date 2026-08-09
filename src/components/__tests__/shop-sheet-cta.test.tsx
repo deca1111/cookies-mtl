@@ -34,8 +34,8 @@ test('les 3 CTA vivent dans une grille à colonnes égales, avec icône', () => 
 test('copier garde sa colonne : le libellé change, pas la structure', async () => {
   Object.assign(navigator, { clipboard: { writeText: async () => {} } })
   renderSheet()
-  const btn = screen.getByRole('button', { name: "Copier l'adresse" })
+  const btn = screen.getByRole('button', { name: "Copier l’adresse" })
   fireEvent.click(btn)
   expect(await screen.findByText('Copié')).toBeDefined()
-  expect(screen.getByRole('button', { name: "Copier l'adresse" })).toBe(btn) // aria stable
+  expect(screen.getByRole('button', { name: "Copier l’adresse" })).toBe(btn) // aria stable
 })

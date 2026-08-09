@@ -4,7 +4,7 @@ export const dict = {
   fr: {
     directions: 'Itinéraire',
     copyAddress: 'Copier',
-    copyAddressFull: "Copier l'adresse",
+    copyAddressFull: "Copier l’adresse",
     copied: 'Copié',
     share: 'Partager',
     googleListing: 'Fiche Google',
