@@ -18,9 +18,10 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
-    // Texte de Léo (v1.2). Le \n est rendu par whitespace-pre-line dans IntroPopup.
+    // Texte de Léo (v1.2). Mini-format (lib/intro-markup) : \n = saut de ligne,
+    // ligne vide (\n\n) = nouveau paragraphe, [mots] = typo titre Gill Sans.
     introBody:
-      'Bienvenue sur ma carte avec tous les cookies que j’ai goûtés à Montréal !\nAttention, elle est basée sur mes goûts, mes préférences et surtout mon [mood]. Si tu veux m’en conseiller un, écris-moi sur Insta :)',
+      'Bienvenue sur ma carte avec tous les cookies que j’ai goûtés à Montréal !\nAttention, elle est basée sur mes préférences, mon mood du jour et surtout [mes goûts]. \nSi tu veux m’en conseiller un, écris-moi sur Insta :)',
     introInstagram: 'Instagram',
     listOpen: 'Ouvrir la liste des cookies',
     listTitle: 'Tous les cookies',
@@ -48,9 +49,9 @@ export const dict = {
     waze: 'Waze',
     plansShort: 'Apple Plans',
     googleMapsShort: 'Google Maps',
-    // Traduction EN du texte de Léo — à valider par lui.
+    // Traduction EN du texte de Léo — à valider par lui. Même mini-format que le FR.
     introBody:
-      'Welcome to my map of all the cookies I’ve tasted in Montréal!\nWarning: it’s based on my tastes, my preferences and, above all, my mood. If you want to recommend one, message me on Insta :)',
+      'Welcome to my map of all the cookies I’ve tasted in Montréal!\nWarning: it’s based on my preferences, my mood of the day and above all [my taste].\nIf you want to recommend one, message me on Insta :)',
     introInstagram: 'Instagram',
     listOpen: 'Open the cookie list',
     listTitle: 'All the cookies',

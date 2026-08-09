@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { SITE_BRAND, SITE_INSTAGRAM_URL } from '@/lib/site'
+import { parseIntroParagraphs } from '@/lib/intro-markup'
 import { useLang } from './LangProvider'
 import { IconClose, IconInstagram } from './icons'
 
@@ -113,8 +114,21 @@ export function IntroPopup({
           <IconClose />
         </button>
         <h2 className="font-display pr-8 text-[24px] leading-tight text-[color:var(--text-strong)]">{SITE_BRAND}</h2>
-        {/* whitespace-pre-line : le texte de Léo contient un vrai retour à la ligne. */}
-        <p className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-[color:var(--text-body)]">{t('introBody')}</p>
+        {/* Mini-format du texte (lib/intro-markup) : ligne vide = paragraphe,
+            \n = saut de ligne (whitespace-pre-line), [mots] = typo titre. */}
+        {parseIntroParagraphs(t('introBody')).map((para, i) => (
+          <p key={i} className="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-[color:var(--text-body)]">
+            {para.map((seg, j) =>
+              seg.display ? (
+                <span key={j} className="font-display text-[color:var(--text-strong)]">
+                  {seg.text}
+                </span>
+              ) : (
+                <span key={j}>{seg.text}</span>
+              )
+            )}
+          </p>
+        ))}
         <div className="mt-5">
           <a
             href={SITE_INSTAGRAM_URL}
