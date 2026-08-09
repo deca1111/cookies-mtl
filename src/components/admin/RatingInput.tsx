@@ -12,7 +12,7 @@ export function RatingInput({ value, onChange }: { value: number; onChange: (v: 
       aria-label={`Note : ${String(value).replace('.', ',')} / 5`}
       className="flex flex-col gap-3 rounded-[var(--radius-field)] border border-[color:var(--border-strong)] bg-[color:var(--surface-2)] px-4 py-3"
     >
-      <RatingCookies rating={value} size="lg" />
+      <RatingCookies rating={value} variant="lg" />
       <input
         type="range"
         min={0}

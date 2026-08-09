@@ -18,7 +18,25 @@ test('bornes 0 et 5', () => {
   expect(five.container.querySelectorAll('[data-cookie="full"]')).toHaveLength(5)
 })
 
-test('size lg grossit les cookies (admin)', () => {
-  const { container } = render(<RatingCookies rating={4} size="lg" />)
+test('variante sheet (défaut) : cookies 27 px, chiffre gras 30 px avec « /5 »', () => {
+  const { container } = render(<RatingCookies rating={4.5} />)
+  const svgs = container.querySelectorAll('svg')
+  expect(svgs).toHaveLength(5)
+  expect(svgs[0].getAttribute('width')).toBe('27')
+  const num = container.querySelector('.font-display')
+  expect(num?.textContent).toContain('4,5')
+  expect(container.textContent).toContain('/5')
+})
+
+test('variante row : cookies 13 px, chiffre compact sans « /5 »', () => {
+  const { container } = render(<RatingCookies rating={4} variant="row" />)
+  expect(container.querySelectorAll('svg')[0].getAttribute('width')).toBe('13')
+  expect(container.textContent).toContain('4')
+  expect(container.textContent).not.toContain('/5')
+})
+
+test('variante lg (admin) : cookies 32 px, look historique', () => {
+  const { container } = render(<RatingCookies rating={4} variant="lg" />)
   expect(container.querySelector('svg')?.getAttribute('width')).toBe('32')
+  expect(container.textContent).not.toContain('/5')
 })
