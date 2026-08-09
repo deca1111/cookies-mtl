@@ -7,7 +7,7 @@ export function RatingCookies({ rating, size = 'sm' }: { rating: number; size?: 
     return 'empty' as const
   })
   return (
-    <span aria-label={label} className="inline-flex items-center gap-2.5">
+    <span role="img" aria-label={label} className="inline-flex items-center gap-2.5">
       <span aria-hidden className="inline-flex items-center gap-1">
         {kinds.map((kind, i) => (
           <svg key={i} width={px} height={px} viewBox="0 0 300 300" data-cookie={kind}>

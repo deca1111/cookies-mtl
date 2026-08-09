@@ -9,7 +9,6 @@ afterEach(() => {
 })
 
 test('bascule le thème et son propre libellé', () => {
-  document.documentElement.dataset.theme = 'light'
   localStorage.setItem('cmtl_lang', 'fr')
   render(
     <LangProvider>

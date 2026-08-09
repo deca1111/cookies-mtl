@@ -251,6 +251,16 @@ body {
   opacity: 0.38;
 }
 
+/* La pastille logo (MapChrome, ~58px + marges) occupe le coin haut-gauche :
+   les contrôles carte de ce coin démarrent sous elle, sur les deux moteurs. */
+.maplibregl-ctrl-top-left {
+  top: calc(70px + env(safe-area-inset-top));
+}
+
+.leaflet-top.leaflet-left {
+  top: calc(70px + env(safe-area-inset-top));
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

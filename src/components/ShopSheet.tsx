@@ -69,8 +69,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
     // clip `fixed` descendants), pushing the action row off-screen with no way to reach it.
     // Fix: cap the sheet at a max-height and split it into a scrollable content region (the
     // part that can grow — title/rating/review/address) plus a `shrink-0` footer (the action
-    // row + iOS chooser) that always stays visible below it. Same split on the sm: desktop
-    // floating card.
+    // row) that always stays visible below it. Same split on the sm: desktop floating card.
     <div
       className={`cmtl-sheet fixed inset-x-0 bottom-0 z-20 flex ${expanded ? 'h-[92dvh] max-h-[92dvh]' : 'max-h-[70dvh]'} transition-[max-height,height] duration-200 flex-col rounded-t-[var(--radius-sheet)] border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 shadow-[var(--shadow-sheet)] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-h-[min(70vh,640px)] sm:w-[380px] sm:rounded-[var(--radius-sheet)] sm:border sm:shadow-[var(--shadow-float)]`}
       data-expanded={expanded ? 'true' : 'false'}
