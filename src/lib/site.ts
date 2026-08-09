@@ -4,10 +4,10 @@
 export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://cookies.zucchinistudio.com'
 export const SITE_NAME = 'Cookies Club — Montréal'
 export const SITE_BRAND = 'Cookies Club'
-export const SITE_TITLE = "Cookies Club — Montréal · La carte des cookies · Montreal's cookie map"
+export const SITE_TITLE = "Cookies Club — Montréal · Ma carte des cookies de Montréal· My map of Montreal cookies"
 export const SITE_DESCRIPTION =
-  'Les meilleurs cookies de Montréal (MTL), goûtés, notés et cartographiés. ' +
-  'The best cookies in Montreal, tasted, rated and mapped by Cookies Club.'
+  'Les meilleurs cookies de Montréal, goûtés, notés et cartographiés. ' +
+  'The best cookies in Montreal, tasted, rated and mapped.'
 
 // Placeholder v1.2 — vraie valeur fournie par Léo (handle Instagram réel).
 export const SITE_INSTAGRAM_URL = 'https://www.instagram.com/cookiesclub.mtl'

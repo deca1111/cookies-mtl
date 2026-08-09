@@ -18,6 +18,11 @@ const eslintConfig = defineConfig([
     ".superpowers/**",
     ".tiles-work/**",
     ".tiles-out/**",
+    // Worktrees des sessions agent (contiennent leur propre copie du repo).
+    ".claude/**",
+    ".agents/**",
+    // Vendors maplibre copiés dans public/ par predev/prebuild (gitignorés).
+    "public/maplibre-gl-*",
   ]),
 ]);
 
