@@ -325,19 +325,28 @@ body {
   }
 }
 
-/* Toast « Adresse copiée » : apparition douce, disparition gérée par le state (2 s). */
+/* Toast « Adresse copiée » : entrée et sortie animées (le démontage suit la
+   sortie via le state `closing`). Pas de translateX ici — le centrage est fait
+   par mx-auto, voir le commentaire dans ShopSheet. */
 .cmtl-toast {
   animation: cmtl-toast-in 200ms ease-out;
+}
+
+.cmtl-toast[data-closing='true'] {
+  animation: cmtl-toast-out 200ms ease-in forwards;
 }
 
 @keyframes cmtl-toast-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(6px);
+    transform: translateY(8px);
   }
+}
+
+@keyframes cmtl-toast-out {
   to {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
+    opacity: 0;
+    transform: translateY(8px);
   }
 }
 
