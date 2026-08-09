@@ -251,6 +251,14 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           maxTileCacheSize: MAX_TILE_CACHE_SIZE,
         })
         mapRef.current = map
+        // Retour QA v1.1 : l'attribution compacte (<details>) s'ouvre d'elle-même à
+        // l'init et chevauche le crédit bas-gauche sur mobile — refermée par défaut,
+        // le bouton ⓘ reste accessible pour la consulter.
+        const attrib = containerRef.current.querySelector('details.maplibregl-ctrl-attrib')
+        if (attrib instanceof HTMLDetailsElement) {
+          attrib.open = false
+          attrib.classList.remove('maplibregl-compact-show')
+        }
         failureCount = 0
         setMapError(false)
 

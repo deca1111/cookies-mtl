@@ -1,5 +1,5 @@
-import { expect, test, vi } from 'vitest'
-import { fireEvent, render } from '@testing-library/react'
+import { afterEach, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import { LangProvider } from '../LangProvider'
 import { ShopSheet } from '../ShopSheet'
 
@@ -9,25 +9,14 @@ const shop = {
   rating: 4, review: 'Bon.',
 }
 
+afterEach(() => cleanup())
+
 function grab(container: HTMLElement) {
   const zone = container.querySelector('[data-drag-zone]')!
   return zone
 }
 
-test('glisser vers le haut agrandit la fiche', () => {
-  const { container } = render(
-    <LangProvider><ShopSheet shop={shop} onClose={() => {}} /></LangProvider>
-  )
-  const sheet = container.querySelector('.cmtl-sheet')!
-  expect(sheet.getAttribute('data-expanded')).toBe('false')
-  const zone = grab(container as HTMLElement)
-  fireEvent.pointerDown(zone, { clientY: 500, pointerId: 1 })
-  fireEvent.pointerMove(zone, { clientY: 400, pointerId: 1 })
-  fireEvent.pointerUp(zone, { clientY: 400, pointerId: 1 })
-  expect(sheet.getAttribute('data-expanded')).toBe('true')
-})
-
-test('glisser vers le bas depuis le cran compact ferme', () => {
+test('glisser vers le bas ferme la fiche', () => {
   const onClose = vi.fn()
   const { container } = render(
     <LangProvider><ShopSheet shop={shop} onClose={onClose} /></LangProvider>
@@ -38,17 +27,29 @@ test('glisser vers le bas depuis le cran compact ferme', () => {
   expect(onClose).toHaveBeenCalled()
 })
 
-test('glisser vers le bas depuis le cran étendu réduit sans fermer', () => {
+test('glisser vers le haut ne fait rien (cran unique, retour QA v1.1)', () => {
   const onClose = vi.fn()
   const { container } = render(
     <LangProvider><ShopSheet shop={shop} onClose={onClose} /></LangProvider>
   )
-  const sheet = container.querySelector('.cmtl-sheet')!
   const zone = grab(container as HTMLElement)
   fireEvent.pointerDown(zone, { clientY: 500, pointerId: 1 })
-  fireEvent.pointerUp(zone, { clientY: 380, pointerId: 1 }) // agrandit
-  fireEvent.pointerDown(zone, { clientY: 300, pointerId: 1 })
-  fireEvent.pointerUp(zone, { clientY: 420, pointerId: 1 }) // réduit
-  expect(sheet.getAttribute('data-expanded')).toBe('false')
+  fireEvent.pointerMove(zone, { clientY: 380, pointerId: 1 })
+  fireEvent.pointerUp(zone, { clientY: 380, pointerId: 1 })
+  expect(onClose).not.toHaveBeenCalled()
+  expect(container.querySelector('.cmtl-sheet')).not.toBeNull() // toujours montée
+})
+
+test('un petit glissement lent sous les seuils ne ferme pas', async () => {
+  const onClose = vi.fn()
+  const { container } = render(
+    <LangProvider><ShopSheet shop={shop} onClose={onClose} /></LangProvider>
+  )
+  const zone = grab(container as HTMLElement)
+  fireEvent.pointerDown(zone, { clientY: 400, pointerId: 1 })
+  // timeStamp n'est pas injectable via fireEvent : un vrai délai garantit une
+  // vélocité < 0,4 px/ms pour un déplacement de 30 px (< seuil de 50 px).
+  await new Promise((r) => setTimeout(r, 300))
+  fireEvent.pointerUp(zone, { clientY: 430, pointerId: 1 })
   expect(onClose).not.toHaveBeenCalled()
 })

@@ -12,15 +12,14 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
   const [copied, setCopied] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const [directionsOpen, setDirectionsOpen] = useState(false)
-  const [expanded, setExpanded] = useState(false)
   const [dragY, setDragY] = useState(0)
   const dragRef = useRef<{ startY: number; startT: number } | null>(null)
 
   const onDirections = () => setDirectionsOpen(true)
 
-  // Deux crans : compact (70dvh) et étendu (92dvh), pilotés par un geste vertical
-  // sur la zone de poignée. Vers le haut on agrandit au relâcher ; vers le bas la
-  // fiche suit le doigt (indice visuel) puis réduit ou ferme selon le cran courant.
+  // Geste vertical sur la zone de poignée : vers le bas la fiche suit le doigt
+  // (indice visuel) puis ferme au relâcher. Le cran d'agrandissement a été retiré
+  // (retour QA v1.1 : inutile, le contenu tient dans le cran compact).
   const onDragStart = (e: React.PointerEvent) => {
     dragRef.current = { startY: e.clientY, startT: e.timeStamp }
     ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
@@ -35,11 +34,7 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
     const vy = dy / Math.max(1, e.timeStamp - dragRef.current.startT) // px/ms
     dragRef.current = null
     setDragY(0)
-    if (dy < -50 || vy < -0.4) setExpanded(true)
-    else if (dy > 50 || vy > 0.4) {
-      if (expanded) setExpanded(false)
-      else onClose()
-    }
+    if (dy > 50 || vy > 0.4) onClose()
   }
 
   const onCopy = async () => {
@@ -71,13 +66,12 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
     // part that can grow — title/rating/review/address) plus a `shrink-0` footer (the action
     // row) that always stays visible below it. Same split on the sm: desktop floating card.
     <div
-      className={`cmtl-sheet fixed inset-x-0 bottom-0 z-20 flex ${expanded ? 'h-[92dvh] max-h-[92dvh]' : 'max-h-[70dvh]'} transition-[max-height,height] duration-200 flex-col rounded-t-[var(--radius-sheet)] border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 shadow-[var(--shadow-sheet)] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-h-[min(70vh,640px)] sm:w-[380px] sm:rounded-[var(--radius-sheet)] sm:border sm:shadow-[var(--shadow-float)]`}
-      data-expanded={expanded ? 'true' : 'false'}
+      className="cmtl-sheet fixed inset-x-0 bottom-0 z-20 flex max-h-[70dvh] flex-col rounded-t-[var(--radius-sheet)] border-t border-[color:var(--border)] bg-[color:var(--surface)] px-5 shadow-[var(--shadow-sheet)] sm:inset-x-auto sm:bottom-5 sm:left-5 sm:max-h-[min(70vh,640px)] sm:w-[380px] sm:rounded-[var(--radius-sheet)] sm:border sm:shadow-[var(--shadow-float)]"
       style={{ transform: dragY > 0 ? `translateY(${dragY}px)` : undefined, transition: dragY ? 'none' : undefined }}
     >
       {/* Poignée de drag : couvre la bande du handle + le haut de l'en-tête. touch-none
           pour que le navigateur n'interprète pas le geste comme un scroll. Cachée en
-          desktop (sm:) où la fiche est une carte flottante sans crans. */}
+          desktop (sm:) où la fiche est une carte flottante sans geste. */}
       <div
         data-drag-zone
         onPointerDown={onDragStart}

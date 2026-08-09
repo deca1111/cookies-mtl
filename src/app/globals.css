@@ -251,14 +251,18 @@ body {
   opacity: 0.38;
 }
 
-/* La pastille logo (MapChrome, ~58px + marges) occupe le coin haut-gauche :
-   les contrôles carte de ce coin démarrent sous elle, sur les deux moteurs. */
+/* La pastille logo (MapChrome, ~102px + marges) occupe le coin haut-gauche :
+   les contrôles carte de ce coin démarrent sous elle, sur les deux moteurs.
+   !important obligatoire : les feuilles maplibre-gl.css/leaflet.css sont importées
+   par les composants et arrivent APRÈS globals.css dans la cascade — sans lui,
+   leur `top: 0` regagnait et le bouton de géolocalisation restait sous le logo
+   (bug constaté en QA v1.1). */
 .maplibregl-ctrl-top-left {
-  top: calc(70px + env(safe-area-inset-top));
+  top: calc(126px + env(safe-area-inset-top)) !important;
 }
 
 .leaflet-top.leaflet-left {
-  top: calc(70px + env(safe-area-inset-top));
+  top: calc(126px + env(safe-area-inset-top)) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
