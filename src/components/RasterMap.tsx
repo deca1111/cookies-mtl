@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { useEffect, useRef } from 'react'
 import { currentTheme } from '@/lib/map-style'
 import { onThemeChange } from '@/lib/theme'
+import { cookieMarkerHtml } from '@/lib/cookie-marker'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
 
@@ -70,15 +71,14 @@ export function RasterMap({
       layer.addTo(map)
 
       for (const shop of shops) {
-        // Mêmes pins DOM que la carte MapLibre : la classe .cmtl-pin de globals.css
-        // s'applique telle quelle (thème via prefers-color-scheme, comme partout).
+        // Même markup de marqueur que la carte MapLibre (src/lib/cookie-marker.ts) :
         // vrai <button> comme sur MapLibre : focusable, activable clavier, mêmes
-        // styles .cmtl-pin (hover/focus-visible compris)
+        // styles .cmtl-pin-cookie (hover/focus-visible compris)
         const icon = L.divIcon({
           className: '',
-          html: `<button class="cmtl-pin" aria-label="${shop.name.replaceAll('"', '&quot;')}"></button>`,
-          iconSize: [22, 22],
-          iconAnchor: [11, 22],
+          html: cookieMarkerHtml(shop.name),
+          iconSize: [34, 34],
+          iconAnchor: [17, 17], // centre : le cookie n'a pas de pointe
         })
         L.marker([shop.lat, shop.lng], { icon })
           .addTo(map)

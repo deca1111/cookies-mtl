@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { currentTheme, getMapStyleUrl, buildMapStyle, type MapTheme } from '@/lib/map-style'
 import { preferredRenderer, markRasterPreferred, clearRasterPreference } from '@/lib/map-renderer'
 import { viewportTileUrls } from '@/lib/tile-math'
+import { cookieMarkerHtml } from '@/lib/cookie-marker'
 import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
@@ -258,15 +259,15 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'top-left')
 
         for (const shop of shops) {
-          const el = document.createElement('button')
-          el.className = 'cmtl-pin'
-          el.setAttribute('aria-label', shop.name)
+          const holder = document.createElement('div')
+          holder.innerHTML = cookieMarkerHtml(shop.name)
+          const el = holder.firstElementChild as HTMLElement
           el.addEventListener('click', (e) => {
             e.stopPropagation()
             setSelected(shop)
             map.easeTo({ center: [shop.lng, shop.lat] })
           })
-          new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([shop.lng, shop.lat]).addTo(map)
+          new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([shop.lng, shop.lat]).addTo(map)
         }
         map.on('click', () => setSelected(null))
 

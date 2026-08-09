@@ -32,9 +32,6 @@
   --btn-bg-hover: #503a2a;
   --btn-text: #faf5ec;
 
-  --pin: #3b2a1f; /* [spec] espresso drop */
-  --pin-chip: #c79a63; /* the caramel chip inside the drop */
-  --pin-ring: #fffdf9;
   --pin-shadow: rgba(59, 42, 31, 0.34);
 
   --danger: #9a3b2a; /* terracotta — a warning that belongs to this palette */
@@ -74,9 +71,6 @@
   --btn-bg-hover: #e0aa68;
   --btn-text: #241a13;
 
-  --pin: #d29a55;
-  --pin-chip: #3a2415;
-  --pin-ring: #17100b;
   --pin-shadow: rgba(0, 0, 0, 0.55);
 
   --danger: #e5907a;
@@ -125,53 +119,42 @@ body {
   color: var(--text-strong);
 }
 
-/* --- Map marker ----------------------------------------------------------
-   A drop whose tip points at the address, carrying one caramel chip. The same
-   caramel dot is the rating mark in the sheet, so pin and score speak the same
-   language. Radius on the bottom-right corner + 45° rotation puts the point
-   straight down; translateY compensates the rotated bounding box so the tip,
-   not the box, sits on the coordinate. */
-.cmtl-pin {
-  position: relative;
+/* --- Marqueur cookie ------------------------------------------------------
+   Le cookie de la marque, centré sur l'adresse (pas de pointe : ancre centre).
+   Le bouton est la cible tactile (34px) ; le svg dessine. */
+.cmtl-pin-cookie {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 34px;
+  height: 34px;
   padding: 0;
+  border: none;
+  background: none;
   appearance: none;
-  background: var(--pin);
-  border: 2px solid var(--pin-ring);
-  border-radius: 50% 50% 3px 50%;
-  transform: translateY(-4px) rotate(45deg);
-  box-shadow: 0 3px 10px var(--pin-shadow);
   cursor: pointer;
+  filter: drop-shadow(0 3px 6px var(--pin-shadow));
   transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.cmtl-pin::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
-  border-radius: 50%;
-  background: var(--pin-chip);
+.cmtl-pin-cookie svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.cmtl-pin:hover,
-.cmtl-pin:focus-visible {
-  transform: translateY(-6px) rotate(45deg) scale(1.12);
+.cmtl-pin-cookie:hover,
+.cmtl-pin-cookie:focus-visible {
+  transform: translateY(-2px) scale(1.1);
 }
 
-.cmtl-pin:focus-visible {
+.cmtl-pin-cookie:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
+  border-radius: 50%;
 }
 
-:root[data-theme='dark'] .cmtl-pin {
-  /* « légèrement lumineux » — the gold drop lifts off the chocolate ground. */
-  box-shadow: 0 3px 10px var(--pin-shadow), 0 0 14px rgba(210, 154, 85, 0.34);
+:root[data-theme='dark'] .cmtl-pin-cookie {
+  /* « légèrement lumineux » : le cookie doit décoller du fond chocolat. */
+  filter: drop-shadow(0 3px 6px var(--pin-shadow)) drop-shadow(0 0 10px rgba(210, 154, 85, 0.4));
 }
 
 /* --- Bottom sheet --------------------------------------------------------- */
