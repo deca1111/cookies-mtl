@@ -7,7 +7,8 @@ import { useEffect, useRef, useState } from 'react'
 import { currentTheme, getMapStyleUrl, buildMapStyle, type MapTheme } from '@/lib/map-style'
 import { preferredRenderer, markRasterPreferred, clearRasterPreference } from '@/lib/map-renderer'
 import { viewportTileUrls } from '@/lib/tile-math'
-import { cookieMarkerHtml } from '@/lib/cookie-marker'
+import { SHEET_CAMERA_OFFSET_Y, shopFocusZoom } from '@/lib/camera'
+import { applyMarkerSelection, cookieMarkerHtml } from '@/lib/cookie-marker'
 import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
@@ -274,11 +275,15 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
           el.addEventListener('click', (e) => {
             e.stopPropagation()
             setSelected(shop)
-            map.easeTo({ center: [shop.lng, shop.lat] })
           })
           new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([shop.lng, shop.lat]).addTo(map)
         }
         map.on('click', () => setSelected(null))
+        // Reflète la sélection courante sur les marqueurs fraîchement créés
+        // (cas initialSlug et rebuild après retry) — même chemin que l'effet [selected].
+        if (containerRef.current) {
+          applyMarkerSelection(containerRef.current, selectedRef.current?.slug ?? null)
+        }
 
         // Task 17b bug 1 / Round 3: mobile OSes reclaim GPU memory from backgrounded tabs (and
         // cap simultaneous live WebGL contexts, ~8 on iOS Safari), which can leave this map's
@@ -343,6 +348,20 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapSession, renderer])
+
+  // Spec v1.2 §1 : chemin caméra + état visuel UNIFIÉ — tap marqueur, tap dans le
+  // panneau liste et fermeture de fiche passent tous par l'état `selected`.
+  useEffect(() => {
+    if (containerRef.current) applyMarkerSelection(containerRef.current, selected?.slug ?? null)
+    const map = mapRef.current
+    if (!selected || !map) return
+    map.easeTo({
+      center: [selected.lng, selected.lat],
+      zoom: shopFocusZoom(map.getZoom()),
+      offset: [0, SHEET_CAMERA_OFFSET_Y],
+      duration: 600,
+    })
+  }, [selected])
 
   // Le toggle thème recharge le style sans démonter la carte : la caméra, les
   // marqueurs DOM et l'état de sélection survivent au changement.
