@@ -123,6 +123,7 @@ body {
    Le cookie de la marque, centré sur l'adresse (pas de pointe : ancre centre).
    Le bouton est la cible tactile (34px) ; le svg dessine. */
 .cmtl-pin-cookie {
+  position: relative;
   display: block;
   width: 34px;
   height: 34px;
@@ -131,19 +132,25 @@ body {
   background: none;
   appearance: none;
   cursor: pointer;
-  filter: drop-shadow(0 3px 6px var(--pin-shadow));
-  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* Retour QA v1.1 : halo « trop prononcé » sous les cookies — ombre raccourcie
+     et adoucie (avant : 0 3px 6px, plus lueur 10px/0.4 en sombre). */
+  filter: drop-shadow(0 2px 4px var(--pin-shadow));
+  transition: opacity 220ms ease, filter 220ms ease;
 }
 
 .cmtl-pin-cookie svg {
   width: 100%;
   height: 100%;
   display: block;
+  /* Le scale porte sur le svg : MapLibre pilote transform sur le bouton lui-même
+     (positionnement du Marker), y toucher casserait l'ancrage. */
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
 }
 
-.cmtl-pin-cookie:hover,
-.cmtl-pin-cookie:focus-visible {
-  transform: translateY(-2px) scale(1.1);
+.cmtl-pin-cookie:hover svg,
+.cmtl-pin-cookie:focus-visible svg {
+  transform: scale(1.1);
 }
 
 .cmtl-pin-cookie:focus-visible {
@@ -152,9 +159,54 @@ body {
   border-radius: 50%;
 }
 
+/* Sélection (spec v1.2 §1, variante C validée) : 34 → ~50 px, ombre un peu
+   renforcée, au-dessus des voisins ; les autres s'estompent. */
+.cmtl-pin-cookie[data-selected='true'] {
+  z-index: 5;
+  filter: drop-shadow(0 4px 8px var(--pin-shadow));
+}
+
+.cmtl-pin-cookie[data-selected='true'] svg {
+  transform: scale(1.47);
+}
+
+.cmtl-pin-cookie[data-dimmed='true'] {
+  opacity: 0.55;
+}
+
+/* Pastille nom sous le cookie sélectionné. */
+.cmtl-pin-name {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  white-space: nowrap;
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 11px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-chip);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.cmtl-pin-cookie[data-selected='true'] .cmtl-pin-name {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 :root[data-theme='dark'] .cmtl-pin-cookie {
-  /* « légèrement lumineux » : le cookie doit décoller du fond chocolat. */
-  filter: drop-shadow(0 3px 6px var(--pin-shadow)) drop-shadow(0 0 10px rgba(210, 154, 85, 0.4));
+  /* « légèrement lumineux » : le cookie décolle du fond chocolat — lueur atténuée (QA v1.1). */
+  filter: drop-shadow(0 2px 4px var(--pin-shadow)) drop-shadow(0 0 6px rgba(210, 154, 85, 0.25));
+}
+
+:root[data-theme='dark'] .cmtl-pin-cookie[data-selected='true'] {
+  filter: drop-shadow(0 4px 8px var(--pin-shadow)) drop-shadow(0 0 6px rgba(210, 154, 85, 0.25));
 }
 
 /* --- Bottom sheet --------------------------------------------------------- */

@@ -76,7 +76,7 @@ export function RasterMap({
         // styles .cmtl-pin-cookie (hover/focus-visible compris)
         const icon = L.divIcon({
           className: '',
-          html: cookieMarkerHtml(shop.name),
+          html: cookieMarkerHtml(shop.name, shop.slug),
           iconSize: [34, 34],
           iconAnchor: [17, 17], // centre : le cookie n'a pas de pointe
         })

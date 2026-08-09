@@ -269,7 +269,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
 
         for (const shop of shops) {
           const holder = document.createElement('div')
-          holder.innerHTML = cookieMarkerHtml(shop.name)
+          holder.innerHTML = cookieMarkerHtml(shop.name, shop.slug)
           const el = holder.firstElementChild as HTMLElement
           el.addEventListener('click', (e) => {
             e.stopPropagation()
