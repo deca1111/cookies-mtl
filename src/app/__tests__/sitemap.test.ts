@@ -1,5 +1,8 @@
 import { expect, test, vi } from 'vitest'
 
+// connection() (rendu à la requête) n'a pas de portée requête sous vitest.
+vi.mock('next/server', () => ({ connection: vi.fn(async () => {}) }))
+
 vi.mock('@/lib/shops', () => ({
   listShops: vi.fn(async () => [
     { id: 1, slug: 'felix', name: 'Félix', address: 'a', lat: 0, lng: 0, googleMapsUrl: 'x', rating: 4, review: 'r' },
