@@ -9,6 +9,7 @@ import { preferredRenderer, markRasterPreferred, clearRasterPreference } from '@
 import { viewportTileUrls } from '@/lib/tile-math'
 import { SHEET_CAMERA_OFFSET_Y, shopFocusZoom } from '@/lib/camera'
 import { applyMarkerSelection, cookieMarkerHtml } from '@/lib/cookie-marker'
+import { shopPath, slugFromPath } from '@/lib/shop-url'
 import { onThemeChange } from '@/lib/theme'
 import type { Shop } from '@/lib/shops'
 import { useLang } from './LangProvider'
@@ -377,6 +378,28 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapSession, renderer])
+
+  // Synchro URL ↔ sélection (lib/shop-url) : pushState natif — pas de router.push,
+  // qui remonterait la page /c/[slug] et reconstruirait la carte. Chaque sélection
+  // devient une page vue /c/[slug] pour Vercel Analytics, et un refresh retombe
+  // sur la fiche ouverte. Le guard évite un push redondant quand le changement
+  // vient justement de l'URL (popstate ci-dessous, ou montage via initialSlug).
+  useEffect(() => {
+    const target = shopPath(selected?.slug ?? null)
+    if (window.location.pathname !== target) {
+      window.history.pushState(null, '', target)
+    }
+  }, [selected])
+
+  // Boutons précédent/suivant du navigateur : l'URL redevient la source de vérité.
+  useEffect(() => {
+    const onPop = () => {
+      const slug = slugFromPath(window.location.pathname)
+      setSelected(slug ? (shops.find((s) => s.slug === slug) ?? null) : null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [shops])
 
   // Spec v1.2 §1 : chemin caméra + état visuel UNIFIÉ — tap marqueur, tap dans le
   // panneau liste et fermeture de fiche passent tous par l'état `selected`.

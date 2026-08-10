@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Comfortaa } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { LangProvider } from "@/components/LangProvider";
 import { CookieSprite } from "@/components/CookieSprite";
@@ -51,6 +52,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <CookieSprite />
         <LangProvider>{children}</LangProvider>
+        {/* Vercel Web Analytics (Hobby : pages vues, 50 k évts/mois). La sélection
+            d'un cookie devient une navigation /c/[slug] (pushState, CookieMap) :
+            chaque cookie consulté compte comme une page vue — stats par fiche. */}
+        <Analytics />
       </body>
     </html>
   );
