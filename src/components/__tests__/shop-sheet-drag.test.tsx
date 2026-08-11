@@ -6,7 +6,7 @@ import { ShopSheet } from '../ShopSheet'
 const shop = {
   id: 1, slug: 'test', name: 'Test', address: '1 rue Test',
   lat: 45.5, lng: -73.5, googleMapsUrl: 'https://maps.google.com/x',
-  rating: 4, review: 'Bon.',
+  rating: 4, review: 'Bon.', inProgress: false, createdAt: '2026-01-01T00:00:00.000Z',
 }
 
 afterEach(() => cleanup())

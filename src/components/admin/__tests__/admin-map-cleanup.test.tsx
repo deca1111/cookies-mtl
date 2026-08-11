@@ -54,6 +54,7 @@ vi.mock('@/app/actions/shops', () => ({
   createShopAction: vi.fn(async () => ({ ok: true, slug: 'test' })),
   updateShopAction: vi.fn(),
   deleteShopAction: vi.fn(),
+  setShopInProgressAction: vi.fn(async () => ({ ok: true })),
   resolveLinkAction: vi.fn(),
 }))
 

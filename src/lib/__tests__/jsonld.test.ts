@@ -3,7 +3,7 @@ import { homeJsonLd, shopJsonLd, jsonLdString } from '../jsonld'
 
 const shop = {
   id: 1, slug: 'felix', name: 'Félix', address: '1 rue Rachel E',
-  lat: 45.52, lng: -73.58, googleMapsUrl: 'x', rating: 4.5, review: 'Croustillant.',
+  lat: 45.52, lng: -73.58, googleMapsUrl: 'x', rating: 4.5, review: 'Croustillant.', inProgress: false, createdAt: '2026-01-01T00:00:00.000Z',
 }
 
 test('Bakery avec Review signé Cookies Club, SANS aggregateRating', () => {

@@ -8,6 +8,7 @@ export type ShopInput = {
   googleMapsUrl: string
   rating: number
   review: string
+  inProgress: boolean
 }
 
 type Result = { ok: true; value: ShopInput } | { ok: false; error: string }
@@ -20,6 +21,8 @@ export function validateShopInput(raw: Record<string, unknown>): Result {
   const lat = Number(raw.lat)
   const lng = Number(raw.lng)
   const rating = Number(raw.rating)
+  // Absent = publié : une fiche n'est « en cours » que si on le demande.
+  const inProgress = raw.inProgress === true
 
   if (!name || name.length > 200) return { ok: false, error: 'name' }
   if (!address || address.length > 300) return { ok: false, error: 'address' }
@@ -32,5 +35,5 @@ export function validateShopInput(raw: Record<string, unknown>): Result {
     return { ok: false, error: 'googleMapsUrl' }
   }
 
-  return { ok: true, value: { name, address, lat, lng, googleMapsUrl, rating, review } }
+  return { ok: true, value: { name, address, lat, lng, googleMapsUrl, rating, review, inProgress } }
 }

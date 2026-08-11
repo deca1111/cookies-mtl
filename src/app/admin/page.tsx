@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { isAdmin } from '@/lib/auth'
-import { listShops } from '@/lib/shops'
+import { listAllShops } from '@/lib/shops'
 import { AdminApp } from '@/components/admin/AdminApp'
 import { LoginForm } from '@/components/admin/LoginForm'
 
@@ -16,6 +16,8 @@ export default function AdminPage() {
 
 async function AdminGate() {
   if (!(await isAdmin())) return <LoginForm />
-  const shops = await listShops()
+  // listAllShops (et pas listShops) : l'admin est le seul endroit qui voit les
+  // fiches « en cours ».
+  const shops = await listAllShops()
   return <AdminApp shops={shops} />
 }

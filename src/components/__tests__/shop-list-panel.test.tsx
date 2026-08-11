@@ -6,7 +6,7 @@ import type { Shop } from '@/lib/shops'
 
 const mk = (id: number, name: string, rating: number, lat: number, lng: number): Shop => ({
   id, slug: `s${id}`, name, address: `${id} rue Test`, lat, lng,
-  googleMapsUrl: 'https://maps.google.com/x', rating, review: 'ok',
+  googleMapsUrl: 'https://maps.google.com/x', rating, review: 'ok', inProgress: false, createdAt: '2026-01-01T00:00:00.000Z',
 })
 const shops = [mk(1, 'Miette', 4, 45.51, -73.57), mk(2, 'Éclair', 5, 45.53, -73.6), mk(3, 'Atelier', 3, 45.5, -73.55)]
 

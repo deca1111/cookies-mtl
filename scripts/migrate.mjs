@@ -21,4 +21,11 @@ await sql`
     updated_at timestamptz NOT NULL DEFAULT now()
   )
 `
+
+// « En cours » = fiche de travail : elle vit en base et dans l'admin, mais reste
+// hors de la carte, des fiches /c/[slug] et du sitemap tant qu'elle n'est pas
+// validée. Le filtrage est fait par la couche data (listShops / getShopBySlug),
+// pas au rendu, pour qu'une nouvelle page publique soit publique-sûre par défaut.
+await sql`ALTER TABLE shops ADD COLUMN IF NOT EXISTS in_progress boolean NOT NULL DEFAULT false`
+
 console.log('migration ok')

@@ -4,7 +4,7 @@ import { updateTag } from 'next/cache'
 import { requireAdmin } from '@/lib/auth'
 import { resolveGoogleShareLink } from '@/lib/google-link'
 import { googleListingSearchUrl } from '@/lib/nav-links'
-import { deleteShop, insertShop, updateShop } from '@/lib/shops'
+import { deleteShop, insertShop, setShopInProgress, updateShop } from '@/lib/shops'
 import { validateShopInput } from '@/lib/validate'
 
 type ActionResult = { ok: true; slug: string } | { ok: false; error: string }
@@ -33,6 +33,13 @@ export async function updateShopAction(id: number, raw: Record<string, unknown>)
   await updateShop(id, validated.value)
   updateTag('shops')
   return { ok: true, slug: '' }
+}
+
+export async function setShopInProgressAction(id: number, inProgress: boolean): Promise<{ ok: boolean }> {
+  await requireAdmin()
+  await setShopInProgress(id, inProgress)
+  updateTag('shops')
+  return { ok: true }
 }
 
 export async function deleteShopAction(id: number): Promise<{ ok: boolean }> {

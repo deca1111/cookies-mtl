@@ -9,11 +9,23 @@ const good = {
   googleMapsUrl: 'https://maps.app.goo.gl/AbC123',
   rating: 4.5,
   review: 'Gooey parfait.',
+  inProgress: false,
 }
 
 test('accepts a valid input and trims strings', () => {
   const res = validateShopInput({ ...good, name: '  Félix & Norton  ' })
   expect(res).toEqual({ ok: true, value: good })
+})
+
+test('inProgress : seul `true` marque la fiche en cours', () => {
+  // Une fiche est publiée par défaut ; il faut demander explicitement le contraire,
+  // sinon un champ absent ou mal typé sortirait un magasin de la carte publique.
+  for (const raw of [{}, { inProgress: false }, { inProgress: 'oui' }, { inProgress: 1 }]) {
+    const res = validateShopInput({ ...good, ...raw })
+    expect(res.ok && res.value.inProgress).toBe(false)
+  }
+  const res = validateShopInput({ ...good, inProgress: true })
+  expect(res.ok && res.value.inProgress).toBe(true)
 })
 
 test('rejects ratings off the 0–5 half-step grid', () => {
