@@ -5,6 +5,9 @@ import type { ShopInput } from './validate'
 
 export type Shop = ShopInput & { id: number; slug: string; createdAt: string }
 
+// Ce qui suffit à reconnaître un magasin déjà saisi (voir shop-duplicate.ts).
+export type ShopIdentity = { id: number; name: string; lat: number; lng: number }
+
 type Row = {
   id: number; slug: string; name: string; address: string
   lat: number; lng: number; google_maps_url: string; rating: string; review: string
@@ -51,6 +54,15 @@ export async function getShopBySlug(slug: string): Promise<Shop | null> {
   const sql = getSql()
   const rows = (await sql`SELECT * FROM shops WHERE slug = ${slug} AND in_progress = false`) as Row[]
   return rows[0] ? toShop(rows[0]) : null
+}
+
+// Lecture délibérément NON cachée, et réduite aux colonnes de l'identité : le
+// contrôle d'unicité doit voir la table telle qu'elle est à l'instant de
+// l'écriture. Passer par listAllShops (`use cache`) laisserait un doublon entrer
+// pendant la fenêtre où le cache est encore tiède.
+export async function listShopIdentities(): Promise<ShopIdentity[]> {
+  const sql = getSql()
+  return (await sql`SELECT id, name, lat, lng FROM shops`) as ShopIdentity[]
 }
 
 export async function insertShop(input: ShopInput): Promise<Shop> {

@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
 import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
+import { findDuplicate } from '@/lib/shop-duplicate'
 import type { Shop } from '@/lib/shops'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AdminHeader } from './AdminHeader'
@@ -25,6 +26,9 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [relocating, setRelocating] = useState(false)
+  // Nom de la fiche déjà en base vers laquelle on a redirigé, le temps d'expliquer
+  // à l'ouverture du modal pourquoi ce n'est pas une création.
+  const [existingNotice, setExistingNotice] = useState<string | null>(null)
   const mapDiv = useRef<HTMLDivElement>(null)
   const markerRef = useRef<maplibregl.Marker | null>(null)
   // Clé « lat,lng » du dernier géocodage inverse tenté — voir l'effet plus bas.
@@ -37,6 +41,21 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     reverseAttempted.current = null
     setDraft(d)
     setDraftSession((s) => s + 1)
+  }
+
+  // Point d'entrée de TOUTE création depuis un lieu choisi (suggestion Photon ou
+  // lien Google). Si le magasin est déjà en base, on ouvre SA fiche pour édition
+  // plutôt qu'un formulaire vierge : le doublon est refusé côté serveur de toute
+  // façon, autant éviter à Léo de saisir une note et un avis pour rien.
+  const openPlace = (p: PickedPlace) => {
+    const existing = findDuplicate(shops, p)
+    if (existing) {
+      setExistingNotice(existing.name)
+      openDraft({ ...existing, id: existing.id })
+      return
+    }
+    setExistingNotice(null)
+    openDraft({ ...p, rating: 0, review: '', inProgress: false })
   }
 
   // Task 17b bug 1: closing a draft (save or cancel) used to leave `draftSession`
@@ -54,6 +73,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     setDraft(null)
     setManualName(null)
     setRelocating(false)
+    setExistingNotice(null)
     setDraftSession((s) => s + 1)
   }
 
@@ -177,6 +197,8 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     rating: 'Choisis une note (0 à 5, par demi-cookie).',
     googleMapsUrl: 'Le lien Google est invalide.',
     review: 'L’avis est trop long.',
+    duplicate:
+      'Ce magasin est déjà dans la base. Modifie sa fiche, ou précise le nom s’il s’agit d’une autre succursale.',
     server: 'Erreur serveur — réessaie, ta saisie est conservée.',
   }
 
@@ -205,7 +227,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
 
       <section className={card}>
         <h2 className={eyebrow}>Ajouter un cookie</h2>
-        <PlaceSearch onPick={(p) => openDraft({ ...p, rating: 0, review: '', inProgress: false })} onManualRequest={startManual} />
+        <PlaceSearch onPick={openPlace} onManualRequest={startManual} />
       </section>
 
       {/* Création et édition partagent le MÊME modal (spec v1.2 §7, style unifié). */}
@@ -225,6 +247,11 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
           className={`${card} my-6 w-full max-w-lg sm:my-0`}
         >
           <h2 className={eyebrow}>{draft.id ? 'Modifier' : 'C’est bien ici ?'}</h2>
+          {existingNotice && (
+            <p className="rounded-[var(--radius-field)] border border-[color:var(--accent-gold)] bg-[color:var(--accent-wash)] px-4 py-3 text-[14px] text-[color:var(--text-body)]">
+              « {existingNotice} » est déjà dans la base — voici sa fiche.
+            </p>
+          )}
           <input
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}

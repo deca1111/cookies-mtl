@@ -5,6 +5,7 @@ const insertShop = vi.fn()
 const updateShop = vi.fn()
 const deleteShop = vi.fn()
 const setShopInProgress = vi.fn()
+const listShopIdentities = vi.fn()
 const updateTag = vi.fn()
 vi.mock('@/lib/auth', () => ({ requireAdmin: (...a: unknown[]) => requireAdmin(...a) }))
 vi.mock('@/lib/shops', () => ({
@@ -12,10 +13,11 @@ vi.mock('@/lib/shops', () => ({
   updateShop: (...a: unknown[]) => updateShop(...a),
   deleteShop: (...a: unknown[]) => deleteShop(...a),
   setShopInProgress: (...a: unknown[]) => setShopInProgress(...a),
+  listShopIdentities: (...a: unknown[]) => listShopIdentities(...a),
 }))
 vi.mock('next/cache', () => ({ updateTag: (...a: unknown[]) => updateTag(...a) }))
 
-import { createShopAction, deleteShopAction, setShopInProgressAction } from '../shops'
+import { createShopAction, deleteShopAction, setShopInProgressAction, updateShopAction } from '../shops'
 
 const good = {
   name: 'Félix & Norton', address: '5252 Boul. Saint-Laurent, Montréal',
@@ -26,10 +28,15 @@ const good = {
 beforeEach(() => {
   requireAdmin.mockReset().mockResolvedValue(undefined)
   insertShop.mockReset().mockResolvedValue({ ...good, id: 1, slug: 'felix-norton' })
+  updateShop.mockReset()
   deleteShop.mockReset()
   setShopInProgress.mockReset()
+  listShopIdentities.mockReset().mockResolvedValue([])
   updateTag.mockReset()
 })
+
+// Le magasin déjà en base, à la position exacte de `good`.
+const dejaEnBase = [{ id: 7, name: 'Félix & Norton', lat: good.lat, lng: good.lng }]
 
 test('creates shop, revalidates tag, returns slug', async () => {
   const res = await createShopAction(good)
@@ -60,6 +67,37 @@ test('bascule « en cours » : écrit le booléen et invalide le cache', async (
   expect(setShopInProgress).toHaveBeenCalledWith(7, true)
   // Sans invalidation, la carte publique garderait la fiche qu'on vient de retirer.
   expect(updateTag).toHaveBeenCalledWith('shops')
+})
+
+test('doublon refusé : rien n’est inséré, aucun cache invalidé', async () => {
+  listShopIdentities.mockResolvedValue(dejaEnBase)
+  expect(await createShopAction(good)).toEqual({ ok: false, error: 'duplicate' })
+  expect(insertShop).not.toHaveBeenCalled()
+  expect(updateTag).not.toHaveBeenCalled()
+})
+
+test('une succursale éloignée du même nom reste ajoutable', async () => {
+  // ~1,1 km plus au nord : deux Tim Hortons de quartiers différents sont légitimes.
+  listShopIdentities.mockResolvedValue([{ id: 7, name: 'Félix & Norton', lat: good.lat + 0.01, lng: good.lng }])
+  expect((await createShopAction(good)).ok).toBe(true)
+  expect(insertShop).toHaveBeenCalled()
+})
+
+test('le contrôle d’unicité lit la base à chaque création, jamais un cache', async () => {
+  await createShopAction(good)
+  expect(listShopIdentities).toHaveBeenCalledTimes(1)
+})
+
+test('renommage vers le nom d’une voisine : refusé aussi', async () => {
+  listShopIdentities.mockResolvedValue(dejaEnBase)
+  expect(await updateShopAction(1, good)).toEqual({ ok: false, error: 'duplicate' })
+  expect(updateShop).not.toHaveBeenCalled()
+})
+
+test('une fiche qu’on ré-enregistre ne se détecte pas elle-même en doublon', async () => {
+  listShopIdentities.mockResolvedValue(dejaEnBase)
+  expect((await updateShopAction(7, good)).ok).toBe(true)
+  expect(updateShop).toHaveBeenCalled()
 })
 
 test('rejects when not admin', async () => {
