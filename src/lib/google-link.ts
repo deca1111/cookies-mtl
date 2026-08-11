@@ -1,4 +1,12 @@
-const SHARE_HOSTS = new Set(['maps.app.goo.gl', 'goo.gl', 'www.google.com', 'google.com', 'maps.google.com'])
+const SHORTENER_HOSTS = new Set(['maps.app.goo.gl', 'goo.gl'])
+
+// Un lien court se résout vers le TLD régional de Google (google.ca depuis Montréal,
+// google.fr, google.co.uk…), pas systématiquement google.com.
+const GOOGLE_HOST = /^(?:[a-z0-9-]+\.)*google\.(?:com|[a-z]{2}|(?:com|co)\.[a-z]{2})$/
+
+function isGoogleHost(hostname: string): boolean {
+  return GOOGLE_HOST.test(hostname.toLowerCase())
+}
 
 export function parseGoogleMapsUrl(finalUrl: string): { name: string; lat: number; lng: number } | null {
   let url: URL
@@ -7,7 +15,7 @@ export function parseGoogleMapsUrl(finalUrl: string): { name: string; lat: numbe
   } catch {
     return null
   }
-  if (url.hostname !== 'google.com' && !url.hostname.endsWith('.google.com')) return null
+  if (!isGoogleHost(url.hostname)) return null
 
   const placeMatch = url.pathname.match(/\/place\/([^/]+)/)
   if (!placeMatch) return null
@@ -38,7 +46,7 @@ export async function resolveGoogleShareLink(
   } catch {
     return null
   }
-  if (!SHARE_HOSTS.has(host)) return null
+  if (!SHORTENER_HOSTS.has(host) && !isGoogleHost(host)) return null
 
   try {
     const res = await fetchImpl(shareUrl, { redirect: 'follow' })
