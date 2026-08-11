@@ -3,7 +3,7 @@
 import { useActionState } from 'react'
 import { login } from '@/app/actions/auth'
 
-export function LoginForm() {
+export function LoginForm({ devBypass = false }: { devBypass?: boolean }) {
   const [state, action, pending] = useActionState(login, undefined)
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-5 p-6">
@@ -26,6 +26,13 @@ export function LoginForm() {
           {pending ? '…' : 'Entrer'}
         </button>
         {state?.error && <p className="text-[13px] text-[color:var(--danger)]">Mot de passe incorrect.</p>}
+        {/* Cet encart ne doit JAMAIS apparaître en ligne : le voir sur le site
+            déployé signifie que le garde-fou de isDevPasswordBypass a sauté. */}
+        {devBypass && (
+          <p className="text-[13px] text-[color:var(--text-muted)]">
+            Développement local : n’importe quel mot de passe est accepté.
+          </p>
+        )}
       </form>
     </main>
   )

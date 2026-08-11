@@ -4,6 +4,29 @@ import { cookies } from 'next/headers'
 export const ADMIN_COOKIE = 'cmtl_admin'
 export const SESSION_DAYS = 180
 
+// Contournement du mot de passe en développement local UNIQUEMENT : sur la
+// machine de dev, n'importe quelle saisie (même vide) ouvre la session. Rien
+// d'autre ne change — la session est signée et posée normalement, donc « Se
+// déconnecter » se comporte comme en production.
+//
+// Deux verrous cumulés, tous deux HORS de portée de .env.local (une variable
+// ajoutée par erreur au projet Vercel ne peut donc pas activer ceci en ligne) :
+//   - NODE_ENV : seul `next dev` vaut 'development'. `next build`, `next start`
+//     et toute exécution sur Vercel valent 'production' ; les tests valent 'test'.
+//   - VERCEL : posé à '1' par la plateforme au build comme à l'exécution, y
+//     compris en preview. Ceinture et bretelles si NODE_ENV était forcé.
+//
+// L'indice affiché sous le formulaire de connexion (voir LoginForm) découle du
+// même prédicat : s'il apparaissait un jour sur le site déployé, c'est le signal
+// que ce garde-fou a sauté.
+// `Record<string, string | undefined>` plutôt que NodeJS.ProcessEnv : ce dernier
+// déclare NODE_ENV comme obligatoire et limité à trois valeurs, alors qu'à
+// l'exécution la variable peut être absente ou porter n'importe quoi — ce sont
+// justement les cas que ce garde-fou doit refuser (et que les tests couvrent).
+export function isDevPasswordBypass(env: Record<string, string | undefined> = process.env): boolean {
+  return env.NODE_ENV === 'development' && !env.VERCEL
+}
+
 function hmac(payload: string, secret: string): string {
   return createHmac('sha256', secret).update(payload).digest('hex')
 }

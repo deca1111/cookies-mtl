@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { isAdmin } from '@/lib/auth'
+import { isAdmin, isDevPasswordBypass } from '@/lib/auth'
 import { listAllShops } from '@/lib/shops'
 import { AdminApp } from '@/components/admin/AdminApp'
 import { LoginForm } from '@/components/admin/LoginForm'
@@ -15,7 +15,9 @@ export default function AdminPage() {
 }
 
 async function AdminGate() {
-  if (!(await isAdmin())) return <LoginForm />
+  // L'indice du formulaire vient du serveur, du MÊME prédicat que la vérification
+  // du mot de passe : pas de second test côté client qui pourrait diverger.
+  if (!(await isAdmin())) return <LoginForm devBypass={isDevPasswordBypass()} />
   // listAllShops (et pas listShops) : l'admin est le seul endroit qui voit les
   // fiches « en cours ».
   const shops = await listAllShops()
