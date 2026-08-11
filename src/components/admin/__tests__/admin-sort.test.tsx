@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 
 vi.mock('maplibre-gl', () => {
   class MockMap {
@@ -106,23 +106,45 @@ test('recherche sans résultat : message, pas une liste vide muette', () => {
 
 test('filtre « En cours » : ne garde que les fiches marquées', () => {
   render(<AdminApp shops={shops} />)
-  fireEvent.click(screen.getByRole('button', { name: /^En cours/ }))
+  fireEvent.click(screen.getByRole('button', { name: /^En cours \(\d+\)$/ }))
   expect(rowNames()).toEqual(['Atelier'])
 })
 
 test('filtre et recherche se combinent', () => {
   render(<AdminApp shops={shops} />)
-  fireEvent.click(screen.getByRole('button', { name: /^En cours/ }))
+  fireEvent.click(screen.getByRole('button', { name: /^En cours \(\d+\)$/ }))
   fireEvent.change(screen.getByLabelText('Chercher un cookie par nom'), { target: { value: 'miette' } })
   expect(screen.queryAllByRole('listitem')).toHaveLength(0)
 })
 
+// La pastille de statut sert à la fois d'indicateur et de bascule.
+const statusPill = (name: string) => {
+  const row = screen.getAllByRole('listitem').find((li) => li.textContent?.includes(name))
+  if (!row) throw new Error(`ligne « ${name} » introuvable`)
+  return within(row).getByRole('button', { name: /^(En cours|Publié)$/ })
+}
+
+test('la pastille de statut reflète l’état de la fiche', () => {
+  render(<AdminApp shops={shops} />)
+  expect(statusPill('Atelier').textContent).toContain('En cours')
+  expect(statusPill('Atelier').getAttribute('aria-pressed')).toBe('true')
+  expect(statusPill('Miette').textContent).toContain('Publié')
+  expect(statusPill('Miette').getAttribute('aria-pressed')).toBe('false')
+})
+
 test('bascule de ligne : publie une fiche en cours, met en cours une fiche publiée', () => {
   render(<AdminApp shops={shops} />)
-  // « Atelier » (en cours) est en tête du tri par défaut → sa bascule dit « Publier ».
-  fireEvent.click(screen.getAllByRole('button', { name: 'Publier' })[0])
+  fireEvent.click(statusPill('Atelier'))
   expect(setShopInProgressAction).toHaveBeenCalledWith(3, false)
 
-  fireEvent.click(screen.getAllByRole('button', { name: 'Passer en cours' })[0])
+  fireEvent.click(statusPill('Miette'))
   expect(setShopInProgressAction).toHaveBeenLastCalledWith(1, true)
+})
+
+test('la bascule de ligne ne se confond pas avec le filtre « En cours »', () => {
+  render(<AdminApp shops={shops} />)
+  // Le filtre porte le compteur, la pastille non : deux boutons distincts.
+  fireEvent.click(screen.getByRole('button', { name: /^En cours \(\d+\)$/ }))
+  expect(setShopInProgressAction).not.toHaveBeenCalled()
+  expect(rowNames()).toEqual(['Atelier'])
 })

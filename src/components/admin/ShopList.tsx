@@ -125,7 +125,9 @@ export function ShopList({
             )}
           </button>
         ))}
-        <span className="mx-1 h-4 w-px bg-[color:var(--border-strong)]" aria-hidden="true" />
+        {/* Pas de séparateur vertical entre les tris et ce filtre : à 390 px la
+            barre passe sur deux lignes et le trait restait orphelin en bout de
+            ligne. Le libellé chiffré suffit à le distinguer des tris. */}
         <button
           onClick={() => setOnlyInProgress((v) => !v)}
           aria-pressed={onlyInProgress}
@@ -153,24 +155,37 @@ export function ShopList({
                 </span>
                 <span className="flex items-center gap-2 text-[13px] text-[color:var(--text-muted)]">
                   {String(shop.rating).replace('.', ',')} / 5
-                  {shop.inProgress && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[color:var(--border-strong)] px-1.5 py-px text-[10px] uppercase tracking-[0.1em]">
-                      <svg viewBox="0 0 10 10" aria-hidden="true" className="h-2 w-2">
-                        <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" strokeWidth="1.6" />
-                      </svg>
-                      En cours
-                    </span>
-                  )}
+                  {/* La pastille de statut EST la bascule : une troisième action dans
+                      la colonne de droite y tenait sur une 3e ligne à 390 px et rognait
+                      le nom. Ici elle occupe la place libre sous le titre, et l'état
+                      se lit sans avoir à déchiffrer un libellé d'action. */}
+                  <button
+                    onClick={() => toggleInProgress(shop)}
+                    disabled={pendingId === shop.id}
+                    aria-pressed={shop.inProgress}
+                    title={
+                      shop.inProgress
+                        ? 'Publier — remettre sur la carte publique'
+                        : 'Passer en cours — retirer de la carte publique'
+                    }
+                    // « Publié » est l'état normal de 51 fiches sur 51 : sans cadre, il
+                    // s'efface (le contour ne revient qu'au survol) et seul « En cours »,
+                    // l'exception qu'on cherche du regard, porte la pastille dorée.
+                    className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-1.5 py-px text-[10px] uppercase tracking-[0.1em] transition-colors disabled:opacity-50 ${
+                      shop.inProgress
+                        ? 'border-[color:var(--accent-gold)] bg-[color:var(--accent-gold)] text-[color:var(--accent-gold-ink)]'
+                        : 'border-transparent hover:border-[color:var(--border-strong)] hover:text-[color:var(--text-body)]'
+                    }`}
+                  >
+                    <svg viewBox="0 0 10 10" aria-hidden="true" className="h-2 w-2">
+                      <circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+                      {shop.inProgress && <circle cx="5" cy="5" r="2" fill="currentColor" />}
+                    </svg>
+                    {shop.inProgress ? 'En cours' : 'Publié'}
+                  </button>
                 </span>
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1.5 text-[13px] sm:flex-row sm:items-center sm:gap-3">
-                <button
-                  onClick={() => toggleInProgress(shop)}
-                  disabled={pendingId === shop.id}
-                  className="whitespace-nowrap text-[color:var(--text-muted)] underline underline-offset-4 transition-colors hover:text-[color:var(--text-strong)] disabled:opacity-50"
-                >
-                  {shop.inProgress ? 'Publier' : 'Passer en cours'}
-                </button>
                 <button
                   onClick={() => onEdit(shop)}
                   className="text-[color:var(--text-body)] underline underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)]"
