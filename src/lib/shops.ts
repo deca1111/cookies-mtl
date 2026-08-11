@@ -5,8 +5,9 @@ import type { ShopInput } from './validate'
 
 export type Shop = ShopInput & { id: number; slug: string; createdAt: string }
 
-// Ce qui suffit à reconnaître un magasin déjà saisi (voir shop-duplicate.ts).
-export type ShopIdentity = { id: number; name: string; lat: number; lng: number }
+// Ce qui suffit à reconnaître un magasin déjà saisi (voir shop-duplicate.ts) :
+// nom + position, et l'URL Google dont on extrait l'identifiant de lieu.
+export type ShopIdentity = { id: number; name: string; lat: number; lng: number; googleMapsUrl: string }
 
 type Row = {
   id: number; slug: string; name: string; address: string
@@ -62,7 +63,9 @@ export async function getShopBySlug(slug: string): Promise<Shop | null> {
 // pendant la fenêtre où le cache est encore tiède.
 export async function listShopIdentities(): Promise<ShopIdentity[]> {
   const sql = getSql()
-  return (await sql`SELECT id, name, lat, lng FROM shops`) as ShopIdentity[]
+  // Alias entre guillemets : sans eux Postgres replierait la casse et renverrait
+  // `googlemapsurl`, que findDuplicate ne lirait jamais.
+  return (await sql`SELECT id, name, lat, lng, google_maps_url AS "googleMapsUrl" FROM shops`) as ShopIdentity[]
 }
 
 export async function insertShop(input: ShopInput): Promise<Shop> {

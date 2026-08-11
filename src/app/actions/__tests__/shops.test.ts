@@ -35,8 +35,15 @@ beforeEach(() => {
   updateTag.mockReset()
 })
 
-// Le magasin déjà en base, à la position exacte de `good`.
-const dejaEnBase = [{ id: 7, name: 'Félix & Norton', lat: good.lat, lng: good.lng }]
+// Le magasin déjà en base, à la position exacte de `good`. Son URL Google est
+// une recherche fabriquée — le cas des 51 fiches réelles, sans identité de lieu.
+const RECHERCHE = 'https://www.google.com/maps/search/?api=1&query=F%C3%A9lix'
+const dejaEnBase = [
+  { id: 7, name: 'Félix & Norton', lat: good.lat, lng: good.lng, googleMapsUrl: RECHERCHE },
+]
+
+// Lien de fiche résolu, porteur d'un identifiant de lieu.
+const FICHE = 'https://www.google.ca/maps/place/X/@45.5,-73.6,17z/data=!4m6!3m5!1s0x4cc91:0xed812!8m2!3d45.5!4d-73.6'
 
 test('creates shop, revalidates tag, returns slug', async () => {
   const res = await createShopAction(good)
@@ -81,6 +88,13 @@ test('une succursale éloignée du même nom reste ajoutable', async () => {
   listShopIdentities.mockResolvedValue([{ id: 7, name: 'Félix & Norton', lat: good.lat + 0.01, lng: good.lng }])
   expect((await createShopAction(good)).ok).toBe(true)
   expect(insertShop).toHaveBeenCalled()
+})
+
+test('même fiche Google : refusé même sous un autre nom et à 5 km', async () => {
+  listShopIdentities.mockResolvedValue([{ id: 7, name: 'Tout autre nom', lat: 45.6, lng: -73.7, googleMapsUrl: FICHE }])
+  const res = await createShopAction({ ...good, name: 'Félix & Norton Centre-ville', googleMapsUrl: FICHE })
+  expect(res).toEqual({ ok: false, error: 'duplicate' })
+  expect(insertShop).not.toHaveBeenCalled()
 })
 
 test('le contrôle d’unicité lit la base à chaque création, jamais un cache', async () => {
