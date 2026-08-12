@@ -8,7 +8,9 @@ import { RatingCookies } from './RatingCookies'
 
 // Panneau liste (spec v1.2 §6, variante « riche » validée sur maquette) : drawer
 // gauche par-dessus la carte, tri note/A–Z/distance, tap = fiche sur la carte.
-const DEFAULT_DIR: Record<SortKey, SortDir> = { distance: 'asc', name: 'asc', rating: 'desc' }
+// `recent` (tri de la liste admin) est exclu : le panneau public ne le propose pas.
+type PanelSortKey = Exclude<SortKey, 'recent'>
+const DEFAULT_DIR: Record<PanelSortKey, SortDir> = { distance: 'asc', name: 'asc', rating: 'desc' }
 
 // Durée de fermeture (cmtl-drawer-out) + marge — fallback minuterie si
 // animationend ne vient pas (jsdom, prefers-reduced-motion).
@@ -34,7 +36,7 @@ export function ShopListPanel({
   onPick: (s: Shop) => void
 }) {
   const { t } = useLang()
-  const [key, setKey] = useState<SortKey>('rating')
+  const [key, setKey] = useState<PanelSortKey>('rating')
   const [dir, setDir] = useState<SortDir>('desc')
   const [origin, setOrigin] = useState<Origin | null>(null)
   const [geoError, setGeoError] = useState(false)
@@ -73,7 +75,7 @@ export function ShopListPanel({
 
   if (!open) return null
 
-  const pickSort = (k: SortKey) => {
+  const pickSort = (k: PanelSortKey) => {
     if (k === 'distance' && !origin) {
       // Géoloc demandée à la première activation seulement ; l'échec n'écrase pas le tri courant.
       navigator.geolocation?.getCurrentPosition(
@@ -97,7 +99,7 @@ export function ShopListPanel({
 
   const sorted = sortShops(shops, key, dir, origin)
 
-  const chip = (k: SortKey, label: string) => (
+  const chip = (k: PanelSortKey, label: string) => (
     <button
       onClick={() => pickSort(k)}
       aria-pressed={key === k}

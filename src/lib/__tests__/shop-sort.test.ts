@@ -37,6 +37,24 @@ test('tri par distance avec origine ; sans origine → nom asc', () => {
   expect(sortShops(shops, 'distance', 'asc', null).map((s) => s.name)).toEqual(['atelier', 'Éclair', 'Miette'])
 })
 
+test('tri par ajout : desc = le plus récent en tête', () => {
+  const dated = [
+    { name: 'Miette', rating: 4, lat: 45.51, lng: -73.57, createdAt: '2026-02-01T10:00:00.000Z' },
+    { name: 'Éclair', rating: 5, lat: 45.53, lng: -73.6, createdAt: '2026-01-05T10:00:00.000Z' },
+    { name: 'atelier', rating: 3, lat: 45.5, lng: -73.55, createdAt: '2026-03-10T10:00:00.000Z' },
+  ]
+  expect(sortShops(dated, 'recent', 'desc').map((s) => s.name)).toEqual(['atelier', 'Miette', 'Éclair'])
+  expect(sortShops(dated, 'recent', 'asc').map((s) => s.name)).toEqual(['Éclair', 'Miette', 'atelier'])
+})
+
+test('tri par ajout : ex æquo départagés par le nom', () => {
+  const sameDay = [
+    { name: 'Miette', rating: 4, lat: 45.51, lng: -73.57, createdAt: '2026-02-01T10:00:00.000Z' },
+    { name: 'atelier', rating: 3, lat: 45.5, lng: -73.55, createdAt: '2026-02-01T10:00:00.000Z' },
+  ]
+  expect(sortShops(sameDay, 'recent', 'desc').map((s) => s.name)).toEqual(['atelier', 'Miette'])
+})
+
 test('jamais de mutation du tableau source', () => {
   const before = shops.map((s) => s.name)
   sortShops(shops, 'rating', 'desc')

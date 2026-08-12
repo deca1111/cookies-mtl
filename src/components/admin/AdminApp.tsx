@@ -7,16 +7,17 @@ import { useEffect, useRef, useState } from 'react'
 import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
 import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
-import { sortShops, type SortDir } from '@/lib/shop-sort'
+import { findDuplicate } from '@/lib/shop-duplicate'
 import type { Shop } from '@/lib/shops'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { AdminHeader } from './AdminHeader'
 import { PlaceSearch, type PickedPlace } from './PlaceSearch'
 import { RatingInput } from './RatingInput'
+import { ShopList } from './ShopList'
 
 const MTL_CENTER: [number, number] = [-73.5674, 45.5019]
 
-type Draft = PickedPlace & { rating: number; review: string; id?: number }
+type Draft = PickedPlace & { rating: number; review: string; inProgress: boolean; id?: number }
 
 export function AdminApp({ shops }: { shops: Shop[] }) {
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -24,9 +25,10 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   const [manualName, setManualName] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [sortKey, setSortKey] = useState<'name' | 'rating'>('rating')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [relocating, setRelocating] = useState(false)
+  // Nom de la fiche déjà en base vers laquelle on a redirigé, le temps d'expliquer
+  // à l'ouverture du modal pourquoi ce n'est pas une création.
+  const [existingNotice, setExistingNotice] = useState<string | null>(null)
   const mapDiv = useRef<HTMLDivElement>(null)
   const markerRef = useRef<maplibregl.Marker | null>(null)
   // Clé « lat,lng » du dernier géocodage inverse tenté — voir l'effet plus bas.
@@ -39,6 +41,21 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     reverseAttempted.current = null
     setDraft(d)
     setDraftSession((s) => s + 1)
+  }
+
+  // Point d'entrée de TOUTE création depuis un lieu choisi (suggestion Photon ou
+  // lien Google). Si le magasin est déjà en base, on ouvre SA fiche pour édition
+  // plutôt qu'un formulaire vierge : le doublon est refusé côté serveur de toute
+  // façon, autant éviter à Léo de saisir une note et un avis pour rien.
+  const openPlace = (p: PickedPlace) => {
+    const existing = findDuplicate(shops, p)
+    if (existing) {
+      setExistingNotice(existing.name)
+      openDraft({ ...existing, id: existing.id })
+      return
+    }
+    setExistingNotice(null)
+    openDraft({ ...p, rating: 0, review: '', inProgress: false })
   }
 
   // Task 17b bug 1: closing a draft (save or cancel) used to leave `draftSession`
@@ -56,6 +73,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     setDraft(null)
     setManualName(null)
     setRelocating(false)
+    setExistingNotice(null)
     setDraftSession((s) => s + 1)
   }
 
@@ -141,7 +159,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
 
   const startManual = (typedName: string) => {
     setManualName(typedName)
-    openDraft({ name: typedName, address: '', lat: MTL_CENTER[1], lng: MTL_CENTER[0], googleMapsUrl: '', rating: 0, review: '' })
+    openDraft({ name: typedName, address: '', lat: MTL_CENTER[1], lng: MTL_CENTER[0], googleMapsUrl: '', rating: 0, review: '', inProgress: false })
   }
 
   const save = async () => {
@@ -163,14 +181,6 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     }
   }
 
-  const pickSort = (k: 'name' | 'rating') => {
-    if (k === sortKey) setSortDir(sortDir === 'asc' ? 'desc' : 'asc')
-    else {
-      setSortKey(k)
-      setSortDir(k === 'name' ? 'asc' : 'desc')
-    }
-  }
-
   const remove = async (shop: Shop) => {
     if (!window.confirm(`Supprimer « ${shop.name} » ?`)) return
     try {
@@ -187,6 +197,8 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
     rating: 'Choisis une note (0 à 5, par demi-cookie).',
     googleMapsUrl: 'Le lien Google est invalide.',
     review: 'L’avis est trop long.',
+    duplicate:
+      'Ce magasin est déjà dans la base. Modifie sa fiche, ou précise le nom s’il s’agit d’une autre succursale.',
     server: 'Erreur serveur — réessaie, ta saisie est conservée.',
   }
 
@@ -215,7 +227,7 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
 
       <section className={card}>
         <h2 className={eyebrow}>Ajouter un cookie</h2>
-        <PlaceSearch onPick={(p) => openDraft({ ...p, rating: 0, review: '' })} onManualRequest={startManual} />
+        <PlaceSearch onPick={openPlace} onManualRequest={startManual} />
       </section>
 
       {/* Création et édition partagent le MÊME modal (spec v1.2 §7, style unifié). */}
@@ -235,6 +247,11 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
           className={`${card} my-6 w-full max-w-lg sm:my-0`}
         >
           <h2 className={eyebrow}>{draft.id ? 'Modifier' : 'C’est bien ici ?'}</h2>
+          {existingNotice && (
+            <p className="rounded-[var(--radius-field)] border border-[color:var(--accent-gold)] bg-[color:var(--accent-wash)] px-4 py-3 text-[14px] text-[color:var(--text-body)]">
+              « {existingNotice} » est déjà dans la base — voici sa fiche.
+            </p>
+          )}
           <input
             value={draft.name}
             onChange={(e) => setDraft({ ...draft, name: e.target.value })}
@@ -294,6 +311,22 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
             rows={3}
             className={`resize-none leading-relaxed ${field}`}
           />
+          {/* Fiche de travail : reste hors de la carte publique, du sitemap et des
+              fiches /c/[slug] tant qu'elle est cochée (filtrée en SQL, cf. shops.ts). */}
+          <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-field)] border border-[color:var(--border)] bg-[color:var(--surface-2)] px-4 py-3">
+            <input
+              type="checkbox"
+              checked={draft.inProgress}
+              onChange={(e) => setDraft({ ...draft, inProgress: e.target.checked })}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-[color:var(--accent-gold)]"
+            />
+            <span className="text-[14px] text-[color:var(--text-body)]">
+              En cours
+              <span className="mt-0.5 block text-[13px] text-[color:var(--text-muted)]">
+                Gardé pour toi seul — invisible sur la carte publique.
+              </span>
+            </span>
+          </label>
           {error && <p className="text-[13px] text-[color:var(--danger)]">{errorLabels[error] ?? 'Erreur — réessaie.'}</p>}
           <div className="flex items-center gap-3">
             <button
@@ -315,62 +348,12 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
       )}
 
       <section className={card}>
-        <div className="flex items-center justify-between gap-3">
-          <h2 className={eyebrow}>Les cookies ({shops.length})</h2>
-          <div className="flex gap-1.5">
-            {(['name', 'rating'] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => pickSort(k)}
-                aria-pressed={sortKey === k}
-                className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[12px] transition-colors ${
-                  sortKey === k
-                    ? 'border-[color:var(--accent-gold)] bg-[color:var(--accent-gold)] text-[color:var(--accent-gold-ink)]'
-                    : 'border-[color:var(--border-strong)] text-[color:var(--text-muted)] hover:text-[color:var(--text-body)]'
-                }`}
-              >
-                {k === 'name' ? 'Nom' : 'Note'}
-                {sortKey === k && (
-                  <svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true" className={sortDir === 'asc' ? 'rotate-180' : ''}>
-                    <path d="M1 3 L5 7 L9 3" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-                  </svg>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-        <ul className="-my-1 divide-y divide-[color:var(--border)]">
-          {sortShops(shops, sortKey, sortDir).map((shop) => (
-            <li
-              key={shop.id}
-              data-editing={draft?.id === shop.id || undefined}
-              className="flex items-center justify-between gap-4 py-3 data-[editing]:-mx-2 data-[editing]:rounded-lg data-[editing]:border-l-2 data-[editing]:border-[color:var(--accent)] data-[editing]:bg-[color:var(--accent-wash)] data-[editing]:px-2"
-            >
-              <div className="min-w-0">
-                <span className="font-display block truncate text-[17px] text-[color:var(--text-strong)]">
-                  {shop.name}
-                </span>
-                <span className="text-[13px] text-[color:var(--text-muted)]">
-                  {String(shop.rating).replace('.', ',')} / 5
-                </span>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1.5 text-[13px] sm:flex-row sm:items-center sm:gap-3">
-                <button
-                  onClick={() => openDraft({ ...shop, id: shop.id })}
-                  className="text-[color:var(--text-body)] underline underline-offset-4 transition-colors hover:text-[color:var(--accent-ink)]"
-                >
-                  Modifier
-                </button>
-                <button
-                  onClick={() => remove(shop)}
-                  className="text-[color:var(--danger)] underline underline-offset-4 transition-opacity hover:opacity-75"
-                >
-                  Supprimer
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <ShopList
+          shops={shops}
+          editingId={draft?.id}
+          onEdit={(shop) => openDraft({ ...shop, id: shop.id })}
+          onDelete={remove}
+        />
       </section>
     </main>
   )

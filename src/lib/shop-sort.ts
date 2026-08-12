@@ -1,6 +1,6 @@
 // Tri des cookies pour le panneau liste (public) et la liste admin.
 // Pur et sans dépendance : testable sans DOM ni carte.
-export type SortKey = 'distance' | 'name' | 'rating'
+export type SortKey = 'distance' | 'name' | 'rating' | 'recent'
 export type SortDir = 'asc' | 'desc'
 export type Origin = { lat: number; lng: number }
 
@@ -24,7 +24,9 @@ export function formatDistance(m: number): string {
 
 const byName = new Intl.Collator('fr', { sensitivity: 'base' })
 
-export function sortShops<T extends { name: string; rating: number; lat: number; lng: number }>(
+export function sortShops<
+  T extends { name: string; rating: number; lat: number; lng: number; createdAt?: string }
+>(
   shops: readonly T[],
   key: SortKey,
   dir: SortDir,
@@ -34,6 +36,11 @@ export function sortShops<T extends { name: string; rating: number; lat: number;
   const sorted = [...shops]
   if (key === 'distance' && origin) {
     sorted.sort((a, b) => sign * (distanceMeters(origin, a) - distanceMeters(origin, b)))
+  } else if (key === 'recent') {
+    // `desc` = le plus récent d'abord, comme `rating` desc = la meilleure note
+    // d'abord. Ex æquo (import groupé, même horodatage) départagés par le nom.
+    const at = (s: T) => (s.createdAt ? Date.parse(s.createdAt) : 0)
+    sorted.sort((a, b) => sign * (at(a) - at(b)) || byName.compare(a.name, b.name))
   } else if (key === 'rating') {
     // Ex æquo départagés par le nom pour un ordre stable et prévisible.
     sorted.sort((a, b) => sign * (a.rating - b.rating) || byName.compare(a.name, b.name))
