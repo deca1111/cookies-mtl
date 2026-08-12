@@ -6,6 +6,7 @@ import '@/lib/maplibre-setup'
 import { useEffect, useRef, useState } from 'react'
 import { logout } from '@/app/actions/auth'
 import { createShopAction, deleteShopAction, updateShopAction } from '@/app/actions/shops'
+import { hasStreetNumber, preferAddress } from '@/lib/address'
 import { buildMapStyle, currentTheme, getMapStyleUrl } from '@/lib/map-style'
 import { findDuplicate } from '@/lib/shop-duplicate'
 import type { Shop } from '@/lib/shops'
@@ -132,25 +133,35 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
   // sans numéro civique (cas « Bernice » : la fiche Photon n'en portait pas) —
   // l'inverse s'accroche au point adresse le plus proche, qui a le numéro.
   // `reverseAttempted` (clé lat,lng) évite de boucler si l'inverse n'a pas mieux.
+  //
+  // Spec 2026-08-11 §2 : quand l'inverse ne rend toujours pas de numéro, l'adresse
+  // lue dans le lien Google prend le relais (preferAddress). C'est le cas où le
+  // point n'a pas d'adresse OSM exploitable autour — Sora Café, place Ville-Marie.
   useEffect(() => {
     if (!draft) return
     const hadAddress = draft.address !== ''
-    if (hadAddress && /^\d/.test(draft.address)) return
+    if (hadAddress && hasStreetNumber(draft.address)) return
     const key = `${draft.lat},${draft.lng}`
     if (reverseAttempted.current === key) return
     reverseAttempted.current = key
     const { lat, lng } = draft
+    const fromGoogleLink = draft.googleAddress ?? ''
     let stale = false
     fetch(`/api/places?lat=${lat}&lng=${lng}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { address?: string | null } | null) => {
-        if (stale || !data?.address) return
-        // Une adresse existante (sans numéro) n'est remplacée que si l'inverse
+      .then((data: { address?: string | null } | null) => data?.address ?? '')
+      // Réseau coupé ou /api/places en panne : l'adresse du lien Google reste
+      // jouable, elle ne dépend d'aucun appel.
+      .catch(() => '')
+      .then((reverse: string) => {
+        if (stale) return
+        const address = preferAddress(reverse, fromGoogleLink)
+        if (!address) return
+        // Une adresse existante (sans numéro) n'est remplacée que si la nouvelle
         // apporte réellement le numéro — sinon on garde le libellé Photon.
-        if (hadAddress && !/^\d/.test(data.address)) return
-        setDraft((d) => (d && d.lat === lat && d.lng === lng ? { ...d, address: data.address as string } : d))
+        if (hadAddress && !hasStreetNumber(address)) return
+        setDraft((d) => (d && d.lat === lat && d.lng === lng ? { ...d, address } : d))
       })
-      .catch(() => {})
     return () => {
       stale = true
     }
@@ -277,8 +288,11 @@ export function AdminApp({ shops }: { shops: Shop[] }) {
             <PlaceSearch
               onPick={(p) => {
                 // Bloc atomique : adresse + lat + lng remplacés ensemble. Nom et
-                // lien Google conservés (éditables à part).
-                setDraft((d) => (d ? { ...d, address: p.address, lat: p.lat, lng: p.lng } : d))
+                // lien Google conservés (éditables à part). Le repli d'adresse
+                // suit le lieu, sans quoi celui de l'ancien lieu resservirait.
+                setDraft((d) =>
+                  d ? { ...d, address: p.address, lat: p.lat, lng: p.lng, googleAddress: p.googleAddress } : d
+                )
                 setRelocating(false)
                 setDraftSession((s) => s + 1) // recentre la mini-carte sur le nouveau lieu
               }}

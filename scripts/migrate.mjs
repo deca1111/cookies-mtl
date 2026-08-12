@@ -28,4 +28,10 @@ await sql`
 // pas au rendu, pour qu'une nouvelle page publique soit publique-sûre par défaut.
 await sql`ALTER TABLE shops ADD COLUMN IF NOT EXISTS in_progress boolean NOT NULL DEFAULT false`
 
+// Le slug suit désormais le nom (spec 2026-08-11 §3) : renommer une fiche change
+// son URL publique. Les anciens slugs sont gardés ici pour que /c/<ancien> réponde
+// par une redirection permanente au lieu d'un 404 — les liens déjà partagés et ce
+// que Google a indexé continuent de résoudre.
+await sql`ALTER TABLE shops ADD COLUMN IF NOT EXISTS previous_slugs text[] NOT NULL DEFAULT '{}'`
+
 console.log('migration ok')
