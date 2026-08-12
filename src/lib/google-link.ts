@@ -1,3 +1,5 @@
+import { geocodeAddress } from './photon'
+
 const SHORTENER_HOSTS = new Set(['maps.app.goo.gl', 'goo.gl'])
 
 // Un lien court se résout vers le TLD régional de Google (google.ca depuis Montréal,
@@ -8,7 +10,27 @@ function isGoogleHost(hostname: string): boolean {
   return GOOGLE_HOST.test(hostname.toLowerCase())
 }
 
-export function parseGoogleMapsUrl(finalUrl: string): { name: string; lat: number; lng: number } | null {
+// Ce qui ouvre une adresse : un numéro civique, ou un mot de voie pour les
+// adresses qui n'en ont pas (« Place Ville-Marie »). Sert de garde-fou à la
+// découpe nom/adresse ci-dessous.
+const OUVRE_UNE_ADRESSE =
+  /^(?:\d|(?:rue|avenue|ave|av|boulevard|boul|blvd|chemin|ch|place|pl|côte|cote|montée|montee|impasse|allée|allee|quai|square|street|st|road|rd|drive|dr|lane|way)\b)/i
+
+export type GoogleListing = {
+  name: string
+  /** Vide quand le lien n'en porte pas — c'est le cas de la forme desktop. */
+  address: string
+  /** null quand le lien ne porte aucune coordonnée — forme de l'appli mobile. */
+  lat: number | null
+  lng: number | null
+}
+
+// Google sert au moins trois formes d'URL de fiche selon l'appareil et le chemin
+// de partage (spec 2026-08-11) : le nom vit tantôt dans /maps/place/<…>, tantôt
+// dans ?q=<…>, l'adresse est présente ou non, les coordonnées aussi. Reconnaître
+// une forme précise, c'est casser à la prochaine — on récolte donc chaque champ
+// là où il se trouve, avec ses propres replis.
+export function extractGoogleListing(finalUrl: string): GoogleListing | null {
   let url: URL
   try {
     url = new URL(finalUrl)
@@ -17,21 +39,67 @@ export function parseGoogleMapsUrl(finalUrl: string): { name: string; lat: numbe
   }
   if (!isGoogleHost(url.hostname)) return null
 
-  const placeMatch = url.pathname.match(/\/place\/([^/]+)/)
-  if (!placeMatch) return null
-  let name: string
-  try {
-    name = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '))
-  } catch {
-    return null
-  }
+  const label = readLabel(url)
+  if (!label) return null
 
-  // Precise pin: ...!3d<lat>!4d<lng> — preferred over @lat,lng (viewport center)
+  const { name, address } = splitLabel(label)
+  // « q=45.52,-73.57 » : une épingle posée à la main, sans fiche ni nom. La
+  // virgule des coordonnées ne coupe pas (rien d'adressable derrière), le nom
+  // arrive donc entier — d'où la paire testée ici, pas seulement un nombre.
+  if (!name || /^-?\d+(?:\.\d+)?(?:\s*,\s*-?\d+(?:\.\d+)?)?$/.test(name)) return null
+
+  const point = readPoint(finalUrl, url)
+  return { name, address, lat: point?.lat ?? null, lng: point?.lng ?? null }
+}
+
+// Le porteur du nom : le chemin d'abord (formes navigateur), la requête ensuite
+// (forme de l'appli mobile).
+function readLabel(url: URL): string | null {
+  const fromPath = url.pathname.match(/\/place\/([^/]+)/)
+  if (fromPath) {
+    try {
+      return decodeURIComponent(fromPath[1].replace(/\+/g, ' ')).trim() || null
+    } catch {
+      return null
+    }
+  }
+  return url.searchParams.get('q')?.trim() || null
+}
+
+// « Ciao Amore Café, 838 Avenue du Mont-Royal E, Montréal, QC H2J 1X1 » porte les
+// deux informations d'un coup. La virgule ne coupe QUE si ce qui suit ouvre une
+// adresse : sans ce test, un commerce nommé « Café, etc. » perdrait la moitié de
+// son nom — le symétrique du bug qu'on corrige.
+function splitLabel(label: string): { name: string; address: string } {
+  const cut = label.indexOf(',')
+  if (cut < 0) return { name: label, address: '' }
+
+  const rest = label.slice(cut + 1).trim()
+  const name = label.slice(0, cut).trim()
+  if (!name || !OUVRE_UNE_ADRESSE.test(rest)) return { name: label, address: '' }
+
+  return { name, address: normalizeAddress(rest) }
+}
+
+// Google écrit « rue, ville, province code postal[, pays] ». Le style maison
+// s'arrête à la ville : les 60 fiches en base sont toutes au format
+// « 1251 Rue Rachel Est, Montréal ».
+function normalizeAddress(address: string): string {
+  return address
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(', ')
+}
+
+function readPoint(finalUrl: string, url: URL): { lat: number; lng: number } | null {
+  // Épingle précise (!3d/!4d), préférée au centre de vue (@lat,lng).
   const precise = finalUrl.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/)
-  if (precise) return { name, lat: Number(precise[1]), lng: Number(precise[2]) }
+  if (precise) return { lat: Number(precise[1]), lng: Number(precise[2]) }
 
   const viewport = url.pathname.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/)
-  if (viewport) return { name, lat: Number(viewport[1]), lng: Number(viewport[2]) }
+  if (viewport) return { lat: Number(viewport[1]), lng: Number(viewport[2]) }
 
   return null
 }
@@ -39,7 +107,7 @@ export function parseGoogleMapsUrl(finalUrl: string): { name: string; lat: numbe
 export async function resolveGoogleShareLink(
   shareUrl: string,
   fetchImpl: typeof fetch = fetch
-): Promise<{ name: string; lat: number; lng: number; googleMapsUrl: string } | null> {
+): Promise<{ name: string; address: string; lat: number; lng: number; googleMapsUrl: string } | null> {
   let host: string
   try {
     host = new URL(shareUrl).hostname
@@ -50,9 +118,20 @@ export async function resolveGoogleShareLink(
 
   try {
     const res = await fetchImpl(shareUrl, { redirect: 'follow' })
-    const parsed = parseGoogleMapsUrl(res.url)
-    if (!parsed) return null
-    return { ...parsed, googleMapsUrl: shareUrl }
+    const listing = extractGoogleListing(res.url)
+    if (!listing) return null
+
+    if (listing.lat !== null && listing.lng !== null) {
+      return { ...listing, lat: listing.lat, lng: listing.lng, googleMapsUrl: shareUrl }
+    }
+
+    // Lien copié dans l'appli mobile : la page d'atterrissage ne porte aucune
+    // coordonnée (vérifié jusque dans son HTML). Son adresse, elle, est complète
+    // — ce que le géocodeur sait placer même quand il ignore le commerce.
+    if (!listing.address) return null
+    const point = await geocodeAddress(listing.address, fetchImpl)
+    if (!point) return null
+    return { name: listing.name, address: listing.address, ...point, googleMapsUrl: shareUrl }
   } catch {
     return null
   }

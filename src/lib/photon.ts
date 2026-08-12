@@ -33,6 +33,37 @@ export async function reverseGeocode(lat: number, lng: number, fetchImpl: typeof
   }
 }
 
+// Géocodage direct d'une adresse — le lien Google copié dans l'appli mobile
+// donne l'adresse mais aucune coordonnée (voir google-link.ts). `searchPlaces`
+// ne peut pas servir ici : il ne garde que les résultats portant un `name`,
+// qu'un simple numéro civique n'a pas.
+export async function geocodeAddress(
+  address: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<{ lat: number; lng: number } | null> {
+  const url = new URL('https://photon.komoot.io/api/')
+  url.searchParams.set('q', address)
+  url.searchParams.set('lat', '45.5019')
+  url.searchParams.set('lon', '-73.5674')
+  url.searchParams.set('limit', '1')
+  url.searchParams.set('lang', 'fr')
+
+  try {
+    const res = await fetchImpl(url.toString(), { headers: { 'User-Agent': 'cookies-mtl (personal project)' } })
+    if (!res.ok) return null
+    const data = (await res.json()) as { features?: PhotonFeature[] }
+    const coordinates = data.features?.[0]?.geometry?.coordinates
+    if (!coordinates) return null
+    const [lng, lat] = coordinates
+    // Hors zone = géocodage parti ailleurs sur une adresse mal lue. Mieux vaut
+    // rendre la main à l'admin (« Lien illisible », point à la main) qu'une
+    // épingle plausible mais fausse.
+    return withinMontreal(lat, lng) ? { lat, lng } : null
+  } catch {
+    return null
+  }
+}
+
 export async function searchPlaces(q: string, fetchImpl: typeof fetch = fetch): Promise<PlaceResult[]> {
   const url = new URL('https://photon.komoot.io/api/')
   url.searchParams.set('q', q)

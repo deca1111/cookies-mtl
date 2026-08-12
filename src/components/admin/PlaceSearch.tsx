@@ -4,7 +4,15 @@ import { useEffect, useRef, useState } from 'react'
 import { resolveLinkAction } from '@/app/actions/shops'
 import type { PlaceResult } from '@/lib/photon'
 
-export type PickedPlace = { name: string; address: string; lat: number; lng: number; googleMapsUrl: string }
+export type PickedPlace = {
+  name: string
+  address: string
+  lat: number
+  lng: number
+  googleMapsUrl: string
+  /** Adresse lue dans le lien Google — repli du géocodage inverse, voir lib/address.ts. */
+  googleAddress?: string
+}
 
 // Three paths to a PickedPlace, in order of friction:
 // 1. type → Photon suggestions → tap
@@ -56,7 +64,11 @@ export function PlaceSearch({
         setLinkError(true)
         return
       }
-      onPick({ ...resolved, address: '' })
+      // L'adresse du lien ne remplit PAS `address` : elle court-circuiterait le
+      // géocodage inverse, qui s'abstient dès qu'une adresse commence par un
+      // chiffre, et imposerait le format Google (anglais, code postal). Elle
+      // n'est qu'un repli — voir preferAddress dans lib/address.ts.
+      onPick({ ...resolved, address: '', googleAddress: resolved.address })
     } catch {
       setLinkError(true)
     } finally {

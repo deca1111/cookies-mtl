@@ -11,3 +11,10 @@ test('manifest : icônes PWA 192 et 512 en PNG, favicon.ico en secours', () => {
   expect(png192?.sizes).toBe('192x192')
   expect(png192?.type).toBe('image/png')
 })
+
+test('manifest : le .ico déclare ses tailles réelles, jamais « any »', () => {
+  // 'any' promet une icône vectorielle ; le fichier contient trois images raster
+  // (16, 32, 48). Chrome le vérifie et se plaint en console de la contradiction.
+  const ico = (manifest().icons ?? []).find((i) => i.src === '/favicon.ico')
+  expect(ico?.sizes).toBe('16x16 32x32 48x48')
+})

@@ -296,7 +296,10 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         // top-left: bottom-right sits under the bottom sheet on mobile once a shop is
         // selected, and top-right is already the FR/EN toggle — top-left stays reachable
         // in both states.
-        map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'top-left')
+        // À DROITE, sous le bouton de thème : la colonne gauche est réservée au
+        // bloc de marque (logo + compteur), qui aurait sinon coincé la géoloc
+        // toujours plus bas à chaque élément ajouté.
+        map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: false }), 'top-right')
 
         for (const shop of shops) {
           const holder = document.createElement('div')
@@ -450,6 +453,7 @@ export function CookieMap({ shops, initialSlug }: { shops: Shop[]; initialSlug?:
         </div>
       )}
       <MapChrome
+        cookieCount={shops.length}
         onLogoClick={() => {
           setIntroOrigin('logo')
           setIntroOpen(true)
