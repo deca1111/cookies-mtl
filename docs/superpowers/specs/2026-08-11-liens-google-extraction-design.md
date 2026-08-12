@@ -108,16 +108,37 @@ laissait donc le slug pollué — le cas des quatre fiches réparées plus bas.
 
 ## 4. Réparation des données existantes
 
-Quatre fiches portent un slug construit sur un nom pollué, alors que leur nom a déjà été corrigé
-à la main : #76 Café Maison Chabot, #78 Le Picnic VéloCafé, #79 Afrooshé Chocolaterie, #82 Sora
-Café. Leurs liens sont tous de forme B, donc porteurs de l'adresse.
-
 Script one-shot `scripts/repair-slugs.mjs`, **aperçu par défaut**, écriture sur `--write` :
 
 - régénère le slug depuis le nom courant, archive l'ancien dans `previous_slugs` ;
 - restaure l'adresse depuis le lien Google **uniquement** si l'adresse en base n'a pas de numéro
-  civique et que celle du lien en a un — ce qui ne touche que Sora Café, et laisse intactes les
-  adresses Photon déjà correctes des trois autres.
+  civique et que celle du lien en a un — les libellés Photon déjà corrects sont laissés tels quels.
+
+Exécuté le 2026-08-11 sur les 65 fiches : **9 réparées**, sur décision de Léo de tout traiter d'un
+coup plutôt que de laisser les URL changer une à une au fil des éditions.
+
+- **Cinq slugs pollués par un lien Google** (l'adresse était dans le nom) : #76 Café Maison Chabot,
+  #78 Le Picnic VéloCafé, #79 Afrooshé Chocolaterie, #82 Sora Café, #89 Biscuits Cookine.
+- **Trois slugs simplement désynchronisés**, hérités d'un nom édité après création : #51 (coquille
+  « panino » → « papino »), #56 Pigeon Café & Bar, #72 Café Larue & Fils.
+- **Deux adresses restaurées** depuis le lien : #82 Sora Café (« Montréal » → « 1 Pl. Ville-Marie,
+  Montréal ») et #88 Chez Potier Pâtisserie (« Montréal » → « 630 Rue Wellington, Montréal »).
+
+Contrôle d'après réparation : aucun slug en double, aucun slug vivant réclamé par l'historique
+d'une autre fiche.
+
+### Ce que la réparation ne peut pas atteindre
+
+Sept fiches gardent une adresse réduite à la rue : #26 Bernice, #30 Blonde Biscuiterie, #31 Tunnel
+Espresso, #33 Slice + Soda, #39 Le Petit Dep, #40 Coco, #62 Chez Mère Grand. Elles viennent toutes
+du chemin Photon, et leur `googleMapsUrl` est une `/maps/search/?query=…` fabriquée par
+`withListingFallback` : elle ne fait que ré-encoder l'adresse déjà en base, sans rien apporter.
+
+Photon ne peut pas davantage : interrogé en direct, il retrouve bien chacun de ces commerces mais
+sans `housenumber` — OSM ne porte pas leur numéro civique. La seule source reste Google, donc un
+lien de fiche collé à la main dans l'admin, une fiche à la fois. Le correctif de cette spec suffit
+alors : le géocodage inverse ne rendra toujours pas de numéro, et l'adresse du lien prendra le
+relais.
 
 ## 5. Tests
 
