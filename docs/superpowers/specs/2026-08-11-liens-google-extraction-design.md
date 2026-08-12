@@ -135,10 +135,28 @@ du chemin Photon, et leur `googleMapsUrl` est une `/maps/search/?query=…` fabr
 `withListingFallback` : elle ne fait que ré-encoder l'adresse déjà en base, sans rien apporter.
 
 Photon ne peut pas davantage : interrogé en direct, il retrouve bien chacun de ces commerces mais
-sans `housenumber` — OSM ne porte pas leur numéro civique. La seule source reste Google, donc un
-lien de fiche collé à la main dans l'admin, une fiche à la fois. Le correctif de cette spec suffit
-alors : le géocodage inverse ne rendra toujours pas de numéro, et l'adresse du lien prendra le
-relais.
+sans `housenumber` — OSM ne porte pas leur numéro civique.
+
+**Coller un lien Google ne suffit pas toujours** (corrigé le 2026-08-11 après vérification : la
+consigne écrite ici d'abord était fausse). Google n'inclut l'adresse dans le segment `/place/`
+que pour une partie des partages, et rien dans l'admin ne permet de le prévoir. Le lien de
+Bernice (#93) redirige vers `/maps/place/Bernice+🇨🇦/@…` — nom seul. Ni l'URL ni le HTML de la
+page ne portent l'adresse : celle-ci n'apparaît qu'après exécution du JavaScript, hors d'atteinte
+sans scraping.
+
+Deviner par proximité ne tient pas non plus : sur 6 des 8 fiches concernées, plusieurs numéros
+sont à égalité de distance du point (Bernice : 7 candidats à 15 m ; Coco : 4 à 9 m ; Chez Mère
+Grand : 471 et 473 à 2 m). Choisir « le plus proche » reviendrait à publier une adresse tirée au
+sort.
+
+**Décision (Léo, 2026-08-11) : laisser ces fiches en l'état.** L'adresse affichée est du texte de
+présentation ; la navigation, elle, passe par les coordonnées (`googleDirectionsUrl` n'envoie que
+`lat,lng`), et celles-ci sont justes — le bouton itinéraire mène bien au bon endroit. Rendre le
+champ adresse saisissable reste l'issue garantie si le cas devient gênant, au prix d'un
+assouplissement de la v1.2 §8.
+
+Note d'usage : les liens `share.google/…` ne sont pas exploitables — ils redirigent vers
+`google.com/share.google?q=…`, qui n'est pas une fiche Maps.
 
 ## 5. Tests
 
