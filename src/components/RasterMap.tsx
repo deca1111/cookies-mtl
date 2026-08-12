@@ -105,11 +105,11 @@ export function RasterMap({
 
       // Équivalent minimal du GeolocateControl MapLibre (spec §3) : centre la carte
       // sur la position ET pose un point de position (QA v1.2 round 3 — il manquait),
-      // sans suivi continu. Même coin haut-gauche que sur MapLibre. Le chrome
+      // sans suivi continu. Même coin haut-DROIT que sur MapLibre. Le chrome
       // `leaflet-bar` par défaut est remplacé par le chip de marque (.cmtl-geolocate).
       let geoMarker: import('leaflet').Marker | null = null
       const GeoButton = L.Control.extend({
-        options: { position: 'topleft' },
+        options: { position: 'topright' },
         onAdd() {
           const btn = document.createElement('button')
           btn.className = 'cmtl-geolocate'

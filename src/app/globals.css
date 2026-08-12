@@ -182,6 +182,8 @@ body {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 50%;
+  /* Comme au survol : la pastille nom doit passer devant les cookies voisins. */
+  z-index: 5;
 }
 
 /* Sélection (spec v1.2 §1, variante C validée) : 34 → ~50 px, ombre un peu
@@ -221,6 +223,29 @@ body {
 }
 
 .cmtl-pin-cookie[data-selected='true'] .cmtl-pin-name {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Le nom apparaît aussi au SURVOL, comme à la sélection (le grossissement, lui,
+   existait déjà). Réservé aux vrais pointeurs : sur tactile, un tap laisse le
+   :hover « collant » et la pastille resterait affichée après le doigt parti. */
+@media (hover: hover) {
+  .cmtl-pin-cookie:hover .cmtl-pin-name {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* Sans quoi la pastille passe sous les cookies voisins, qui sont plus bas dans
+     le DOM — le sélectionné règle déjà ça avec le même z-index. */
+  .cmtl-pin-cookie:hover {
+    z-index: 5;
+  }
+}
+
+/* Au clavier : même traitement, hors media query — un utilisateur au clavier n'a
+   pas de pointeur mais doit lire le nom du marqueur qu'il atteint. */
+.cmtl-pin-cookie:focus-visible .cmtl-pin-name {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
@@ -525,18 +550,19 @@ body {
   opacity: 0.38;
 }
 
-/* La pastille logo (MapChrome, ~102px + marges) occupe le coin haut-gauche :
-   les contrôles carte de ce coin démarrent sous elle, sur les deux moteurs.
+/* La géolocalisation vit dans le coin haut-DROIT depuis que la colonne gauche
+   porte le bloc de marque (logo + compteur) : elle se range sous le bouton de
+   thème, qui occupe 34 px à partir de 0.75rem.
    !important obligatoire : les feuilles maplibre-gl.css/leaflet.css sont importées
    par les composants et arrivent APRÈS globals.css dans la cascade — sans lui,
-   leur `top: 0` regagnait et le bouton de géolocalisation restait sous le logo
-   (bug constaté en QA v1.1). */
-.maplibregl-ctrl-top-left {
-  top: calc(126px + env(safe-area-inset-top)) !important;
+   leur `top: 0` regagne et le bouton se colle au bouton de thème (même mécanique
+   que le bug QA v1.1, où il finissait sous le logo). */
+.maplibregl-ctrl-top-right {
+  top: calc(3.5rem + env(safe-area-inset-top)) !important;
 }
 
-.leaflet-top.leaflet-left {
-  top: calc(126px + env(safe-area-inset-top)) !important;
+.leaflet-top.leaflet-right {
+  top: calc(3.5rem + env(safe-area-inset-top)) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
