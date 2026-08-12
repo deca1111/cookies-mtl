@@ -13,7 +13,11 @@ export default function manifest(): MetadataRoute.Manifest {
     // Chrome navigateur : espresso de la marque (indépendant du doré des boutons).
     theme_color: '#3b2a1f',
     icons: [
-      { src: '/favicon.ico', sizes: 'any', type: 'image/x-icon' },
+      // Les tailles RÉELLES du .ico, pas 'any' : cette valeur promet une icône
+      // vectorielle (donc redimensionnable à l'infini). Chrome téléchargeait le
+      // fichier, y trouvait trois images raster fixes, et signalait la
+      // contradiction en console — « Resource size is not correct ».
+      { src: '/favicon.ico', sizes: '16x16 32x32 48x48', type: 'image/x-icon' },
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
