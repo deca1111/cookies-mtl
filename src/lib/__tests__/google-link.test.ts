@@ -39,6 +39,27 @@ test('forme appli mobile : nom et adresse dans q, aucune coordonnée', () => {
   })
 })
 
+// Relevés en base le 2026-08-11 : Google intercale le complexe ou la ville entre
+// le commerce et sa rue. La première version du correctif renonçait à découper et
+// remettait tout dans le nom — le bug d'origine, sous une autre forme.
+test('adresse précédée du nom du complexe (Café Dépôt)', () => {
+  const url =
+    'https://www.google.com/maps/place/Caf%C3%A9+D%C3%A9p%C3%B4t,+O+Centre+de+Commerce+Mondial+de+Montreal,+383+Rue+Saint-Jacques,+Montreal,+Quebec+H2Y+2N9/@45.5030,-73.5600,17z/data=!8m2!3d45.5030!4d-73.5600'
+  expect(extractGoogleListing(url)).toMatchObject({
+    name: 'Café Dépôt',
+    address: '383 Rue Saint-Jacques, Montreal',
+  })
+})
+
+test('adresse précédée d’une ville répétée (Marché Saint Laurent)', () => {
+  const url =
+    "https://www.google.com/maps/place/March%C3%A9+Saint+Laurent,+Montr%C3%A9al,+503+Place+d'Armes,+Montreal,+Quebec+H2Y+2W8/@45.5050585,-73.5569,17z/data=!8m2!3d45.5050585!4d-73.5569"
+  expect(extractGoogleListing(url)).toMatchObject({
+    name: 'Marché Saint Laurent',
+    address: "503 Place d'Armes, Montreal",
+  })
+})
+
 test('un nom contenant une virgule n’est pas tronqué', () => {
   // Le symétrique du bug corrigé : la virgule ne coupe que devant une adresse.
   const url = 'https://www.google.com/maps/place/Caf%C3%A9,+etc./@45.5,-73.6,17z/data=!8m2!3d45.5!4d-73.6'

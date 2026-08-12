@@ -67,30 +67,32 @@ function readLabel(url: URL): string | null {
 }
 
 // « Ciao Amore Café, 838 Avenue du Mont-Royal E, Montréal, QC H2J 1X1 » porte les
-// deux informations d'un coup. La virgule ne coupe QUE si ce qui suit ouvre une
-// adresse : sans ce test, un commerce nommé « Café, etc. » perdrait la moitié de
-// son nom — le symétrique du bug qu'on corrige.
-function splitLabel(label: string): { name: string; address: string } {
-  const cut = label.indexOf(',')
-  if (cut < 0) return { name: label, address: '' }
-
-  const rest = label.slice(cut + 1).trim()
-  const name = label.slice(0, cut).trim()
-  if (!name || !OUVRE_UNE_ADRESSE.test(rest)) return { name: label, address: '' }
-
-  return { name, address: normalizeAddress(rest) }
-}
-
-// Google écrit « rue, ville, province code postal[, pays] ». Le style maison
-// s'arrête à la ville : les 60 fiches en base sont toutes au format
+// deux informations d'un coup.
+//
+// L'adresse ne commence PAS forcément après la première virgule : Google
+// intercale parfois le complexe ou la ville entre le commerce et sa rue —
+// « Café Dépôt, O Centre de Commerce Mondial de Montreal, 383 Rue Saint-Jacques,
+// … », « Marché Saint Laurent, Montréal, 503 Place d'Armes, … ». On cherche donc
+// le premier segment qui ouvre une adresse, où qu'il soit, et ce qui le précède
+// est du nom.
+//
+// Aucun segment n'en ouvre ? Alors le label entier est le nom : c'est ce qui
+// protège un commerce nommé « Café, etc. » d'être tronqué — le symétrique du bug
+// qu'on corrige.
+//
+// Google écrit ensuite « rue, ville, province code postal[, pays] ». Le style
+// maison s'arrête à la ville : les fiches en base sont au format
 // « 1251 Rue Rachel Est, Montréal ».
-function normalizeAddress(address: string): string {
-  return address
+function splitLabel(label: string): { name: string; address: string } {
+  const parts = label
     .split(',')
     .map((part) => part.trim())
     .filter(Boolean)
-    .slice(0, 2)
-    .join(', ')
+
+  const debut = parts.findIndex((part, i) => i >= 1 && OUVRE_UNE_ADRESSE.test(part))
+  if (debut < 0) return { name: label, address: '' }
+
+  return { name: parts[0], address: parts.slice(debut, debut + 2).join(', ') }
 }
 
 function readPoint(finalUrl: string, url: URL): { lat: number; lng: number } | null {
