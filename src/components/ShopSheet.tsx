@@ -110,8 +110,12 @@ export function ShopSheet({ shop, onClose }: { shop: Shop; onClose: () => void }
         <div className="mt-2">
           <RatingCookies rating={shop.rating} />
         </div>
+        {/* `whitespace-pre-line` : l'avis est tapé dans un <textarea> à l'admin, il doit se
+            lire ici tel qu'il y a été écrit. Sans ça, `white-space: normal` colle les lignes
+            bout à bout. `pre-line` plutôt que `pre-wrap` : les sauts de ligne sont voulus,
+            pas les espaces d'alignement collés par mégarde. */}
         {shop.review && (
-          <p className="cmtl-verdict mt-3 text-[17px] leading-[1.45] text-[color:var(--text-body)]">{shop.review}</p>
+          <p className="cmtl-verdict mt-3 whitespace-pre-line text-[17px] leading-[1.45] text-[color:var(--text-body)]">{shop.review}</p>
         )}
         {/* Retour QA v1.1 : « Copier » incompris en CTA — l'icône vit désormais
             contre l'adresse qu'elle copie, avec toast de confirmation. */}
