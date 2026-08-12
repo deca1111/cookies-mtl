@@ -92,7 +92,21 @@ function splitLabel(label: string): { name: string; address: string } {
   const debut = parts.findIndex((part, i) => i >= 1 && OUVRE_UNE_ADRESSE.test(part))
   if (debut < 0) return { name: label, address: '' }
 
-  return { name: parts[0], address: parts.slice(debut, debut + 2).join(', ') }
+  return {
+    name: parts[0],
+    address: parts
+      .slice(debut, debut + 2)
+      .map(accentuerLaVille)
+      .join(', '),
+  }
+}
+
+// Google écrit la ville sans accent. Sur une carte de Montréal, « Montreal » à
+// côté des « Montréal » de Photon se voit. Correspondance exacte, pas une
+// heuristique : on ne cherche pas à franciser le reste de l'adresse, dont l'ordre
+// des mots diffère de toute façon (« Mont-Royal Ave E »).
+function accentuerLaVille(part: string): string {
+  return part === 'Montreal' ? 'Montréal' : part
 }
 
 function readPoint(finalUrl: string, url: URL): { lat: number; lng: number } | null {

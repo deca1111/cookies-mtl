@@ -69,22 +69,41 @@ porte pas). L'adresse est normalisée à ses deux premiers segments — « rue, 
 homogène avec les 60 fiches existantes : `1 Pl. Ville-Marie, Montréal, QC H3B 5G9` devient
 `1 Pl. Ville-Marie, Montréal`.
 
-## 2. L'adresse : Photon d'abord, Google en repli
+## 2. L'adresse : Google d'abord, Photon en repli
 
-La spec v1.2 §8 pose que l'adresse est **toujours dérivée des coordonnées**, jamais saisie. Cette
-règle est conservée, parce qu'elle donne le format maison (français, sans code postal) sur
-lequel les 60 fiches sont alignées. Google intervient uniquement là où Photon échoue.
+> **Révisé le 2026-08-11.** La première version donnait la priorité à Photon, pour son format
+> français homogène. Les données ont tranché autrement — voir la mesure plus bas.
 
-Ordre de préférence, du meilleur au dernier recours :
+La spec v1.2 §8 pose que l'adresse est **toujours dérivée des coordonnées**, jamais saisie. Elle
+reste dérivée, mais la source qui prime change.
 
-1. **Géocodage inverse Photon** sur les coordonnées, s'il rend un numéro civique.
-2. **Adresse du lien Google**, si elle en porte un.
-3. Ce que Photon a rendu sans numéro (rue seule), comme aujourd'hui.
+Ordre de préférence :
 
-Mesure à l'appui : sur Sora Café (#82), le reverse Photon tombe sur « Place
-Monseigneur-Charbonneau », une voie de service voisine sans numéro — d'où le « Montréal » nu
-enregistré en base. Le lien Google, lui, porte « 1 Pl. Ville-Marie ». Huit fiches ont aujourd'hui
-une adresse sans numéro civique ; cette règle empêche le cas de se reproduire.
+1. **Adresse lue dans le lien Google**, si elle porte un numéro civique — c'est celle que le
+   commerce déclare sur sa fiche, la seule qui soit exacte.
+2. **Géocodage inverse Photon**, quand le lien n'en porte pas (cas des fiches issues d'une
+   suggestion Photon, et des liens Google réduits au nom).
+3. Ce qui reste, quand aucune des deux n'a de numéro.
+
+Mesure sur les 16 fiches à lien de fiche : **4 portaient une adresse contredisant Google** —
+4550 au lieu de 4551 Rue de Rouen, 501 au lieu de 503 Place d'Armes, 5337 au lieu de 5333
+Saint-Laurent, et une rue entièrement différente pour un commerce d'angle (#87, Kensington au
+lieu de Sainte-Catherine). Photon ne connaît pas le commerce : son inverse rend le bâtiment le
+plus proche du point, soit le voisin, soit le trottoir d'en face. Un format plus joli ne vaut pas
+une adresse fausse une fois sur quatre.
+
+Le prix est un format moins homogène (« 5333 Boul. Saint-Laurent » plutôt que « Boulevard »).
+Seule correction appliquée, parce qu'elle est exacte et non heuristique : le nom de ville
+« Montreal » est ré-accentué en « Montréal ». Reconstruire « Avenue du Mont-Royal Est » depuis
+« Mont-Royal Ave E » demanderait de réordonner les mots — hors de portée d'une table
+d'abréviations, et source de bugs pour un gain cosmétique.
+
+Une approche hybride (numéro de Google, libellé de Photon) a été envisagée puis écartée : elle
+perd les compléments d'adresse (« Local Y102A » chez Avril), échoue sur les inversions
+(« Av. 1re » vs « 1re Avenue »), et fabrique des libellés qui n'existent dans aucune source.
+
+Le repli Photon reste utile : Sora Café (#82) n'a d'adresse que par son lien, mais Bernice (#93)
+n'a d'adresse que par Photon — son lien Google ne porte que le nom.
 
 Mise en œuvre : `PickedPlace` et `Draft` gagnent un `googleAddress` optionnel. `PlaceSearch` y
 range l'`address` rendue par `resolveGoogleShareLink` **au lieu** de la mettre dans `address`,

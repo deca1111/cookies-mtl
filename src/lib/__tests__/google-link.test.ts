@@ -33,7 +33,7 @@ test('forme Safari iPhone : le nom ne doit PAS absorber l’adresse', () => {
 test('forme appli mobile : nom et adresse dans q, aucune coordonnée', () => {
   expect(extractGoogleListing(APPLI_MOBILE)).toEqual({
     name: 'Le Picnic VéloCafé',
-    address: '1251 Rue Rachel E, Montreal',
+    address: '1251 Rue Rachel E, Montréal',
     lat: null,
     lng: null,
   })
@@ -47,7 +47,7 @@ test('adresse précédée du nom du complexe (Café Dépôt)', () => {
     'https://www.google.com/maps/place/Caf%C3%A9+D%C3%A9p%C3%B4t,+O+Centre+de+Commerce+Mondial+de+Montreal,+383+Rue+Saint-Jacques,+Montreal,+Quebec+H2Y+2N9/@45.5030,-73.5600,17z/data=!8m2!3d45.5030!4d-73.5600'
   expect(extractGoogleListing(url)).toMatchObject({
     name: 'Café Dépôt',
-    address: '383 Rue Saint-Jacques, Montreal',
+    address: '383 Rue Saint-Jacques, Montréal',
   })
 })
 
@@ -56,7 +56,7 @@ test('adresse précédée d’une ville répétée (Marché Saint Laurent)', () 
     "https://www.google.com/maps/place/March%C3%A9+Saint+Laurent,+Montr%C3%A9al,+503+Place+d'Armes,+Montreal,+Quebec+H2Y+2W8/@45.5050585,-73.5569,17z/data=!8m2!3d45.5050585!4d-73.5569"
   expect(extractGoogleListing(url)).toMatchObject({
     name: 'Marché Saint Laurent',
-    address: "503 Place d'Armes, Montreal",
+    address: "503 Place d'Armes, Montréal",
   })
 })
 
@@ -139,7 +139,7 @@ test('resolveGoogleShareLink géocode l’adresse quand le lien ne porte pas de 
   )
   expect(out).toEqual({
     name: 'Le Picnic VéloCafé',
-    address: '1251 Rue Rachel E, Montreal',
+    address: '1251 Rue Rachel E, Montréal',
     lat: 45.5271868,
     lng: -73.5731661,
     googleMapsUrl: 'https://maps.app.goo.gl/s3DDRaPwqg7G8NT28?g_st=ic',
@@ -147,7 +147,7 @@ test('resolveGoogleShareLink géocode l’adresse quand le lien ne porte pas de 
   // L'adresse part seule au géocodeur : OSM connaît le numéro civique, pas le
   // nom commercial — le coller devant ferait rater des adresses valides.
   const photonCall = fetchMock.mock.calls.find((c) => String(c[0]).includes('photon'))
-  expect(new URL(String(photonCall?.[0])).searchParams.get('q')).toBe('1251 Rue Rachel E, Montreal')
+  expect(new URL(String(photonCall?.[0])).searchParams.get('q')).toBe('1251 Rue Rachel E, Montréal')
 })
 
 test('resolveGoogleShareLink rend null quand l’adresse ne se géocode pas', async () => {

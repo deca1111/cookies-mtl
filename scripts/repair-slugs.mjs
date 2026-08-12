@@ -59,12 +59,16 @@ for (const shop of shops) {
   sansLui.delete(shop.slug)
   const slug = nextSlug(shop.slug, shop.name, sansLui)
 
-  // L'adresse du lien ne remplace que ce qui ne situe rien : les libellés Photon
-  // déjà corrects (avec numéro, en français) sont laissés tels quels.
+  // L'adresse du lien Google prime (spec §2 révisée), mais on ne réécrit que ce
+  // qui est faux ou incomplet : si le numéro civique concorde déjà, le libellé
+  // français de Photon est conservé. Sans cette réserve, les fiches correctes
+  // perdraient « Avenue du Mont-Royal Est » pour « Mont-Royal Ave E » sans rien
+  // y gagner.
   let address = null
-  if (!hasStreetNumber(shop.address)) {
-    const listing = extractGoogleListing(shop.google_maps_url)
-    if (listing?.address && hasStreetNumber(listing.address)) address = listing.address
+  const listing = extractGoogleListing(shop.google_maps_url)
+  if (listing?.address && hasStreetNumber(listing.address)) {
+    const numero = (a) => (a.match(/^(\d+[a-zA-Z]?)/) ?? [])[1] ?? null
+    if (numero(shop.address) !== numero(listing.address)) address = listing.address
   }
 
   if (slug || address) actions.push({ shop, slug, address })
