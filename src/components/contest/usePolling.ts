@@ -11,8 +11,12 @@ export function usePolling<T>(url: string, initial: T, intervalMs = 2500) {
   const [gone, setGone] = useState(false)
   const inFlight = useRef(false)
 
-  const refresh = useCallback(async () => {
-    if (inFlight.current) return
+  // `force` contourne le verrou anti-chevauchement : après une action qui change
+  // l'état côté serveur (ex. réclamer un nom), on veut la relecture immédiate même
+  // si un sondage périodique est déjà en vol, sinon la vieille valeur peut rester
+  // affichée jusqu'à 2,5 s de plus.
+  const refresh = useCallback(async (force = false) => {
+    if (inFlight.current && !force) return
     inFlight.current = true
     try {
       const res = await fetch(url, { cache: 'no-store' })

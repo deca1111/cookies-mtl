@@ -55,3 +55,23 @@ test('révélation en cours : rien n’est dévoilé', async () => {
   render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'reveal', me: { id: 1, name: 'Julie' } }} />)
   expect(await screen.findByText('Les yeux sur l’écran !')).toBeTruthy()
 })
+
+test('réclamation refusée (nom déjà pris) : bandeau et bouton de confirmation réutilisable', async () => {
+  localStorage.setItem('cc_concours_lang', 'fr')
+  claimNameAction.mockResolvedValue({ ok: false, error: 'taken' })
+  render(<ContestGuestApp secret="s" initial={base} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Julie' }))
+  fireEvent.click(screen.getByRole('button', { name: 'C’est moi' }))
+  expect(await screen.findByText('Ce nom vient d’être pris sur un autre téléphone.')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'C’est moi' }).hasAttribute('disabled')).toBe(false)
+})
+
+test('réclamation en échec (réseau) : bandeau et bouton jamais bloqué', async () => {
+  localStorage.setItem('cc_concours_lang', 'fr')
+  claimNameAction.mockRejectedValue(new Error('hors ligne'))
+  render(<ContestGuestApp secret="s" initial={base} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Julie' }))
+  fireEvent.click(screen.getByRole('button', { name: 'C’est moi' }))
+  expect(await screen.findByText('Connexion impossible, réessaie.')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'C’est moi' }).hasAttribute('disabled')).toBe(false)
+})

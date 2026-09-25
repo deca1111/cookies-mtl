@@ -19,6 +19,10 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
   // repris du serveur qu'au changement d'identité.
   const [ranking, setRanking] = useState<number[]>(initial.myBallot)
   const [saveError, setSaveError] = useState(false)
+  // Distingue « nom déjà pris entre-temps » (l'invité doit en choisir un autre)
+  // d'une panne quelconque (réessayer le même) : deux bandeaux différents dans
+  // NamePicker, tous deux traduits (spec §8).
+  const [claimNotice, setClaimNotice] = useState<'taken' | 'failed' | null>(null)
   const unsent = useRef<number[] | null>(null)
   const meId = view.me?.id ?? null
   const hadIdentity = useRef(initial.me !== null)
@@ -27,6 +31,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setRanking(view.myBallot)
+    setSaveError(false)
     if (meId === null && hadIdentity.current) setReleased(true)
     hadIdentity.current = meId !== null
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -37,43 +42,82 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
     try {
       const res = await saveBallotAction(secret, next)
       if (unsent.current === next) unsent.current = null
-      setSaveError(!res.ok && res.error !== 'closed')
+      // « closed » (vote terminé), « no-identity » (nom relâché) et « not-found »
+      // (concours disparu) ne sont pas des échecs à signaler par ce bandeau :
+      // l'écran change de lui-même (verrouillage ou écran du nom), un
+      // « saveFailed » qui traînerait par-dessus n'aiderait personne.
+      const silent = res.ok || res.error === 'closed' || res.error === 'no-identity' || res.error === 'not-found'
+      setSaveError(!silent)
       if (!res.ok) void refresh()
     } catch {
       setSaveError(true)
     }
   }
 
-  // Au retour du réseau, on renvoie le dernier état complet (spec §11).
+  // La ref tient toujours la dernière fermeture de `send` sans réabonner
+  // l'écouteur à chaque rendu : `send` ne dépend que de refs et de `secret`
+  // (constant pour la vie du composant), donc une fermeture "en retard" d'un
+  // rendu se comporte de toute façon à l'identique. Écrire une ref pendant le
+  // rendu est interdit (react-hooks/refs) : la mise à jour passe par un effet
+  // sans tableau de dépendances, rejoué à chaque rendu.
+  const sendRef = useRef(send)
+  useEffect(() => {
+    sendRef.current = send
+  })
+
+  // Le navigateur peut prévenir avant le prochain sondage (jusqu'à 2,5 s
+  // d'attente) : un seul abonnement pour la vie du composant (spec §11).
   useEffect(() => {
     const onOnline = () => {
-      if (unsent.current) void send(unsent.current)
+      if (unsent.current) void sendRef.current(unsent.current)
     }
     window.addEventListener('online', onOnline)
     return () => window.removeEventListener('online', onOnline)
-  })
+  }, [])
+
+  // Un sondage réussi (donc une nouvelle valeur de `view`) prouve que le réseau
+  // fonctionne : si un bulletin est resté en attente — y compris quand
+  // saveBallotAction avait échoué sans jamais faire passer `offline` à vrai —
+  // on le renvoie ici plutôt que d'attendre un hypothétique retour hors-ligne
+  // qui ne viendra pas.
   useEffect(() => {
-    if (!offline && unsent.current) void send(unsent.current)
+    if (unsent.current) void send(unsent.current)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offline])
+  }, [view])
 
   const onChange = (next: number[]) => {
     setRanking(next)
     void send(next)
   }
 
-  const claim = async (id: number) => {
-    await claimNameAction(secret, id)
-    setReleased(false)
-    await refresh()
+  const claim = async (id: number): Promise<boolean> => {
+    setClaimNotice(null)
+    try {
+      const res = await claimNameAction(secret, id)
+      if (!res.ok) {
+        setClaimNotice(res.error === 'taken' ? 'taken' : 'failed')
+        return false
+      }
+      setReleased(false)
+      // Forcé : sans ça, un sondage périodique déjà en vol ignorerait cette
+      // relecture et le nom qu'on vient de réclamer resterait affiché comme
+      // libre jusqu'à 2,5 s de plus (spec §8).
+      await refresh(true)
+      return true
+    } catch {
+      setClaimNotice('failed')
+      return false
+    }
   }
 
   let body: ReactNode
   if (!ready) body = null
   else if (gone) body = <p className="pt-16 text-center text-[16px] text-[color:var(--text-body)]">{t('notFound')}</p>
   else if (!lang) body = <LanguagePicker onPick={setLang} />
-  else if (!view.me) body = <NamePicker guests={view.guests} onClaim={claim} t={t} notice={released ? t('released') : null} />
-  else if (view.phase === 'preparation') {
+  else if (!view.me) {
+    const notice = released ? t('released') : claimNotice === 'taken' ? t('nameTaken') : claimNotice === 'failed' ? t('claimFailed') : null
+    body = <NamePicker guests={view.guests} onClaim={claim} t={t} notice={notice} />
+  } else if (view.phase === 'preparation') {
     body = (
       <div className="pt-16 text-center">
         <h1 className="font-display text-[24px] text-[color:var(--text-strong)]">{t('waitingTitle')}</h1>
@@ -81,7 +125,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
       </div>
     )
   } else if (view.final && view.results) {
-    body = <GuestResults results={view.results} myBallot={view.myBallot} t={t} />
+    body = <GuestResults results={view.results} myBallot={view.myBallot} t={t} lang={lang} />
   } else if (view.phase === 'voting') {
     body = <RankingBoard plates={view.plates} ranking={ranking} onChange={onChange} locked={false} t={t} />
   } else {

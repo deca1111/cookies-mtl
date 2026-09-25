@@ -2,6 +2,7 @@
 
 import type { ContestMsgKey } from '@/lib/contest-i18n'
 import type { GuestView, ResultRow } from '@/lib/contest-state'
+import type { Lang } from '@/lib/i18n'
 
 type T = (k: ContestMsgKey, vars?: Record<string, string | number>) => string
 
@@ -10,7 +11,14 @@ function rankLabel(t: T, position: number | null) {
   return position === 1 ? t('firstRank') : t('rank', { n: position })
 }
 
-function Row({ row, t }: { row: ResultRow; t: T }) {
+// Un rang moyen est une fraction ("2.5") : en français, sa notation attend une
+// virgule ("2,5"), pas un point — `Intl` connaît la règle, pas la peine de la
+// coder à la main ni de la manquer.
+function formatAvgRank(lang: Lang, avgRank: number) {
+  return new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(avgRank)
+}
+
+function Row({ row, t, lang }: { row: ResultRow; t: T; lang: Lang }) {
   return (
     <li className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
       <span className="font-display w-10 text-center text-[18px] text-[color:var(--accent-ink)]">{rankLabel(t, row.position)}</span>
@@ -21,7 +29,7 @@ function Row({ row, t }: { row: ResultRow; t: T }) {
         </div>
         {row.score !== null && (
           <div className="text-[13px] text-[color:var(--text-muted)]">
-            {t('score', { n: row.score })} · {t('avgRank', { n: row.avgRank!.toFixed(1) })}
+            {t('score', { n: row.score })} · {t('avgRank', { n: formatAvgRank(lang, row.avgRank!) })}
           </div>
         )}
       </div>
@@ -29,14 +37,14 @@ function Row({ row, t }: { row: ResultRow; t: T }) {
   )
 }
 
-export function GuestResults({ results, myBallot, t }: { results: NonNullable<GuestView['results']>; myBallot: number[]; t: T }) {
+export function GuestResults({ results, myBallot, t, lang }: { results: NonNullable<GuestView['results']>; myBallot: number[]; t: T; lang: Lang }) {
   const byId = new Map(results.rows.map((r) => [r.plateId, r]))
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-2">
         <h1 className="font-display text-[26px] text-[color:var(--text-strong)]">{t('resultsTitle')}</h1>
         <ol className="flex flex-col gap-2">
-          {results.rows.map((r) => <Row key={r.plateId} row={r} t={t} />)}
+          {results.rows.map((r) => <Row key={r.plateId} row={r} t={t} lang={lang} />)}
         </ol>
       </section>
 
