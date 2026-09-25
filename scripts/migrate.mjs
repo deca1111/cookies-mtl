@@ -34,4 +34,59 @@ await sql`ALTER TABLE shops ADD COLUMN IF NOT EXISTS in_progress boolean NOT NUL
 // que Google a indexé continuent de résoudre.
 await sql`ALTER TABLE shops ADD COLUMN IF NOT EXISTS previous_slugs text[] NOT NULL DEFAULT '{}'`
 
+// Concours de cookies (spec 2026-09-25). Tout descend de `contests` en cascade :
+// supprimer un concours efface invités, assiettes, auteurs et bulletins.
+await sql`
+  CREATE TABLE IF NOT EXISTS contests (
+    id serial PRIMARY KEY,
+    name text NOT NULL,
+    secret text UNIQUE NOT NULL,
+    phase text NOT NULL DEFAULT 'preparation'
+      CHECK (phase IN ('preparation', 'voting', 'closed', 'reveal')),
+    reveal_step int NOT NULL DEFAULT 0,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+  )
+`
+await sql`
+  CREATE TABLE IF NOT EXISTS contest_guests (
+    id serial PRIMARY KEY,
+    contest_id int NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
+    name text NOT NULL,
+    claim_token text,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )
+`
+// « Julie » et « julie » sont la même personne dans la liste de choix.
+await sql`CREATE UNIQUE INDEX IF NOT EXISTS contest_guests_name_uniq ON contest_guests (contest_id, lower(name))`
+// DEFERRABLE : le mélange des numéros permute des valeurs en une requête ; un
+// contrôle immédiat, ligne par ligne, heurterait un doublon transitoire.
+await sql`
+  CREATE TABLE IF NOT EXISTS contest_plates (
+    id serial PRIMARY KEY,
+    contest_id int NOT NULL REFERENCES contests(id) ON DELETE CASCADE,
+    number int NOT NULL CHECK (number > 0),
+    label text,
+    CONSTRAINT contest_plates_number_uniq UNIQUE (contest_id, number) DEFERRABLE INITIALLY DEFERRED
+  )
+`
+await sql`
+  CREATE TABLE IF NOT EXISTS contest_plate_authors (
+    plate_id int NOT NULL REFERENCES contest_plates(id) ON DELETE CASCADE,
+    guest_id int NOT NULL REFERENCES contest_guests(id) ON DELETE CASCADE,
+    PRIMARY KEY (plate_id, guest_id)
+  )
+`
+// Les rangs ne sont jamais recompactés en base : un bulletin se lit ORDER BY rank,
+// et une assiette supprimée (cascade) laisse simplement un trou que la lecture ignore.
+await sql`
+  CREATE TABLE IF NOT EXISTS contest_ballots (
+    guest_id int NOT NULL REFERENCES contest_guests(id) ON DELETE CASCADE,
+    plate_id int NOT NULL REFERENCES contest_plates(id) ON DELETE CASCADE,
+    rank int NOT NULL CHECK (rank > 0),
+    PRIMARY KEY (guest_id, plate_id),
+    CONSTRAINT contest_ballots_rank_uniq UNIQUE (guest_id, rank) DEFERRABLE INITIALLY DEFERRED
+  )
+`
+
 console.log('migration ok')
