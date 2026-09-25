@@ -4,7 +4,7 @@
 export function placeAt(ranking: number[], id: number, index: number): number[] {
   const currentIndex = ranking.indexOf(id)
   const rest = ranking.filter((x) => x !== id)
-  // Adjust the target index if we're moving backwards (current position > target)
+  // Un index désigne une position dans l'affichage ; retirer un élément avant décale la position d'un cran.
   let targetIndex = index
   if (currentIndex >= 0 && currentIndex < index) {
     targetIndex = index - 1

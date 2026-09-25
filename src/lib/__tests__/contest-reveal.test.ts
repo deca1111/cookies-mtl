@@ -20,7 +20,7 @@ test('titre, puis du dernier au premier en deux temps, puis écran final', () =>
   expect(steps).toHaveLength(1 + 4 * 2 + 1)
 })
 
-test('ex-aequo reveals together ; no-vote plates only on final screen', () => {
+test('ex æquo révélés ensemble ; assiettes sans voix seulement à l\'écran final', () => {
   const steps = buildRevealSteps([row(1, 1), row(2, 2), row(3, 2), row(4, null)])
   const plateSteps = steps.filter((s) => s.kind === 'plate')
   expect(plateSteps[0]).toMatchObject({ plateIds: [2, 3], position: 2 })
