@@ -126,8 +126,15 @@ export async function updatePlate(contestId: number, plateId: number, p: PlateIn
         SELECT p.id, g.id FROM contest_plates p, contest_guests g
         WHERE p.id = ${plateId} AND p.contest_id = ${contestId}
           AND g.contest_id = ${contestId} AND g.id = ANY(${p.authorIds}::int[])`,
-    // Un invité devenu auteur ne classe plus cette assiette (spec §11).
-    sql`DELETE FROM contest_ballots WHERE plate_id = ${plateId} AND guest_id = ANY(${p.authorIds}::int[])`,
+    // Un invité devenu auteur ne classe plus cette assiette (spec §11). On relit les
+    // auteurs qui viennent d'être insérés (et non `p.authorIds` brut) pour rester
+    // borné à ce concours : un identifiant d'invité forgé, hors concours, ne
+    // supprimerait alors aucun bulletin étranger.
+    sql`DELETE FROM contest_ballots WHERE plate_id = ${plateId}
+        AND guest_id IN (
+          SELECT a.guest_id FROM contest_plate_authors a JOIN contest_plates p ON p.id = a.plate_id
+          WHERE a.plate_id = ${plateId} AND p.contest_id = ${contestId}
+        )`,
   ])
 }
 

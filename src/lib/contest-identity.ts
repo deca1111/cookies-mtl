@@ -24,7 +24,9 @@ export async function readGuestToken(contestId: number): Promise<string | null> 
 export async function writeGuestToken(contestId: number, token: string): Promise<void> {
   ;(await cookies()).set(guestCookieName(contestId), token, {
     httpOnly: true,
-    secure: true,
+    // `false` en dev : un téléphone qui teste `next dev` via l'IP du réseau local,
+    // en http simple, verrait sinon le cookie rejeté silencieusement.
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 30,
     path: '/',
