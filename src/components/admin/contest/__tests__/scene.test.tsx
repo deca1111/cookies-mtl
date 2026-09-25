@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { AdminView } from '@/lib/contest-state'
 
@@ -55,4 +55,16 @@ test('touche maintenue (repeat) : l’étape n’est pas renvoyée', () => {
   render(<Scene initial={view(3)} />)
   fireEvent.keyDown(window, { key: 'ArrowRight', repeat: true })
   expect(setRevealStepAction).not.toHaveBeenCalled()
+})
+
+// L'étape optimiste (locale) ne doit pas rester affichée quand le serveur la
+// refuse : sans le correctif, `localStep` restait bloqué sur l'étape jamais
+// atteinte côté serveur et l'affichage aurait montré « auteurs » à tort.
+test('étape refusée par le serveur : l’affichage reste sur l’étape en cours', async () => {
+  setRevealStepAction.mockResolvedValue({ ok: false, error: 'locked' })
+  render(<Scene initial={view(3)} />)
+  fireEvent.keyDown(window, { key: 'ArrowRight' })
+  await waitFor(() => expect(setRevealStepAction).toHaveBeenCalled())
+  await waitFor(() => expect(screen.queryByText(/Julie/)).toBeNull())
+  expect(screen.getByText('80')).toBeTruthy()
 })

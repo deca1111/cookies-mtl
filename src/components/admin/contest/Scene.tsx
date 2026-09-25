@@ -15,23 +15,39 @@ export function Scene({ initial }: { initial: AdminView }) {
 
   const [localStep, setLocalStep] = useState<number | null>(null)
   const [stepError, setStepError] = useState(false)
+  // Deux témoins d'un même « une requête est en vol », pour deux usages qui ne
+  // peuvent pas partager le même : `inFlightRef` (ref) est lu et écrit de façon
+  // synchrone dans le gestionnaire clavier — un verrou anti-rafale a besoin de
+  // cette synchronicité, un `useState` arriverait trop tard face à deux appuis
+  // rapprochés. `awaitingServer` (state) est son miroir, lu pendant le rendu —
+  // React interdit de lire `ref.current` au rendu (`react-hooks/refs`), donc
+  // l'ajustement de `localStep` ci-dessous doit se fier à cet état, pas au ref.
+  const [awaitingServer, setAwaitingServer] = useState(false)
   const inFlightRef = useRef(false)
 
-  // Une fois que le serveur a exactement rattrapé l'étape envoyée, on relâche
-  // l'optimisme local : le prochain sondage refait foi, y compris pour reculer.
+  // `localStep` ne sert qu'à ponter LA requête en vol : dès qu'elle est retombée
+  // (succès ou échec), le serveur redevient la seule vérité. Sans ce filet, une
+  // étape refusée (verrou, session expirée) laissait `localStep` bloqué sur la
+  // valeur jamais atteinte par le serveur — `max()` plus bas l'affichait alors
+  // indéfiniment, masquant tout recul (PilotPanel, remise à zéro de phase…)
+  // jusqu'à ce que le serveur revienne PAR HASARD à cette même valeur. Le garde
+  // `!awaitingServer` laisse filer l'optimisme le temps de la requête en cours,
+  // mais dès qu'aucune n'est en vol, tout écart avec le serveur (un autre écran
+  // a bougé l'étape, un sondage périodique l'a changée…) efface l'optimisme.
   // Ajusté pendant le rendu (pattern React officiel pour dériver un état à partir
   // des props courantes) plutôt que dans un effet séparé : un `setState`
   // synchrone dans un effet déclenche un rendu en cascade évitable ici.
-  if (localStep !== null && contest.revealStep === localStep) {
+  if (!awaitingServer && localStep !== null && contest.revealStep !== localStep) {
     setLocalStep(null)
   }
 
   // Étape affichée : la plus avancée entre le serveur et un changement clavier
-  // tout juste envoyé. Sans ce garde-fou, un sondage périodique parti juste
-  // avant l'écriture reviendrait avec l'ancienne étape et ferait clignoter la
-  // scène en arrière une fraction de seconde. (Ne protège que l'avance : reculer
-  // au clavier peut réafficher brièvement l'ancienne valeur avant que le sondage
-  // suivant ne rattrape — cas rare, la scène n'étant pensée que pour avancer.)
+  // tout juste envoyé, le temps que ce dernier soit confirmé ou rejeté. Sans ce
+  // garde-fou, un sondage périodique parti juste avant l'écriture reviendrait
+  // avec l'ancienne étape et ferait clignoter la scène en arrière une fraction
+  // de seconde. (Ne protège que l'avance : reculer au clavier peut réafficher
+  // brièvement l'ancienne valeur avant que le sondage suivant ne rattrape — cas
+  // rare, la scène n'étant pensée que pour avancer.)
   const effectiveStep = localStep !== null ? Math.max(localStep, contest.revealStep) : contest.revealStep
 
   useEffect(() => {
@@ -41,6 +57,7 @@ export function Scene({ initial }: { initial: AdminView }) {
       // pourraient laisser la scène sur une étape antérieure à celle voulue.
       if (inFlightRef.current) return
       inFlightRef.current = true
+      setAwaitingServer(true)
       const clamped = Math.max(0, Math.min(s, steps.length - 1))
       setLocalStep(clamped)
       // `force: true` — au clavier, chaque appui doit avancer la scène tout de
@@ -50,8 +67,14 @@ export function Scene({ initial }: { initial: AdminView }) {
       // expirée, réseau) ne doit jamais rester une rejection non gérée.
       const res = await runAction(setRevealStepAction(contest.id, clamped))
       setStepError(!res.ok)
+      // Échec (verrou, session expirée…) : on efface l'optimisme tout de suite,
+      // sans attendre `refresh` — sinon l'étape refusée resterait affichée le
+      // temps de cet aller-retour réseau (le garde `!awaitingServer` ci-dessus
+      // ne s'applique qu'une fois `go` terminé, plus bas).
+      if (!res.ok) setLocalStep(null)
       await refresh(true)
       inFlightRef.current = false
+      setAwaitingServer(false)
     }
     const onKey = (e: KeyboardEvent) => {
       if (contest.phase !== 'reveal') return

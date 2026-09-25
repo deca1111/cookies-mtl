@@ -24,9 +24,11 @@ export function ContestList({ contests }: { contests: ContestSummary[] }) {
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
-    // Verrou explicite en plus du bouton désactivé : un double Entrée soumet
-    // quand même le <form>, même si le bouton lui-même est disabled (comportement
-    // navigateur pour la soumission implicite) — sans lui, deux concours naîtraient.
+    // Ceinture et bretelles : un bouton `disabled` bloque déjà la soumission
+    // implicite par Entrée (le navigateur écarte un bouton désactivé de la
+    // recherche du bouton par défaut du formulaire). Ce garde ne protège donc
+    // qu'un scénario improbable (balisage futur, double appel avant que React
+    // n'ait repeint l'état pending) — peu coûteux à garder.
     if (pending) return
     setPending(true)
     const res = await runAction(createContestAction(name))
@@ -82,9 +84,12 @@ export function ContestList({ contests }: { contests: ContestSummary[] }) {
                       setDeleteBusy(true)
                       const res = await runAction(deleteContestAction(c.id))
                       setDeleteBusy(false)
+                      // Toujours resynchroniser la liste, échec compris : la
+                      // tentative peut avoir partiellement abouti côté serveur,
+                      // et de toute façon la liste doit refléter l'état réel.
+                      router.refresh()
                       if (res.ok) {
                         setDeleting(null)
-                        router.refresh()
                       } else {
                         setDeleteError(ERR[res.error] ?? UNEXPECTED_ERROR)
                       }
