@@ -26,6 +26,18 @@ export function cleanLabel(raw: unknown): string | null {
   return label || null
 }
 
+// Les id de concours viennent des colonnes `serial` (int4 Postgres) : un entier
+// positif sans zéro initial, borné à 2147483647. Une valeur hors bornes (ex.
+// notation exponentielle comme '1e20') ferait planter la requête plutôt que de
+// rendre un 404 propre — on la rejette donc avant d'atteindre la base.
+const MAX_INT4 = 2147483647
+
+export function parseContestId(raw: string): number | null {
+  if (!/^[1-9]\d{0,9}$/.test(raw)) return null
+  const id = Number(raw)
+  return id <= MAX_INT4 ? id : null
+}
+
 export function nextPlateNumber(numbers: number[]): number {
   return numbers.length ? Math.max(...numbers) + 1 : 1
 }

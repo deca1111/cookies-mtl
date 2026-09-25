@@ -44,3 +44,9 @@ test('admin : 401 sans session, 404 id invalide, état sinon', async () => {
   expect(res.status).toBe(200)
   expect(loadAdminView).toHaveBeenCalledWith(1)
 })
+
+test('admin : identifiant hors bornes (1e20) → 404 sans interroger la base', async () => {
+  const res = await adminGET(req, { params: Promise.resolve({ id: '1e20' }) })
+  expect(res.status).toBe(404)
+  expect(loadAdminView).not.toHaveBeenCalled()
+})

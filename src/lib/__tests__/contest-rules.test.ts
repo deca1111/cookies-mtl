@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { checkBallot, cleanLabel, cleanName, isPhase, nextPlateNumber, shiftPhase, shuffled } from '../contest-rules'
+import { checkBallot, cleanLabel, cleanName, isPhase, nextPlateNumber, parseContestId, shiftPhase, shuffled } from '../contest-rules'
 
 test('phases : avancer et reculer, bornées', () => {
   expect(shiftPhase('preparation', 1)).toBe('voting')
@@ -43,4 +43,13 @@ test('bulletin : entiers autorisés sans doublon, sinon null', () => {
   expect(checkBallot([1, 9], allowed)).toBeNull()
   expect(checkBallot(['1'], allowed)).toBeNull()
   expect(checkBallot('1,2', allowed)).toBeNull()
+})
+
+test('identifiant de concours : entier positif dans les bornes int4, sinon null', () => {
+  expect(parseContestId('1')).toBe(1)
+  expect(parseContestId('42')).toBe(42)
+  expect(parseContestId('2147483647')).toBe(2147483647)
+  for (const invalide of ['', ' 1 ', '1.0', '1e20', '0', '-1', '01', '2147483648']) {
+    expect(parseContestId(invalide)).toBeNull()
+  }
 })
