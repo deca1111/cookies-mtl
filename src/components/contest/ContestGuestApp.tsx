@@ -24,6 +24,13 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
   // NamePicker, tous deux traduits (spec §8).
   const [claimNotice, setClaimNotice] = useState<'taken' | 'failed' | null>(null)
   const unsent = useRef<number[] | null>(null)
+  // Compte les appels à `send` : sert UNIQUEMENT à savoir, après les `await` du
+  // retraitement d'un bulletin « invalid » ci-dessous, si un envoi plus récent a
+  // pris le relais entre-temps (l'invité a rejoué pendant la relecture). `unsent`
+  // ne peut pas jouer ce rôle ici : il est effacé tout de suite après la première
+  // tentative (comme avant ce correctif), précisément pour que l'effet `[view]`
+  // et l'écouteur `online` ne relancent pas un envoi en double pendant la relance.
+  const sendSeq = useRef(0)
   const meId = view.me?.id ?? null
   const hadIdentity = useRef(initial.me !== null)
   const [released, setReleased] = useState(false)
@@ -39,16 +46,50 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
 
   const send = async (next: number[]) => {
     unsent.current = next
+    const mySend = ++sendSeq.current
     try {
       const res = await saveBallotAction(secret, next)
+      // Cette tentative est retombée : elle ne doit plus jouer les prolongations
+      // pour l'écouteur `online`/l'effet `[view]`, que ce soit un succès ou un
+      // échec — seul le bloc « invalid » ci-dessous continue au-delà de ce point.
       if (unsent.current === next) unsent.current = null
-      // « closed » (vote terminé), « no-identity » (nom relâché) et « not-found »
-      // (concours disparu) ne sont pas des échecs à signaler par ce bandeau :
-      // l'écran change de lui-même (verrouillage ou écran du nom), un
-      // « saveFailed » qui traînerait par-dessus n'aiderait personne.
-      const silent = res.ok || res.error === 'closed' || res.error === 'no-identity' || res.error === 'not-found'
-      setSaveError(!silent)
-      if (!res.ok) void refresh()
+      if (res.ok) {
+        setSaveError(false)
+        return
+      }
+      if (res.error === 'invalid') {
+        // Course avec l'admin (assiette supprimée, auteur changé) pendant l'envoi :
+        // le serveur garde l'ancien bulletin et rien ne retente jamais tout seul —
+        // renvoyer `next` tel quel échouerait de nouveau. On relit l'état (`force`,
+        // sinon un sondage déjà en vol pourrait absorber la relecture), on filtre
+        // le classement local sur les assiettes encore classables, et on retente
+        // UNE fois. Jamais le bandeau « nouvel essai en cours » sans rien en cours.
+        const freshView = await refresh(true)
+        // Un envoi plus récent est déjà parti entre-temps (l'invité a rejoué
+        // pendant la relecture) : il porte la vérité, cette tentative s'efface.
+        if (sendSeq.current !== mySend) return
+        const allowed = new Set((freshView ?? view).plates.map((p) => p.id))
+        const retryRanking = next.filter((id) => allowed.has(id))
+        let retryOk = false
+        try {
+          retryOk = (await saveBallotAction(secret, retryRanking)).ok
+        } catch {
+          retryOk = false
+        }
+        if (sendSeq.current !== mySend) return
+        // Échec persistant : on abandonne plutôt que de boucler, et on repart du
+        // bulletin serveur — jamais un bandeau qui prétendrait retenter sans rien
+        // retenter.
+        setRanking(retryOk ? retryRanking : (freshView ?? view).myBallot)
+        setSaveError(false)
+        return
+      }
+      // « closed » (vote terminé) et « no-identity » (nom relâché) ne sont pas des
+      // échecs à signaler par ce bandeau : l'écran change de lui-même (verrouillage
+      // ou écran du nom), un « saveFailed » qui traînerait par-dessus n'aiderait
+      // personne. Idem « not-found » : le concours a disparu, `gone` s'en charge.
+      setSaveError(false)
+      void refresh()
     } catch {
       setSaveError(true)
     }
