@@ -6,11 +6,16 @@ import { usePolling } from '@/components/contest/usePolling'
 import type { AdminView, ResultRow } from '@/lib/contest-state'
 import { runAction } from './runAction'
 
+// Un rang moyen est une fraction ("3") formatée en "3,0" : `toFixed` rendrait un
+// point, jamais une virgule — la scène est en français pour l'instant (PR 2 pour
+// le bilingue), donc `fr-CA` fixe, plutôt que la locale du navigateur qui piloterait.
+const formatAvgRank = (n: number) => new Intl.NumberFormat('fr-CA', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)
+
 // Scène de révélation (spec §10) — version fonctionnelle et sobre ; le design
 // (et le traitement bilingue) viendra en PR 2. L'étape vit en base : recharger
 // la page ou piloter depuis un autre écran reprend exactement au même point.
 export function Scene({ initial }: { initial: AdminView }) {
-  const { data: view, refresh, offline, gone } = usePolling<AdminView>(`/api/admin/concours/${initial.contest.id}/etat`, initial, 1500)
+  const { data: view, refresh, offline, gone, error: pollError } = usePolling<AdminView>(`/api/admin/concours/${initial.contest.id}/etat`, initial, 1500)
   const { contest, rows, steps } = view
 
   const [localStep, setLocalStep] = useState<number | null>(null)
@@ -104,7 +109,9 @@ export function Scene({ initial }: { initial: AdminView }) {
       ? 'Connexion perdue…'
       : stepError
         ? 'Étape non appliquée, réessaie.'
-        : null
+        : pollError
+          ? 'Session expirée ou erreur serveur.'
+          : null
 
   let body: ReactNode
 
@@ -162,7 +169,7 @@ export function Scene({ initial }: { initial: AdminView }) {
                 <p className="font-display text-[56px] text-[color:var(--text-strong)]">Assiette {r.number}</p>
                 {r.label && <p className="text-[24px] text-[color:var(--text-muted)]">{r.label}</p>}
                 <p className="text-[64px] font-medium text-[color:var(--text-strong)]">{r.score}</p>
-                <p className="text-[22px] text-[color:var(--text-muted)]">rang moyen {r.avgRank?.toFixed(1)}</p>
+                <p className="text-[22px] text-[color:var(--text-muted)]">rang moyen {r.avgRank !== null && formatAvgRank(r.avgRank)}</p>
                 {step.showAuthors && <p className="font-display text-[48px] text-[color:var(--accent-blue)]">{r.authors.join(' & ') || '?'}</p>}
               </div>
             ))}

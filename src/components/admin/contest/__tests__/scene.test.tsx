@@ -45,6 +45,13 @@ test('étape « auteurs » : le nom apparaît', () => {
   expect(screen.getByText(/Julie/)).toBeTruthy()
 })
 
+// Finding #9 : un rang moyen s'écrit avec une virgule en français ("1,0"), jamais
+// le point de `toFixed` — la scène est en français pour l'instant.
+test('rang moyen : virgule française, pas de point', () => {
+  render(<Scene initial={view(4)} />)
+  expect(screen.getByText(/rang moyen 1,0/)).toBeTruthy()
+})
+
 test('hors phase reveal : écran d’attente', () => {
   const v = view(0)
   render(<Scene initial={{ ...v, contest: { ...v.contest, phase: 'closed' } }} />)

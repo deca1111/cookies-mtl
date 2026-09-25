@@ -57,7 +57,7 @@ export async function setPhase(id: number, phase: Phase): Promise<void> {
   // de phase laisserait les téléphones sur l'écran final.
   await getSql()`
     UPDATE contests SET phase = ${phase}, updated_at = now(),
-      reveal_step = CASE WHEN ${phase} = 'reveal' THEN reveal_step ELSE 0 END
+      reveal_step = CASE WHEN ${phase}::text = 'reveal' THEN reveal_step ELSE 0 END
     WHERE id = ${id}
   `
 }

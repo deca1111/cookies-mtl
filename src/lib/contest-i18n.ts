@@ -3,7 +3,6 @@
 import type { Lang } from './i18n'
 
 const fr = {
-  chooseLang: "Choisis ta langue",
   whoAreYou: "Qui es-tu ?",
   whoHint: "Choisis ton nom dans la liste.",
   takenHint: "Déjà utilisé sur un autre téléphone — demande à l’organisateur.",
@@ -14,7 +13,6 @@ const fr = {
   nameTaken: "Ce nom vient d’être pris sur un autre téléphone.",
   claimFailed: "Connexion impossible, réessaie.",
   hello: "Salut {name}",
-  notMe: "Ce n’est pas moi",
   waitingTitle: "Le concours n’a pas encore commencé",
   waitingBody: "Cet écran changera tout seul quand les votes seront ouverts.",
   toTaste: "À goûter",
@@ -52,7 +50,6 @@ const fr = {
 }
 
 const en: Record<keyof typeof fr, string> = {
-  chooseLang: "Choose your language",
   whoAreYou: "Who are you?",
   whoHint: "Pick your name from the list.",
   takenHint: "Already used on another phone — ask the host.",
@@ -63,7 +60,6 @@ const en: Record<keyof typeof fr, string> = {
   nameTaken: "That name was just taken on another phone.",
   claimFailed: "Couldn’t sign you in, try again.",
   hello: "Hi {name}",
-  notMe: "Not me",
   waitingTitle: "The contest hasn’t started yet",
   waitingBody: "This screen will update by itself when voting opens.",
   toTaste: "To taste",
