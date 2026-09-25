@@ -11,6 +11,8 @@ import { runAction, UNEXPECTED_ERROR } from './runAction'
 const ERR: Record<string, string> = {
   locked: 'La révélation n’est plus en cours.',
   'not-found': 'Concours introuvable — il a peut-être été supprimé.',
+  stale: 'La phase a déjà changé.',
+  step: 'Étape invalide.',
   unexpected: UNEXPECTED_ERROR,
 }
 
@@ -18,19 +20,31 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
   const { contest, rows, steps, guests, complete } = view
   const [showLive, setShowLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Un double clic sur « Votes ouverts → » avant que le premier n'ait fini son
+  // aller-retour ferait sauter une phase (préparation → voting → closed d'un
+  // coup) : les actions serveur sont sérialisées, rien côté écran ne les
+  // espaçait (finding #1). `busy` couvre à la fois le changement de phase et le
+  // pas de révélation — un seul geste de pilotage à la fois.
+  const [busy, setBusy] = useState(false)
   const next = shiftPhase(contest.phase, 1)
   const prev = shiftPhase(contest.phase, -1)
   const btn = 'rounded-[var(--radius-field)] border border-[color:var(--border-strong)] px-3 py-1.5 text-[13px] text-[color:var(--text-body)] disabled:opacity-40'
 
   const changePhase = async (dir: 1 | -1) => {
-    const res = await runAction(shiftPhaseAction(contest.id, dir))
+    if (busy) return
+    setBusy(true)
+    const res = await runAction(shiftPhaseAction(contest.id, contest.phase, dir))
     setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
+    setBusy(false)
     onDone()
   }
 
   const step = async (s: number) => {
+    if (busy) return
+    setBusy(true)
     const res = await runAction(setRevealStepAction(contest.id, s))
     setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
+    setBusy(false)
     onDone()
   }
 
@@ -42,10 +56,10 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
         <p className="text-[13px] text-[color:var(--text-muted)]">Phase</p>
         <p className="text-[18px] font-medium text-[color:var(--text-strong)]">{PHASE_LABEL[contest.phase]}</p>
         <div className="mt-2 flex gap-2">
-          <button type="button" className={btn} disabled={prev === contest.phase} onClick={() => changePhase(-1)}>
+          <button type="button" className={btn} disabled={busy || prev === contest.phase} onClick={() => changePhase(-1)}>
             ← {PHASE_LABEL[prev]}
           </button>
-          <button type="button" className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--btn-text)] disabled:opacity-40" disabled={next === contest.phase} onClick={() => changePhase(1)}>
+          <button type="button" className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--btn-text)] disabled:opacity-40" disabled={busy || next === contest.phase} onClick={() => changePhase(1)}>
             {PHASE_LABEL[next]} →
           </button>
         </div>
@@ -55,8 +69,8 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
         <div className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-[color:var(--surface)] p-3">
           <p className="text-[13px] text-[color:var(--text-muted)]">Révélation : étape {contest.revealStep + 1}/{steps.length}</p>
           <div className="flex gap-2">
-            <button type="button" className={btn} disabled={contest.revealStep === 0} onClick={() => step(contest.revealStep - 1)}>← Précédente</button>
-            <button type="button" className={btn} disabled={contest.revealStep >= steps.length - 1} onClick={() => step(contest.revealStep + 1)}>Suivante →</button>
+            <button type="button" className={btn} disabled={busy || contest.revealStep === 0} onClick={() => step(contest.revealStep - 1)}>← Précédente</button>
+            <button type="button" className={btn} disabled={busy || contest.revealStep >= steps.length - 1} onClick={() => step(contest.revealStep + 1)}>Suivante →</button>
           </div>
         </div>
       )}

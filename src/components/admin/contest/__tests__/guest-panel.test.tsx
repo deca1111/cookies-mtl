@@ -36,3 +36,35 @@ test('action qui lève : message générique affiché, l’état est quand même
   await waitFor(() => expect(screen.getByText('Action impossible — vérifie ta connexion ou reconnecte-toi.')).toBeTruthy())
   expect(onDone).toHaveBeenCalled()
 })
+
+// Finding #1 : le champ se désactive pendant l'envoi, un second Entrée avant la
+// réponse ne doit pas ajouter le même invité deux fois.
+test('ajout : le champ se désactive pendant l’envoi, une seule action part', async () => {
+  let resolve: (v: { ok: true }) => void = () => {}
+  addGuestAction.mockImplementation(() => new Promise((r) => { resolve = r }))
+  render(<GuestPanel contestId={1} guests={[]} onDone={vi.fn()} />)
+  const input = screen.getByPlaceholderText('Ajouter un invité puis Entrée')
+  fireEvent.change(input, { target: { value: 'Julie' } })
+  const form = input.closest('form')!
+  fireEvent.submit(form)
+  await waitFor(() => expect(input.hasAttribute('disabled')).toBe(true))
+  fireEvent.submit(form)
+  resolve({ ok: true })
+  await waitFor(() => expect(input.hasAttribute('disabled')).toBe(false))
+  expect(addGuestAction).toHaveBeenCalledTimes(1)
+})
+
+// Finding #4 : suppression sans confirmation détruit des votes — premier clic
+// arme le bouton (« Confirmer ? », titre français), second clic déclenche.
+test('suppression d’un invité : confirmation à deux clics', async () => {
+  deleteGuestAction.mockResolvedValue({ ok: true })
+  const onDone = vi.fn()
+  render(<GuestPanel contestId={1} guests={[{ id: 1, name: 'Julie', claimed: false, ranked: 0, rankable: 0 }]} onDone={onDone} />)
+  const del = screen.getByRole('button', { name: 'Suppr.' })
+  fireEvent.click(del)
+  expect(screen.getByRole('button', { name: 'Confirmer ?' })).toBeTruthy()
+  expect(deleteGuestAction).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmer ?' }))
+  await waitFor(() => expect(deleteGuestAction).toHaveBeenCalledWith(1, 1))
+  expect(onDone).toHaveBeenCalled()
+})

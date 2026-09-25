@@ -5,11 +5,13 @@ import { deletePlateAction, savePlateAction, shufflePlatesAction } from '@/app/a
 import type { AdminGuest, PlateRow } from '@/lib/contest-state'
 import type { Phase } from '@/lib/contest-rules'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
+import { useConfirmDelete } from './useConfirmDelete'
 
 const ERR: Record<string, string> = {
   number: 'Numéro invalide.',
   'number-taken': 'Ce numéro est déjà pris.',
   locked: 'Mélange impossible une fois les votes ouverts.',
+  authors: 'Auteurs invalides.',
   unexpected: UNEXPECTED_ERROR,
 }
 
@@ -20,6 +22,11 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
 }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // Un double clic sur « Enregistrer » avant que la première requête ne soit
+  // retombée créerait deux assiettes (les actions serveur sont sérialisées, mais
+  // rien côté écran n'empêchait un second clic de partir entre-temps — finding #1).
+  const [saving, setSaving] = useState(false)
+  const { armed, press } = useConfirmDelete<number>()
   const nameOf = new Map(guests.map((g) => [g.id, g.name]))
   // Renuméroter est réservé à la préparation (spec §9) : passé cette phase, le
   // champ d'une assiette EXISTANTE est verrouillé côté écran (et le numéro tapé
@@ -28,7 +35,8 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
   const numberLocked = !!draft?.id && phase !== 'preparation'
 
   const save = async () => {
-    if (!draft) return
+    if (!draft || saving) return
+    setSaving(true)
     const res = await runAction(savePlateAction(contestId, {
       id: draft.id,
       number: draft.number.trim() ? Number(draft.number) : undefined,
@@ -36,6 +44,7 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
       authorIds: draft.authorIds,
     }))
     setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
+    setSaving(false)
     if (res.ok) setDraft(null)
     onDone()
   }
@@ -95,8 +104,8 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
             ))}
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={save} className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] text-[color:var(--btn-text)]">Enregistrer</button>
-            <button type="button" onClick={() => setDraft(null)} className="text-[13px] text-[color:var(--text-muted)]">Annuler</button>
+            <button type="button" onClick={save} disabled={saving} className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] text-[color:var(--btn-text)] disabled:opacity-50">Enregistrer</button>
+            <button type="button" onClick={() => setDraft(null)} disabled={saving} className="text-[13px] text-[color:var(--text-muted)] disabled:opacity-50">Annuler</button>
           </div>
         </div>
       )}
@@ -117,14 +126,16 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
             </button>
             <button
               type="button"
-              onClick={async () => {
-                const res = await runAction(deletePlateAction(contestId, p.id))
-                setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
-                onDone()
-              }}
+              onClick={() =>
+                press(p.id, async () => {
+                  const res = await runAction(deletePlateAction(contestId, p.id))
+                  setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
+                  onDone()
+                })
+              }
               className="text-[12px] text-[color:var(--danger)]"
             >
-              Suppr.
+              {armed === p.id ? 'Confirmer ?' : 'Suppr.'}
             </button>
           </li>
         ))}

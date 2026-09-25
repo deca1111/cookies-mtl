@@ -84,8 +84,21 @@ test('mélange : seulement en préparation, permutation des numéros existants',
 })
 
 test('phase : avance d\'un cran', async () => {
-  await shiftPhaseAction(1, 1)
+  await shiftPhaseAction(1, 'preparation', 1)
   expect(db.setPhase).toHaveBeenCalledWith(1, 'voting')
+})
+
+// Finding #1 : un double clic envoie deux fois la même phase de départ (`from`) —
+// les actions serveur étant sérialisées, la première change la phase, la seconde
+// doit être rejetée plutôt que de faire sauter un cran de plus.
+test('phase : un « from » périmé (double clic) est rejeté, la phase n\'avance pas deux fois', async () => {
+  expect(await shiftPhaseAction(1, 'voting', 1)).toEqual({ ok: false, error: 'stale' })
+  expect(db.setPhase).not.toHaveBeenCalled()
+})
+
+test('phase : concours introuvable', async () => {
+  db.getContestById.mockResolvedValue(null)
+  expect(await shiftPhaseAction(1, 'preparation', 1)).toEqual({ ok: false, error: 'not-found' })
 })
 
 test('étape de révélation : seulement en phase reveal, bornée', async () => {
@@ -96,4 +109,18 @@ test('étape de révélation : seulement en phase reveal, bornée', async () => 
   expect(db.setRevealStep).toHaveBeenCalledWith(1, 2)
   expect(await setRevealStepAction(1, -3)).toEqual({ ok: true })
   expect(db.setRevealStep).toHaveBeenLastCalledWith(1, 0)
+})
+
+// Finding #6 : un `step` non entier (forgé, ou NaN venu d'un champ vide) doit
+// être refusé avant d'atteindre les bornes — jamais silencieusement tronqué.
+test('étape de révélation : un pas non entier est refusé', async () => {
+  expect(await setRevealStepAction(1, 1.5)).toEqual({ ok: false, error: 'step' })
+  expect(await setRevealStepAction(1, NaN)).toEqual({ ok: false, error: 'step' })
+  expect(db.getContestById).not.toHaveBeenCalled()
+})
+
+// Finding #6 : `authorIds` forgé (absent du tableau) ne doit pas planter `.filter`.
+test('assiette : authorIds qui n\'est pas un tableau est refusé', async () => {
+  expect(await savePlateAction(1, { label: 'Noisette', authorIds: 'x' as unknown as number[] })).toEqual({ ok: false, error: 'authors' })
+  expect(db.addPlate).not.toHaveBeenCalled()
 })

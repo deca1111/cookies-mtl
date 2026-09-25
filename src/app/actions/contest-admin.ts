@@ -6,7 +6,7 @@ import {
   loadContestData, releaseGuest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
 } from '@/lib/contest-db'
 import { generateSecret } from '@/lib/contest-identity'
-import { cleanLabel, cleanName, nextPlateNumber, shiftPhase, shuffled } from '@/lib/contest-rules'
+import { cleanLabel, cleanName, nextPlateNumber, shiftPhase, shuffled, type Phase } from '@/lib/contest-rules'
 import { loadAdminView } from '@/lib/contest-views'
 
 type AdminResult = { ok: true } | { ok: false; error: string }
@@ -67,6 +67,9 @@ type PlateInput = { id?: number; number?: number; label?: string; authorIds: num
 
 export async function savePlateAction(contestId: number, input: PlateInput): Promise<AdminResult> {
   await requireAdmin()
+  // `input` vient du client : un tableau forgé (ou absent) planterait `.filter`
+  // plus bas plutôt que de rendre une erreur propre.
+  if (!Array.isArray(input.authorIds)) return { ok: false, error: 'authors' }
   const label = cleanLabel(input.label)
   const authorIds = input.authorIds.filter(Number.isInteger)
   let number = input.number
@@ -115,16 +118,25 @@ export async function shufflePlatesAction(contestId: number): Promise<AdminResul
   return OK
 }
 
-export async function shiftPhaseAction(contestId: number, dir: 1 | -1): Promise<AdminResult> {
+// `from` porte la phase que l'écran affichait au moment du clic (spec finding #1) :
+// les actions serveur sont sérialisées, donc un double clic rapproché sur « Votes
+// ouverts → » envoie deux fois la même phase de départ. La première fait avancer
+// le concours ; la seconde arrive avec un `from` désormais périmé — on la rejette
+// plutôt que de faire sauter une phase (préparation → voting → closed d'un coup).
+export async function shiftPhaseAction(contestId: number, from: Phase, dir: 1 | -1): Promise<AdminResult> {
   await requireAdmin()
   const contest = await getContestById(contestId)
   if (!contest) return { ok: false, error: 'not-found' }
+  if (contest.phase !== from) return { ok: false, error: 'stale' }
   await setPhase(contestId, shiftPhase(contest.phase, dir))
   return OK
 }
 
 export async function setRevealStepAction(contestId: number, step: number): Promise<AdminResult> {
   await requireAdmin()
+  // Un `step` non entier (forgé, ou NaN venu d'un champ vide) déborderait les
+  // bornes plus bas sans jamais planter — mieux vaut le refuser explicitement.
+  if (!Number.isInteger(step)) return { ok: false, error: 'step' }
   const contest = await getContestById(contestId)
   if (!contest || contest.phase !== 'reveal') return { ok: false, error: 'locked' }
   const view = await loadAdminView(contestId)
