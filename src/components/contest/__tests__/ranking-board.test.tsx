@@ -32,6 +32,18 @@ test('toucher une assiette puis « Placer ici » l’insère à cet endroit', ()
   expect(onChange).toHaveBeenCalledWith([10, 20, 30])
 })
 
+test('assiette choisie puis supprimée par l’admin : le classement ignore l’ancien choix', () => {
+  const onChange = vi.fn()
+  const { rerender } = render(<RankingBoard plates={plates} ranking={[10, 30]} onChange={onChange} locked={false} t={t} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Assiette 2' }))
+  // L'admin supprime l'assiette 2 (id 20) pendant que l'invité l'avait en main.
+  rerender(<RankingBoard plates={plates.filter((p) => p.id !== 20)} ranking={[10, 30]} onChange={onChange} locked={false} t={t} />)
+  const slots = screen.queryAllByRole('button', { name: 'Placer ici' })
+  expect(slots).toHaveLength(0)
+  for (const s of slots) fireEvent.click(s)
+  expect(onChange).not.toHaveBeenCalledWith([10, 20, 30])
+})
+
 test('monter, retirer', () => {
   const onChange = vi.fn()
   render(<RankingBoard plates={plates} ranking={[10, 30]} onChange={onChange} locked={false} t={t} />)
