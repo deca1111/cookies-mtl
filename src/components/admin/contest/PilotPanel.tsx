@@ -4,32 +4,48 @@ import { useState } from 'react'
 import { setRevealStepAction, shiftPhaseAction } from '@/app/actions/contest-admin'
 import { shiftPhase } from '@/lib/contest-rules'
 import type { AdminView } from '@/lib/contest-state'
-import { PHASE_LABEL } from './ContestList'
+import { PHASE_LABEL } from './phase-label'
 import { ContestQr } from './ContestQr'
+import { runAction, UNEXPECTED_ERROR } from './runAction'
+
+const ERR: Record<string, string> = {
+  locked: 'La révélation n’est plus en cours.',
+  'not-found': 'Concours introuvable — il a peut-être été supprimé.',
+  unexpected: UNEXPECTED_ERROR,
+}
 
 export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => void }) {
   const { contest, rows, steps, guests, complete } = view
   const [showLive, setShowLive] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const next = shiftPhase(contest.phase, 1)
   const prev = shiftPhase(contest.phase, -1)
   const btn = 'rounded-[var(--radius-field)] border border-[color:var(--border-strong)] px-3 py-1.5 text-[13px] text-[color:var(--text-body)] disabled:opacity-40'
 
+  const changePhase = async (dir: 1 | -1) => {
+    const res = await runAction(shiftPhaseAction(contest.id, dir))
+    setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
+    onDone()
+  }
+
   const step = async (s: number) => {
-    await setRevealStepAction(contest.id, s)
+    const res = await runAction(setRevealStepAction(contest.id, s))
+    setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
     onDone()
   }
 
   return (
     <section className="flex flex-col gap-4">
       <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Pilotage</h2>
+      {error && <p className="text-[13px] text-[color:var(--danger)]">{error}</p>}
       <div className="rounded-[var(--radius-card)] bg-[color:var(--surface)] p-3">
         <p className="text-[13px] text-[color:var(--text-muted)]">Phase</p>
         <p className="text-[18px] font-medium text-[color:var(--text-strong)]">{PHASE_LABEL[contest.phase]}</p>
         <div className="mt-2 flex gap-2">
-          <button type="button" className={btn} disabled={prev === contest.phase} onClick={async () => { await shiftPhaseAction(contest.id, -1); onDone() }}>
+          <button type="button" className={btn} disabled={prev === contest.phase} onClick={() => changePhase(-1)}>
             ← {PHASE_LABEL[prev]}
           </button>
-          <button type="button" className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--btn-text)] disabled:opacity-40" disabled={next === contest.phase} onClick={async () => { await shiftPhaseAction(contest.id, 1); onDone() }}>
+          <button type="button" className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--btn-text)] disabled:opacity-40" disabled={next === contest.phase} onClick={() => changePhase(1)}>
             {PHASE_LABEL[next]} →
           </button>
         </div>

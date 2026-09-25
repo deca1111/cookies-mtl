@@ -69,6 +69,12 @@ test('assiette modifiée : numéro pris refusé', async () => {
   expect(await savePlateAction(1, { id: 10, number: 0, authorIds: [] })).toEqual({ ok: false, error: 'number' })
 })
 
+test('assiette modifiée hors préparation : le numéro tapé est ignoré, celui en base reste', async () => {
+  db.getContestById.mockResolvedValue(contest('voting'))
+  expect(await savePlateAction(1, { id: 10, number: 99, label: 'Noisette', authorIds: [] })).toEqual({ ok: true })
+  expect(db.updatePlate).toHaveBeenCalledWith(1, 10, { number: 1, label: 'Noisette', authorIds: [] })
+})
+
 test('mélange : seulement en préparation, permutation des numéros existants', async () => {
   expect(await shufflePlatesAction(1)).toEqual({ ok: true })
   const pairs = db.setPlateNumbers.mock.calls[0][1] as { plateId: number; number: number }[]

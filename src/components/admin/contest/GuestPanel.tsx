@@ -3,16 +3,19 @@
 import { useState } from 'react'
 import { addGuestAction, deleteGuestAction, releaseGuestAction, renameGuestAction } from '@/app/actions/contest-admin'
 import type { AdminGuest } from '@/lib/contest-state'
+import { runAction, UNEXPECTED_ERROR } from './runAction'
 
-const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', 'name-taken': 'Ce nom existe déjà.' }
+const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', 'name-taken': 'Ce nom existe déjà.', unexpected: UNEXPECTED_ERROR }
 
 export function GuestPanel({ contestId, guests, onDone }: { contestId: number; guests: AdminGuest[]; onDone: () => void }) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null)
 
+  // `runAction` capture aussi bien { ok: false } qu'une levée (session expirée,
+  // réseau) : onDone est toujours rappelé pour relire l'état réel du serveur.
   const run = async (p: Promise<{ ok: boolean; error?: string }>) => {
-    const res = await p
+    const res = await runAction(p)
     setError(res.ok ? null : (ERR[res.error ?? ''] ?? 'Erreur.'))
     onDone()
     return res.ok

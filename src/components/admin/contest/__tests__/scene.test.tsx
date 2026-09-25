@@ -1,13 +1,18 @@
-import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { AdminView } from '@/lib/contest-state'
 
-vi.mock('@/app/actions/contest-admin', () => ({ setRevealStepAction: vi.fn().mockResolvedValue({ ok: true }) }))
+const setRevealStepAction = vi.fn()
+vi.mock('@/app/actions/contest-admin', () => ({ setRevealStepAction: (...a: unknown[]) => setRevealStepAction(...a) }))
 vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 500 })))
 
 import { Scene } from '../Scene'
 
 afterEach(cleanup)
+
+beforeEach(() => {
+  setRevealStepAction.mockReset().mockResolvedValue({ ok: true })
+})
 
 const row = (plateId: number, number: number, position: number, score: number, authors: string[]) => ({
   plateId, number, label: null, authors, position, score, avgRank: position, votes: 3, bestRank: 1, worstRank: 3, firsts: 0,
@@ -44,4 +49,10 @@ test('hors phase reveal : écran d’attente', () => {
   const v = view(0)
   render(<Scene initial={{ ...v, contest: { ...v.contest, phase: 'closed' } }} />)
   expect(screen.getByText(/en attente/i)).toBeTruthy()
+})
+
+test('touche maintenue (repeat) : l’étape n’est pas renvoyée', () => {
+  render(<Scene initial={view(3)} />)
+  fireEvent.keyDown(window, { key: 'ArrowRight', repeat: true })
+  expect(setRevealStepAction).not.toHaveBeenCalled()
 })

@@ -4,8 +4,14 @@ import { useState } from 'react'
 import { deletePlateAction, savePlateAction, shufflePlatesAction } from '@/app/actions/contest-admin'
 import type { AdminGuest, PlateRow } from '@/lib/contest-state'
 import type { Phase } from '@/lib/contest-rules'
+import { runAction, UNEXPECTED_ERROR } from './runAction'
 
-const ERR: Record<string, string> = { number: 'Numéro invalide.', 'number-taken': 'Ce numéro est déjà pris.', locked: 'Mélange impossible une fois les votes ouverts.' }
+const ERR: Record<string, string> = {
+  number: 'Numéro invalide.',
+  'number-taken': 'Ce numéro est déjà pris.',
+  locked: 'Mélange impossible une fois les votes ouverts.',
+  unexpected: UNEXPECTED_ERROR,
+}
 
 type Draft = { id?: number; number: string; label: string; authorIds: number[] }
 
@@ -15,15 +21,20 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [error, setError] = useState<string | null>(null)
   const nameOf = new Map(guests.map((g) => [g.id, g.name]))
+  // Renuméroter est réservé à la préparation (spec §9) : passé cette phase, le
+  // champ d'une assiette EXISTANTE est verrouillé côté écran (et le numéro tapé
+  // est de toute façon ignoré côté serveur, cf. savePlateAction) — une assiette
+  // neuve, elle, garde sa numérotation automatique dans tous les cas.
+  const numberLocked = !!draft?.id && phase !== 'preparation'
 
   const save = async () => {
     if (!draft) return
-    const res = await savePlateAction(contestId, {
+    const res = await runAction(savePlateAction(contestId, {
       id: draft.id,
       number: draft.number.trim() ? Number(draft.number) : undefined,
       label: draft.label,
       authorIds: draft.authorIds,
-    })
+    }))
     setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
     if (res.ok) setDraft(null)
     onDone()
@@ -40,7 +51,7 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
           <button
             type="button"
             onClick={async () => {
-              const r = await shufflePlatesAction(contestId)
+              const r = await runAction(shufflePlatesAction(contestId))
               setError(r.ok ? null : (ERR[r.error] ?? 'Erreur.'))
               onDone()
             }}
@@ -58,9 +69,17 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
       {draft && (
         <div className="flex flex-col gap-2 rounded-[var(--radius-card)] border border-[color:var(--border-strong)] bg-[color:var(--surface)] p-3">
           <div className="flex gap-2">
-            <input value={draft.number} onChange={(e) => setDraft({ ...draft, number: e.target.value })} placeholder="N° (auto)" inputMode="numeric" className="w-24 rounded border px-2 py-1 text-[14px]" />
+            <input
+              value={draft.number}
+              onChange={(e) => setDraft({ ...draft, number: e.target.value })}
+              placeholder="N° (auto)"
+              inputMode="numeric"
+              disabled={numberLocked}
+              className="w-24 rounded border px-2 py-1 text-[14px] disabled:opacity-50"
+            />
             <input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Label (facultatif)" className="flex-1 rounded border px-2 py-1 text-[14px]" />
           </div>
+          {numberLocked && <p className="text-[11px] text-[color:var(--text-muted)]">Numéro figé hors préparation.</p>}
           <p className="text-[12px] text-[color:var(--text-muted)]">Auteurs</p>
           <div className="flex flex-wrap gap-1.5">
             {guests.map((g) => (
@@ -96,7 +115,15 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
                 {p.authorIds.map((id) => nameOf.get(id)).filter(Boolean).join(' & ') || 'Aucun auteur'}
               </span>
             </button>
-            <button type="button" onClick={async () => { await deletePlateAction(contestId, p.id); onDone() }} className="text-[12px] text-[color:var(--danger)]">
+            <button
+              type="button"
+              onClick={async () => {
+                const res = await runAction(deletePlateAction(contestId, p.id))
+                setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
+                onDone()
+              }}
+              className="text-[12px] text-[color:var(--danger)]"
+            >
               Suppr.
             </button>
           </li>

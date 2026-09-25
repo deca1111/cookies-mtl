@@ -40,3 +40,24 @@ test('suppression : il faut retaper le nom exact', async () => {
   fireEvent.click(confirm)
   await waitFor(() => expect(deleteContestAction).toHaveBeenCalledWith(3))
 })
+
+test('création : nom invalide affiche une erreur et ne navigue pas', async () => {
+  createContestAction.mockResolvedValue({ ok: false, error: 'name' })
+  render(<ContestList contests={[]} />)
+  fireEvent.change(screen.getByPlaceholderText('Nom du concours'), { target: { value: 'x'.repeat(41) } })
+  fireEvent.click(screen.getByRole('button', { name: 'Créer' }))
+  await waitFor(() => expect(screen.getByText('Nom vide ou trop long (40 max).')).toBeTruthy())
+  expect(push).not.toHaveBeenCalled()
+})
+
+test('création : bouton désactivé pendant l’envoi', async () => {
+  let resolve: (v: { ok: true; id: number }) => void = () => {}
+  createContestAction.mockImplementation(() => new Promise((r) => { resolve = r }))
+  render(<ContestList contests={[]} />)
+  fireEvent.change(screen.getByPlaceholderText('Nom du concours'), { target: { value: 'Anniv' } })
+  const button = screen.getByRole('button', { name: 'Créer' })
+  fireEvent.click(button)
+  await waitFor(() => expect(button.hasAttribute('disabled')).toBe(true))
+  resolve({ ok: true, id: 9 })
+  await waitFor(() => expect(push).toHaveBeenCalledWith('/admin/concours/9'))
+})

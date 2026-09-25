@@ -4,8 +4,10 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent } from 'react'
 import { createContestAction, deleteContestAction } from '@/app/actions/contest-admin'
 import type { ContestSummary } from '@/lib/contest-db'
+import { PHASE_LABEL } from './phase-label'
+import { runAction, UNEXPECTED_ERROR } from './runAction'
 
-export const PHASE_LABEL = { preparation: 'Préparation', voting: 'Votes ouverts', closed: 'Votes clos', reveal: 'Révélation' } as const
+const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', unexpected: UNEXPECTED_ERROR }
 
 const field = 'rounded-[var(--radius-field)] border border-[color:var(--border-strong)] bg-[color:var(--surface-2)] px-3 py-2 text-[14px] text-[color:var(--text-strong)]'
 const primary = 'rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-4 py-2 text-[14px] font-medium text-[color:var(--btn-text)] hover:bg-[color:var(--btn-bg-hover)] disabled:opacity-50'
@@ -13,13 +15,27 @@ const primary = 'rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-4 py-
 export function ContestList({ contests }: { contests: ContestSummary[] }) {
   const router = useRouter()
   const [name, setName] = useState('')
+  const [pending, setPending] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [typed, setTyped] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   const create = async (e: FormEvent) => {
     e.preventDefault()
-    const res = await createContestAction(name)
-    if (res.ok) router.push(`/admin/concours/${res.id}`)
+    // Verrou explicite en plus du bouton désactivé : un double Entrée soumet
+    // quand même le <form>, même si le bouton lui-même est disabled (comportement
+    // navigateur pour la soumission implicite) — sans lui, deux concours naîtraient.
+    if (pending) return
+    setPending(true)
+    const res = await runAction(createContestAction(name))
+    if (res.ok) {
+      router.push(`/admin/concours/${res.id}`)
+      return
+    }
+    setCreateError(ERR[res.error] ?? UNEXPECTED_ERROR)
+    setPending(false)
   }
 
   return (
@@ -28,9 +44,12 @@ export function ContestList({ contests }: { contests: ContestSummary[] }) {
         <h1 className="font-display text-[24px] text-[color:var(--text-strong)]">Concours</h1>
         <a href="/admin" className="text-[13px] text-[color:var(--text-muted)] underline">Retour à l’admin</a>
       </div>
-      <form onSubmit={create} className="flex gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du concours" className={`${field} flex-1`} />
-        <button disabled={!name.trim()} className={primary}>Créer</button>
+      <form onSubmit={create} className="flex flex-col gap-2">
+        <div className="flex gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nom du concours" className={`${field} flex-1`} />
+          <button disabled={!name.trim() || pending} className={primary}>Créer</button>
+        </div>
+        {createError && <p className="text-[13px] text-[color:var(--danger)]">{createError}</p>}
       </form>
       <ul className="flex flex-col gap-2">
         {contests.map((c) => (
@@ -40,7 +59,11 @@ export function ContestList({ contests }: { contests: ContestSummary[] }) {
               <span className="text-[13px] text-[color:var(--text-muted)]">
                 {PHASE_LABEL[c.phase]} · {c.guestCount} invités · {new Date(c.createdAt).toLocaleDateString('fr-CA')}
               </span>
-              <button type="button" onClick={() => { setDeleting(c.id); setTyped('') }} className="text-[13px] text-[color:var(--danger)]">
+              <button
+                type="button"
+                onClick={() => { setDeleting(c.id); setTyped(''); setDeleteError(null) }}
+                className="text-[13px] text-[color:var(--danger)]"
+              >
                 Supprimer
               </button>
             </div>
@@ -53,11 +76,18 @@ export function ContestList({ contests }: { contests: ContestSummary[] }) {
                   <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={c.name} className={`${field} flex-1`} />
                   <button
                     type="button"
-                    disabled={typed !== c.name}
+                    disabled={typed !== c.name || deleteBusy}
                     onClick={async () => {
-                      await deleteContestAction(c.id)
-                      setDeleting(null)
-                      router.refresh()
+                      if (deleteBusy) return
+                      setDeleteBusy(true)
+                      const res = await runAction(deleteContestAction(c.id))
+                      setDeleteBusy(false)
+                      if (res.ok) {
+                        setDeleting(null)
+                        router.refresh()
+                      } else {
+                        setDeleteError(ERR[res.error] ?? UNEXPECTED_ERROR)
+                      }
                     }}
                     className="rounded-[var(--radius-field)] bg-[color:var(--danger)] px-4 py-2 text-[14px] text-white disabled:opacity-40"
                   >
@@ -65,6 +95,7 @@ export function ContestList({ contests }: { contests: ContestSummary[] }) {
                   </button>
                   <button type="button" onClick={() => setDeleting(null)} className="text-[13px] text-[color:var(--text-muted)]">Annuler</button>
                 </div>
+                {deleteError && <p className="text-[13px] text-[color:var(--danger)]">{deleteError}</p>}
               </div>
             )}
           </li>

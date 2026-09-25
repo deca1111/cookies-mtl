@@ -70,6 +70,18 @@ export async function savePlateAction(contestId: number, input: PlateInput): Pro
   const label = cleanLabel(input.label)
   const authorIds = input.authorIds.filter(Number.isInteger)
   let number = input.number
+  // Renuméroter une assiette existante est réservé à la préparation (spec §9) :
+  // hors de cette phase, un numéro modifié côté client — ou forgé côté requête,
+  // le champ n'étant verrouillé que dans l'écran — est ignoré, on garde celui
+  // déjà en base.
+  if (input.id !== undefined) {
+    const contest = await getContestById(contestId)
+    if (contest && contest.phase !== 'preparation') {
+      const { plates } = await loadContestData(contestId)
+      const current = plates.find((p) => p.id === input.id)
+      if (current) number = current.number
+    }
+  }
   if (number === undefined) {
     const { plates } = await loadContestData(contestId)
     number = nextPlateNumber(plates.map((p) => p.number))
