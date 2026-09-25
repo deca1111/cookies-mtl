@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { IconExternal } from '@/components/icons'
 
 export function AdminHeader() {
@@ -13,6 +14,12 @@ export function AdminHeader() {
         <IconExternal size={14} />
         Voir la carte
       </a>
+      <Link
+        href="/admin/concours"
+        className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--border-strong)] px-3.5 py-2 text-[13px] text-[color:var(--text-body)] transition-colors hover:bg-[color:var(--surface-2)]"
+      >
+        Concours
+      </Link>
     </div>
   )
 }
