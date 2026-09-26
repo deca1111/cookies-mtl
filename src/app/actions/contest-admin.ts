@@ -3,7 +3,7 @@
 import { requireAdmin } from '@/lib/auth'
 import {
   addGuest, addPlate, createContest, deleteContest, deleteGuest, deletePlate, getContestById, isUniqueViolation,
-  loadContestData, releaseGuest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
+  loadContestData, releaseGuest, renameContest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
 } from '@/lib/contest-db'
 import { generateSecret } from '@/lib/contest-identity'
 import { cleanLabel, cleanName, nextPlateNumber, shiftPhase, shuffled, type Phase } from '@/lib/contest-rules'
@@ -23,6 +23,13 @@ export async function deleteContestAction(id: number): Promise<AdminResult> {
   await requireAdmin()
   await deleteContest(id)
   return OK
+}
+
+export async function renameContestAction(id: number, name: string): Promise<{ ok: true } | { ok: false; error: 'name' | 'not-found' }> {
+  await requireAdmin()
+  const clean = cleanName(name)
+  if (!clean) return { ok: false, error: 'name' }
+  return (await renameContest(id, clean)) ? OK : { ok: false, error: 'not-found' }
 }
 
 export async function addGuestAction(contestId: number, name: string): Promise<AdminResult> {

@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { usePolling } from '@/components/contest/usePolling'
 import type { AdminView } from '@/lib/contest-state'
+import { ContestHeader } from './ContestHeader'
 import { GuestPanel } from './GuestPanel'
 import { PilotPanel } from './PilotPanel'
 import { PlatePanel } from './PlatePanel'
@@ -17,10 +17,7 @@ export function ContestControl({ initial }: { initial: AdminView }) {
   const done = () => void refresh(true)
   return (
     <main className="flex min-h-dvh flex-col gap-6 p-6">
-      <div className="flex items-center gap-3">
-        <Link href="/admin/concours" className="text-[13px] text-[color:var(--text-muted)] underline">Concours</Link>
-        <h1 className="font-display text-[24px] text-[color:var(--text-strong)]">{view.contest.name}</h1>
-      </div>
+      <ContestHeader contestId={view.contest.id} name={view.contest.name} onDone={done} />
       {(offline || gone || error) && (
         <p className="rounded-[var(--radius-field)] border border-[color:var(--danger)] px-3 py-2 text-[13px] text-[color:var(--danger)]">
           {gone

@@ -42,6 +42,13 @@ export async function deleteContest(id: number): Promise<void> {
   await getSql()`DELETE FROM contests WHERE id = ${id}`
 }
 
+export async function renameContest(id: number, name: string): Promise<boolean> {
+  const rows = (await getSql()`
+    UPDATE contests SET name = ${name}, updated_at = now() WHERE id = ${id} RETURNING id
+  `) as { id: number }[]
+  return rows.length === 1
+}
+
 export async function getContestById(id: number): Promise<Contest | null> {
   const rows = (await getSql()`SELECT id, name, secret, phase, reveal_step FROM contests WHERE id = ${id}`) as ContestRecord[]
   return rows[0] ? toContest(rows[0]) : null
