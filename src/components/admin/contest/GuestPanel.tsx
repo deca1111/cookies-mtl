@@ -31,7 +31,10 @@ export function GuestPanel({ contestId, guests, onDone }: { contestId: number; g
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Invités ({guests.length})</h2>
+      <div className="flex items-center gap-2 border-b-2 border-[color:var(--border)] pb-2">
+        <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Invités</h2>
+        <span className="text-[13px] text-[color:var(--text-muted)]">{guests.length}</span>
+      </div>
       <form
         onSubmit={async (e) => {
           e.preventDefault()
@@ -69,7 +72,9 @@ export function GuestPanel({ contestId, guests, onDone }: { contestId: number; g
                 {g.name}
               </button>
             )}
-            <span className="text-[12px] text-[color:var(--text-muted)]">{status(g)}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] ${g.claimed
+              ? 'bg-[color:var(--accent-wash)] text-[color:var(--accent-ink)]'
+              : 'border border-[color:var(--border)] text-[color:var(--text-muted)]'}`}>{status(g)}</span>
             {g.claimed && (
               <button type="button" onClick={() => run(releaseGuestAction(contestId, g.id))} className="text-[12px] text-[color:var(--accent-ink)]">
                 Libérer

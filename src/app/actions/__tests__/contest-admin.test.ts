@@ -4,8 +4,9 @@ import { beforeEach, expect, test, vi } from 'vitest'
 // exécution (Object.keys), qui a lieu AVANT les déclarations du module de test.
 const { db, requireAdmin, loadAdminView } = vi.hoisted(() => {
   const names = [
-    'createContest', 'deleteContest', 'getContestById', 'setPhase', 'setRevealStep', 'addGuest', 'renameGuest',
-    'deleteGuest', 'releaseGuest', 'addPlate', 'updatePlate', 'deletePlate', 'setPlateNumbers', 'loadContestData',
+    'createContest', 'deleteContest', 'renameContest', 'getContestById', 'setPhase', 'setRevealStep', 'addGuest',
+    'renameGuest', 'deleteGuest', 'releaseGuest', 'addPlate', 'updatePlate', 'deletePlate', 'setPlateNumbers',
+    'loadContestData',
   ]
   return {
     db: Object.fromEntries(names.map((n) => [n, vi.fn()])) as Record<string, ReturnType<typeof vi.fn>>,
@@ -23,7 +24,8 @@ vi.mock('@/lib/contest-db', () => ({
 }))
 
 import {
-  addGuestAction, createContestAction, savePlateAction, setRevealStepAction, shiftPhaseAction, shufflePlatesAction,
+  addGuestAction, createContestAction, renameContestAction, savePlateAction, setRevealStepAction, shiftPhaseAction,
+  shufflePlatesAction,
 } from '../contest-admin'
 
 const contest = (phase: string) => ({ id: 1, name: 'Anniv', secret: 's', phase, revealStep: 0 })
@@ -123,4 +125,21 @@ test('étape de révélation : un pas non entier est refusé', async () => {
 test('assiette : authorIds qui n\'est pas un tableau est refusé', async () => {
   expect(await savePlateAction(1, { label: 'Noisette', authorIds: 'x' as unknown as number[] })).toEqual({ ok: false, error: 'authors' })
   expect(db.addPlate).not.toHaveBeenCalled()
+})
+
+test('renommer : nom nettoyé puis enregistré', async () => {
+  db.renameContest.mockResolvedValue(true)
+  expect(await renameContestAction(1, '  Anniv   Léo ')).toEqual({ ok: true })
+  expect(db.renameContest).toHaveBeenCalledWith(1, 'Anniv Léo')
+})
+
+test('renommer : nom vide ou trop long refusé, rien écrit', async () => {
+  expect(await renameContestAction(1, '   ')).toEqual({ ok: false, error: 'name' })
+  expect(await renameContestAction(1, 'x'.repeat(41))).toEqual({ ok: false, error: 'name' })
+  expect(db.renameContest).not.toHaveBeenCalled()
+})
+
+test('renommer : concours inconnu', async () => {
+  db.renameContest.mockResolvedValue(false)
+  expect(await renameContestAction(9, 'Anniv')).toEqual({ ok: false, error: 'not-found' })
 })

@@ -22,6 +22,17 @@ test('classement vide au départ, toutes les assiettes à goûter', () => {
   expect(screen.getAllByRole('button', { name: /Assiette \d/ })).toHaveLength(3)
 })
 
+test('les pastilles à goûter affichent l’étiquette « N° X », sous le nom accessible « Assiette N »', () => {
+  render(<RankingBoard plates={plates} ranking={[]} onChange={vi.fn()} locked={false} t={t} />)
+  const btn = screen.getByRole('button', { name: 'Assiette 2' })
+  expect(btn.textContent).toBe('N° 2')
+})
+
+test('une ligne classée affiche l’étiquette « N° X »', () => {
+  render(<RankingBoard plates={plates} ranking={[20]} onChange={vi.fn()} locked={false} t={t} />)
+  expect(screen.getByText('N° 2')).toBeTruthy()
+})
+
 test('toucher une assiette puis « Placer ici » l’insère à cet endroit', () => {
   const onChange = vi.fn()
   render(<RankingBoard plates={plates} ranking={[10, 30]} onChange={onChange} locked={false} t={t} />)

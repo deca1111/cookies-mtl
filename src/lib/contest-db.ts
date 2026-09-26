@@ -42,6 +42,13 @@ export async function deleteContest(id: number): Promise<void> {
   await getSql()`DELETE FROM contests WHERE id = ${id}`
 }
 
+export async function renameContest(id: number, name: string): Promise<boolean> {
+  const rows = (await getSql()`
+    UPDATE contests SET name = ${name}, updated_at = now() WHERE id = ${id} RETURNING id
+  `) as { id: number }[]
+  return rows.length === 1
+}
+
 export async function getContestById(id: number): Promise<Contest | null> {
   const rows = (await getSql()`SELECT id, name, secret, phase, reveal_step FROM contests WHERE id = ${id}`) as ContestRecord[]
   return rows[0] ? toContest(rows[0]) : null
@@ -80,6 +87,17 @@ export async function deleteGuest(contestId: number, guestId: number): Promise<v
 
 export async function releaseGuest(contestId: number, guestId: number): Promise<void> {
   await getSql()`UPDATE contest_guests SET claim_token = NULL WHERE id = ${guestId} AND contest_id = ${contestId}`
+}
+
+// L'invité s'est trompé de nom (spec PR 2 §5) : son bulletin a été fait par la
+// mauvaise personne, on l'efface avec la réservation, en une transaction.
+export async function releaseSelf(contestId: number, guestId: number): Promise<void> {
+  const sql = getSql()
+  await sql.transaction([
+    sql`DELETE FROM contest_ballots WHERE guest_id = ${guestId}
+        AND guest_id IN (SELECT id FROM contest_guests WHERE contest_id = ${contestId})`,
+    sql`UPDATE contest_guests SET claim_token = NULL WHERE id = ${guestId} AND contest_id = ${contestId}`,
+  ])
 }
 
 // Atomique : deux téléphones qui choisissent le même nom au même instant, un

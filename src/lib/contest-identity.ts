@@ -32,3 +32,7 @@ export async function writeGuestToken(contestId: number, token: string): Promise
     path: '/',
   })
 }
+
+export async function clearGuestToken(contestId: number): Promise<void> {
+  ;(await cookies()).delete(guestCookieName(contestId))
+}

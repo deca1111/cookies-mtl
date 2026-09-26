@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { claimNameAction, saveBallotAction } from '@/app/actions/contest-guest'
+import { claimNameAction, releaseSelfAction, saveBallotAction } from '@/app/actions/contest-guest'
+import { IconChevronDown } from '@/components/icons'
 import type { GuestView } from '@/lib/contest-state'
+import { ChangeNameSheet } from './ChangeNameSheet'
 import { GuestResults } from './GuestResults'
 import { LanguagePicker } from './LanguagePicker'
 import { NamePicker } from './NamePicker'
@@ -34,6 +36,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
   const meId = view.me?.id ?? null
   const hadIdentity = useRef(initial.me !== null)
   const [released, setReleased] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -151,6 +154,32 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
     }
   }
 
+  // Changer de nom (spec PR 2 §5) : le bulletin est effacé côté serveur. On
+  // oublie tout envoi en attente (sinon il repartirait sous l'identité vide) et
+  // on abaisse `hadIdentity` AVANT la relecture, pour que la perte d'identité ne
+  // soit pas prise pour une libération par l'organisateur.
+  const changeName = async (): Promise<boolean> => {
+    try {
+      const res = await releaseSelfAction(secret)
+      if (!res.ok) return false
+    } catch {
+      return false
+    }
+    unsent.current = null
+    sendSeq.current++
+    hadIdentity.current = false
+    setRanking([])
+    setSheetOpen(false)
+    await refresh(true)
+    return true
+  }
+
+  const canChangeName = view.me !== null && (view.phase === 'preparation' || view.phase === 'voting')
+  // La phase peut basculer (clôture) pendant que la feuille est ouverte : sans
+  // cette garde, elle resterait affichée avec un bouton qui n'a plus lieu d'être
+  // (même motif que Scene.tsx — ajustement d'état pendant le rendu).
+  if (sheetOpen && !canChangeName) setSheetOpen(false)
+
   let body: ReactNode
   if (!ready) body = null
   else if (gone) body = <p className="pt-16 text-center text-[16px] text-[color:var(--text-body)]">{t('notFound')}</p>
@@ -173,8 +202,10 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
     body = (
       <div className="flex flex-col gap-6">
         <div className="pt-6 text-center">
-          <h1 className="font-display text-[26px] text-[color:var(--text-strong)]">{t('eyesOnScreen')}</h1>
-          <p className="mt-2 text-[15px] text-[color:var(--text-body)]">{t('closedBody')}</p>
+          <h1 className="font-display text-[26px] text-[color:var(--text-strong)]">{t(view.phase === 'reveal' ? 'revealTitle' : 'closedTitle')}</h1>
+          {/* Point 7 de la vague de correction : rien classé, rien « enregistré » —
+              le texte par défaut mentirait à l'invité qui n'a pas voté. */}
+          <p className="mt-2 text-[15px] text-[color:var(--text-body)]">{t(ranking.length === 0 ? 'closedBodyEmpty' : 'closedBody')}</p>
         </div>
         <RankingBoard plates={view.plates} ranking={ranking} onChange={() => {}} locked t={t} />
       </div>
@@ -183,15 +214,23 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 bg-[color:var(--bg)] px-4 pb-10 pt-4">
-      <header className="flex items-center justify-between gap-3">
-        <span className="font-display truncate text-[16px] text-[color:var(--text-muted)]">{view.name}</span>
+      <header className="flex items-center gap-2">
+        {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marque statique */}
+        <img src="/brand/logo.svg" alt="" className="h-7 w-7" />
+        <span className="font-display flex-1 truncate text-[15px] text-[color:var(--text-strong)]">{view.name}</span>
+        {lang && view.me && (canChangeName ? (
+          <button type="button" onClick={() => setSheetOpen(true)} aria-label={`${view.me.name} — ${t('changeName')}`}
+            className="flex items-center gap-1 rounded-full border border-[color:var(--border-strong)] px-3 py-1 text-[13px] text-[color:var(--text-body)]">
+            {view.me.name}
+            <IconChevronDown size={12} />
+          </button>
+        ) : (
+          <span className="text-[13px] text-[color:var(--text-body)]">{view.me.name}</span>
+        ))}
         {lang && (
-          <div className="flex items-center gap-3">
-            {view.me && <span className="text-[13px] text-[color:var(--text-body)]">{t('hello', { name: view.me.name })}</span>}
-            <button type="button" onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')} className="rounded-full border border-[color:var(--border-strong)] px-3 py-1 text-[12px] text-[color:var(--text-body)]">
-              {lang === 'fr' ? 'EN' : 'FR'}
-            </button>
-          </div>
+          <button type="button" onClick={() => setLang(lang === 'fr' ? 'en' : 'fr')} className="rounded-full border border-[color:var(--border-strong)] px-3 py-1 text-[12px] text-[color:var(--text-body)]">
+            {lang === 'fr' ? 'EN' : 'FR'}
+          </button>
         )}
       </header>
       {(offline || saveError) && lang && (
@@ -200,6 +239,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
         </p>
       )}
       {body}
+      {sheetOpen && view.me && lang && <ChangeNameSheet name={view.me.name} t={t} onConfirm={changeName} onClose={() => setSheetOpen(false)} />}
     </main>
   )
 }

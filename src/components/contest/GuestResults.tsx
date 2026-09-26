@@ -1,14 +1,16 @@
 'use client'
 
 import type { ContestMsgKey } from '@/lib/contest-i18n'
+import { ordinal } from '@/lib/contest-i18n'
+import { podium } from '@/lib/contest-podium'
 import type { GuestView, ResultRow } from '@/lib/contest-state'
 import type { Lang } from '@/lib/i18n'
+import { Podium } from './Podium'
 
 type T = (k: ContestMsgKey, vars?: Record<string, string | number>) => string
 
-function rankLabel(t: T, position: number | null) {
-  if (position === null) return t('unranked')
-  return position === 1 ? t('firstRank') : t('rank', { n: position })
+function rankLabel(t: T, lang: Lang, position: number | null) {
+  return position === null ? t('unranked') : ordinal(lang, position)
 }
 
 // Un rang moyen est une fraction ("2.5") : en français, sa notation attend une
@@ -20,8 +22,8 @@ function formatAvgRank(lang: Lang, avgRank: number) {
 
 function Row({ row, t, lang }: { row: ResultRow; t: T; lang: Lang }) {
   return (
-    <li className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
-      <span className="font-display w-10 text-center text-[18px] text-[color:var(--accent-ink)]">{rankLabel(t, row.position)}</span>
+    <li data-testid="results-rest-row" className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
+      <span className="font-display min-w-10 text-center text-[18px] text-[color:var(--accent-ink)]">{rankLabel(t, lang, row.position)}</span>
       <div className="flex-1">
         <div className="text-[16px] font-medium text-[color:var(--text-strong)]">
           {t('plate', { n: row.number })}
@@ -43,8 +45,10 @@ export function GuestResults({ results, myBallot, t, lang }: { results: NonNulla
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-2">
         <h1 className="font-display text-[26px] text-[color:var(--text-strong)]">{t('resultsTitle')}</h1>
+        {/* Pyramide des 3 premiers en tête (mêmes règles que la scène), le reste en liste. */}
+        <Podium rows={results.rows} size="phone" text={t} lang={lang} />
         <ol className="flex flex-col gap-2">
-          {results.rows.map((r) => <Row key={r.plateId} row={r} t={t} lang={lang} />)}
+          {podium(results.rows).rest.map((r) => <Row key={r.plateId} row={r} t={t} lang={lang} />)}
         </ol>
       </section>
 
@@ -63,7 +67,7 @@ export function GuestResults({ results, myBallot, t, lang }: { results: NonNulla
               {myBallot.map((id, i) => (
                 <tr key={id} className="border-t border-[color:var(--border)]">
                   <td className="py-1.5">{i + 1}. {t('plate', { n: byId.get(id)?.number ?? '?' })}</td>
-                  <td className="py-1.5">{rankLabel(t, byId.get(id)?.position ?? null)}</td>
+                  <td className="py-1.5">{rankLabel(t, lang, byId.get(id)?.position ?? null)}</td>
                 </tr>
               ))}
             </tbody>
@@ -77,11 +81,12 @@ export function GuestResults({ results, myBallot, t, lang }: { results: NonNulla
           {results.myPlates.map((r) => (
             <div key={r.plateId} className="rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-4 text-[14px] text-[color:var(--text-body)]">
               <div className="font-display text-[20px] text-[color:var(--text-strong)]">
-                {t('plate', { n: r.number })} — {rankLabel(t, r.position)}
+                {t('plate', { n: r.number })} — {rankLabel(t, lang, r.position)}
               </div>
               {r.score !== null ? (
                 <ul className="mt-1 flex flex-col gap-0.5">
-                  <li>{t('score', { n: r.score })} · {t('votes', { n: r.votes })}</li>
+                  {/* Singulier (point 8 de la vague de correction) : « 1 vote », pas « 1 votes ». */}
+                  <li>{t('score', { n: r.score })} · {t(r.votes === 1 ? 'votesOne' : 'votes', { n: r.votes })}</li>
                   <li>{t('bestWorst', { best: r.bestRank!, worst: r.worstRank! })}</li>
                   <li>{t('firsts', { n: r.firsts })}</li>
                 </ul>

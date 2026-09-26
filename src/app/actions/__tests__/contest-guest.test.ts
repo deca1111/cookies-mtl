@@ -6,22 +6,25 @@ const db = {
   findGuestIdByToken: vi.fn(),
   loadContestData: vi.fn(),
   replaceBallot: vi.fn(),
+  releaseSelf: vi.fn(),
 }
-const identity = { generateClaimToken: vi.fn(), readGuestToken: vi.fn(), writeGuestToken: vi.fn() }
+const identity = { generateClaimToken: vi.fn(), readGuestToken: vi.fn(), writeGuestToken: vi.fn(), clearGuestToken: vi.fn() }
 vi.mock('@/lib/contest-db', () => ({
   getContestBySecret: (...a: unknown[]) => db.getContestBySecret(...a),
   claimGuest: (...a: unknown[]) => db.claimGuest(...a),
   findGuestIdByToken: (...a: unknown[]) => db.findGuestIdByToken(...a),
   loadContestData: (...a: unknown[]) => db.loadContestData(...a),
   replaceBallot: (...a: unknown[]) => db.replaceBallot(...a),
+  releaseSelf: (...a: unknown[]) => db.releaseSelf(...a),
 }))
 vi.mock('@/lib/contest-identity', () => ({
   generateClaimToken: () => identity.generateClaimToken(),
   readGuestToken: (...a: unknown[]) => identity.readGuestToken(...a),
   writeGuestToken: (...a: unknown[]) => identity.writeGuestToken(...a),
+  clearGuestToken: (...a: unknown[]) => identity.clearGuestToken(...a),
 }))
 
-import { claimNameAction, saveBallotAction } from '../contest-guest'
+import { claimNameAction, saveBallotAction, releaseSelfAction } from '../contest-guest'
 
 const contest = { id: 1, name: 'Anniv', secret: 's', phase: 'voting', revealStep: 0 }
 const data = {
@@ -87,4 +90,32 @@ test('sa propre assiette, une assiette inconnue ou un doublon : refusé', async 
   expect(await saveBallotAction('s', [99])).toEqual({ ok: false, error: 'invalid' })
   expect(await saveBallotAction('s', [20, 20])).toEqual({ ok: false, error: 'invalid' })
   expect(db.replaceBallot).not.toHaveBeenCalled()
+})
+
+test('changer de nom en vote : bulletin effacé, jeton vidé, cookie supprimé', async () => {
+  expect(await releaseSelfAction('s')).toEqual({ ok: true })
+  expect(db.releaseSelf).toHaveBeenCalledWith(1, 5)
+  expect(identity.clearGuestToken).toHaveBeenCalledWith(1)
+})
+
+test('changer de nom en préparation : autorisé', async () => {
+  db.getContestBySecret.mockResolvedValue({ ...contest, phase: 'preparation' })
+  expect(await releaseSelfAction('s')).toEqual({ ok: true })
+})
+
+test('changer de nom après la clôture : refusé, rien touché', async () => {
+  for (const phase of ['closed', 'reveal']) {
+    db.getContestBySecret.mockResolvedValue({ ...contest, phase })
+    expect(await releaseSelfAction('s')).toEqual({ ok: false, error: 'locked' })
+  }
+  expect(db.releaseSelf).not.toHaveBeenCalled()
+  expect(identity.clearGuestToken).not.toHaveBeenCalled()
+})
+
+test('changer de nom sans identité ou concours inconnu', async () => {
+  db.findGuestIdByToken.mockResolvedValue(null)
+  expect(await releaseSelfAction('s')).toEqual({ ok: false, error: 'no-identity' })
+  db.getContestBySecret.mockResolvedValue(null)
+  expect(await releaseSelfAction('x')).toEqual({ ok: false, error: 'not-found' })
+  expect(db.releaseSelf).not.toHaveBeenCalled()
 })
