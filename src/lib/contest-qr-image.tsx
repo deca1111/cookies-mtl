@@ -12,14 +12,17 @@ async function qrDataUri(url: string): Promise<string> {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
 }
 
-const read = (rel: string) => readFile(join(process.cwd(), rel))
-
+// Chemins littéraux (et non un helper `read(rel)` à chemin variable) : le
+// traçage de fichiers de Vercel (@vercel/nft) analyse statiquement les appels
+// `fs`/`readFile` et ne suit pas un chemin construit à l'exécution — sans ça,
+// `public/brand/logo.svg` et les polices ne seraient pas inclus dans le bundle
+// de la fonction en production (même forme que src/app/opengraph-image.tsx).
 export async function qrCardImage({ url, name }: { url: string; name: string }): Promise<ImageResponse> {
   const [qr, logo, gill, comfortaa] = await Promise.all([
     qrDataUri(url),
-    read('public/brand/logo.svg'),
-    read('src/fonts/gill-sans-ultra-bold.otf'),
-    read('src/fonts/comfortaa-700.woff'),
+    readFile(join(process.cwd(), 'public/brand/logo.svg')),
+    readFile(join(process.cwd(), 'src/fonts/gill-sans-ultra-bold.otf')),
+    readFile(join(process.cwd(), 'src/fonts/comfortaa-700.woff')),
   ])
   const logoUri = `data:image/svg+xml;base64,${logo.toString('base64')}`
   return new ImageResponse(

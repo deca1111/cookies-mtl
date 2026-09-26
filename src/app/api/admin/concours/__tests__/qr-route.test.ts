@@ -12,7 +12,7 @@ vi.mock('@/lib/contest-qr-image', () => ({
   qrOnlyImage: (...a: unknown[]) => qrOnlyImage(...a),
 }))
 
-import { GET } from '../../admin/concours/[id]/qr/route'
+import { GET } from '../[id]/qr/route'
 import { qrFileName } from '@/lib/contest-qr-name'
 
 const call = (qs: string, id = '1') => GET(new Request(`https://cookies.club/api/admin/concours/${id}/qr${qs}`), { params: Promise.resolve({ id }) })
