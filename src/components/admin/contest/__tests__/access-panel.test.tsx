@@ -40,3 +40,27 @@ test('partager : fichier PNG passé au partage natif quand il est disponible', a
   const files = share.mock.calls[0][0].files as File[]
   expect(files[0].type).toBe('image/png')
 })
+
+// Point 9 de la vague de correction : une session expirée renvoie un JSON 401
+// (pas un PNG). Sans vérifier `res.ok`, ce JSON serait partagé tel quel, nommé
+// « concours-carte.png ». La route doit alors se rabattre sur le téléchargement,
+// sans jamais appeler le partage natif avec cette réponse.
+test('partager : réponse non-ok (session expirée) → jamais de partage, téléchargement à la place', async () => {
+  // `location.assign` n'est pas redéfinissable directement sur l'objet Location
+  // de jsdom : on remplace `window.location` lui-même le temps du test.
+  const originalLocation = window.location
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { configurable: true, value: { ...originalLocation, assign } })
+  const share = vi.fn().mockResolvedValue(undefined)
+  Object.defineProperty(navigator, 'share', { value: share, configurable: true })
+  Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true })
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 })))
+  try {
+    render(<AccessPanel contestId={7} secret="k3f9" />)
+    fireEvent.click(screen.getByRole('button', { name: /Partager/ }))
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('/api/admin/concours/7/qr?format=carte&download=1'))
+    expect(share).not.toHaveBeenCalled()
+  } finally {
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
+  }
+})

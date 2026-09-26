@@ -33,7 +33,11 @@ export function AccessPanel({ contestId, secret }: { contestId: number; secret: 
   // Une annulation par l'utilisateur (AbortError) n'est pas une erreur.
   const share = async () => {
     try {
-      const blob = await (await fetch(png('carte'))).blob()
+      const res = await fetch(png('carte'))
+      // Une session expirée renvoie un JSON 401, pas un PNG : sans ce garde, ce
+      // JSON serait partagé tel quel, faussement nommé « concours-carte.png ».
+      if (!res.ok) throw new Error('qr-fetch-failed')
+      const blob = await res.blob()
       const file = new File([blob], 'concours-carte.png', { type: 'image/png' })
       if (navigator.canShare?.({ files: [file] })) {
         await navigator.share({ files: [file] })
