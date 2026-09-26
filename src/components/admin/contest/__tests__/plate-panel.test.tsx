@@ -28,7 +28,7 @@ test('enregistrement : le bouton se désactive pendant l’envoi, un seul appel 
   let resolve: (v: { ok: true }) => void = () => {}
   savePlateAction.mockImplementation(() => new Promise((r) => { resolve = r }))
   render(<PlatePanel contestId={1} phase="preparation" plates={[]} guests={[]} onDone={vi.fn()} />)
-  fireEvent.click(screen.getByRole('button', { name: 'Ajouter' }))
+  fireEvent.click(screen.getByRole('button', { name: '+ Ajouter' }))
   const save = screen.getByRole('button', { name: 'Enregistrer' })
   fireEvent.click(save)
   await waitFor(() => expect(save.hasAttribute('disabled')).toBe(true))
@@ -55,7 +55,33 @@ test('suppression d’une assiette : confirmation à deux clics', async () => {
 test('authorIds invalide (non tableau) : erreur lisible', async () => {
   savePlateAction.mockResolvedValue({ ok: false, error: 'authors' })
   render(<PlatePanel contestId={1} phase="preparation" plates={[]} guests={[]} onDone={vi.fn()} />)
-  fireEvent.click(screen.getByRole('button', { name: 'Ajouter' }))
+  fireEvent.click(screen.getByRole('button', { name: '+ Ajouter' }))
   fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }))
   await waitFor(() => expect(screen.getByText('Auteurs invalides.')).toBeTruthy())
+})
+
+test('carte : numéro et auteurs d’abord, note en second', () => {
+  render(<PlatePanel contestId={1} phase="voting" onDone={vi.fn()}
+    guests={[{ id: 5, name: 'Camille', claimed: false, ranked: 0, rankable: 0 }, { id: 6, name: 'Hugo', claimed: false, ranked: 0, rankable: 0 }]}
+    plates={[{ id: 10, number: 1, label: 'pécan caramel', authorIds: [5, 6] }]} />)
+  const card = screen.getByRole('button', { name: /Modifier l’assiette 1/ })
+  expect(card.textContent).toMatch(/1.*Camille & Hugo.*pécan caramel/)
+})
+
+test('clic sur la carte : édition dans la carte, une seule à la fois', () => {
+  render(<PlatePanel contestId={1} phase="voting" onDone={vi.fn()} guests={[]}
+    plates={[{ id: 10, number: 1, label: null, authorIds: [] }, { id: 11, number: 2, label: null, authorIds: [] }]} />)
+  fireEvent.click(screen.getByRole('button', { name: /Modifier l’assiette 1/ }))
+  expect(screen.getByPlaceholderText('Note facultative…')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /Modifier l’assiette 2/ }))
+  expect(screen.getAllByPlaceholderText('Note facultative…')).toHaveLength(1)
+  expect(screen.getByRole('button', { name: /Modifier l’assiette 1/ })).toBeTruthy()
+})
+
+test('« + Ajouter » : carte provisoire en bas de liste', () => {
+  render(<PlatePanel contestId={1} phase="preparation" onDone={vi.fn()} guests={[]}
+    plates={[{ id: 10, number: 1, label: null, authorIds: [] }]} />)
+  fireEvent.click(screen.getByRole('button', { name: '+ Ajouter' }))
+  const items = screen.getAllByRole('listitem')
+  expect(items[items.length - 1].querySelector('input[placeholder="Note facultative…"]')).not.toBeNull()
 })
