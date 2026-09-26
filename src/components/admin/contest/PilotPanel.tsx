@@ -1,10 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { setRevealStepAction, shiftPhaseAction } from '@/app/actions/contest-admin'
-import { shiftPhase } from '@/lib/contest-rules'
+import { setRevealStepAction } from '@/app/actions/contest-admin'
 import type { AdminView } from '@/lib/contest-state'
-import { PHASE_LABEL } from './phase-label'
 import { ContestQr } from './ContestQr'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 
@@ -17,27 +15,15 @@ const ERR: Record<string, string> = {
 }
 
 export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => void }) {
-  const { contest, rows, steps, guests, complete } = view
+  const { contest, rows, steps } = view
   const [showLive, setShowLive] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Un double clic sur « Votes ouverts → » avant que le premier n'ait fini son
-  // aller-retour ferait sauter une phase (préparation → voting → closed d'un
-  // coup) : les actions serveur sont sérialisées, rien côté écran ne les
-  // espaçait (finding #1). `busy` couvre à la fois le changement de phase et le
-  // pas de révélation — un seul geste de pilotage à la fois.
+  // Un double clic sur une flèche de révélation avant que le premier n'ait
+  // fini son aller-retour ferait sauter une étape : les actions serveur sont
+  // sérialisées, rien côté écran ne les espaçait (finding #1). `busy` couvre
+  // le pas de révélation — un seul geste de pilotage à la fois.
   const [busy, setBusy] = useState(false)
-  const next = shiftPhase(contest.phase, 1)
-  const prev = shiftPhase(contest.phase, -1)
   const btn = 'rounded-[var(--radius-field)] border border-[color:var(--border-strong)] px-3 py-1.5 text-[13px] text-[color:var(--text-body)] disabled:opacity-40'
-
-  const changePhase = async (dir: 1 | -1) => {
-    if (busy) return
-    setBusy(true)
-    const res = await runAction(shiftPhaseAction(contest.id, contest.phase, dir))
-    setError(res.ok ? null : (ERR[res.error] ?? 'Erreur.'))
-    setBusy(false)
-    onDone()
-  }
 
   const step = async (s: number) => {
     if (busy) return
@@ -52,18 +38,6 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
     <section className="flex flex-col gap-4">
       <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Pilotage</h2>
       {error && <p className="text-[13px] text-[color:var(--danger)]">{error}</p>}
-      <div className="rounded-[var(--radius-card)] bg-[color:var(--surface)] p-3">
-        <p className="text-[13px] text-[color:var(--text-muted)]">Phase</p>
-        <p className="text-[18px] font-medium text-[color:var(--text-strong)]">{PHASE_LABEL[contest.phase]}</p>
-        <div className="mt-2 flex gap-2">
-          <button type="button" className={btn} disabled={busy || prev === contest.phase} onClick={() => changePhase(-1)}>
-            ← {PHASE_LABEL[prev]}
-          </button>
-          <button type="button" className="rounded-[var(--radius-field)] bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--btn-text)] disabled:opacity-40" disabled={busy || next === contest.phase} onClick={() => changePhase(1)}>
-            {PHASE_LABEL[next]} →
-          </button>
-        </div>
-      </div>
 
       {contest.phase === 'reveal' && (
         <div className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-[color:var(--surface)] p-3">
@@ -77,10 +51,6 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
       <a href={`/admin/concours/${contest.id}/scene`} target="_blank" rel="noopener noreferrer" className="text-[14px] text-[color:var(--accent-ink)] underline">
         Ouvrir la scène
       </a>
-
-      <p className="text-[14px] text-[color:var(--text-body)]">
-        {complete}/{guests.filter((g) => g.rankable > 0).length} invités ont un classement complet
-      </p>
 
       <ContestQr secret={contest.secret} />
 
