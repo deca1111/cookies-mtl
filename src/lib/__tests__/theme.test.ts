@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'vitest'
-import { applyTheme, onThemeChange, resolveTheme, storedTheme, toggleTheme, THEME_INIT_SCRIPT, THEME_KEY } from '../theme'
+import { applyTheme, isContestPath, onThemeChange, resolveTheme, storedTheme, toggleTheme, THEME_INIT_SCRIPT, THEME_KEY } from '../theme'
 
 afterEach(() => {
   localStorage.clear()
@@ -35,4 +35,26 @@ test('le script inline stampe html avant peinture', () => {
   localStorage.setItem(THEME_KEY, 'dark')
   new Function(THEME_INIT_SCRIPT)()
   expect(document.documentElement.dataset.theme).toBe('dark')
+})
+
+test('partie concours (invités, pilotage, scène) : toujours en sombre', () => {
+  expect(isContestPath('/concours/abc123')).toBe(true)
+  expect(isContestPath('/admin/concours')).toBe(true)
+  expect(isContestPath('/admin/concours/4/scene')).toBe(true)
+  expect(isContestPath('/admin')).toBe(false)
+  expect(isContestPath('/')).toBe(false)
+  expect(isContestPath('/c/cookie-concours')).toBe(false)
+  expect(isContestPath('/concoursx')).toBe(false)
+})
+
+test('le script inline force le sombre sur la partie concours, sans toucher au choix mémorisé', () => {
+  localStorage.setItem(THEME_KEY, 'light')
+  window.history.pushState({}, '', '/concours/abc123')
+  try {
+    new Function(THEME_INIT_SCRIPT)()
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(localStorage.getItem(THEME_KEY)).toBe('light')
+  } finally {
+    window.history.pushState({}, '', '/')
+  }
 })
