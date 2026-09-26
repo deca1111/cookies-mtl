@@ -73,7 +73,7 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
                 onClick={() => setPicked(picked === p.id ? null : p.id)}
                 className={`rounded-[10px] ${activePick === p.id ? 'ring-4 ring-[color:var(--btn-bg)]' : ''}`}
               >
-                <PlateTag number={p.number} label={t('plateTag', { n: p.number })} size="md" />
+                <PlateTag label={t('plateTag', { n: p.number })} size="md" />
               </button>
             ))}
           </div>
@@ -173,7 +173,7 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
         </button>
       )}
       <span className="font-display w-8 text-center text-[22px] text-[color:var(--btn-bg)]">{index + 1}</span>
-      <PlateTag number={plate.number} label={t('plateTag', { n: plate.number })} size="sm" tilt />
+      <PlateTag label={t('plateTag', { n: plate.number })} size="sm" tilt />
       <div className="flex-1 select-none">
         <div className="text-[16px] font-medium text-[color:var(--text-strong)]">{t('plate', { n: plate.number })}</div>
         {plate.label && <div className="text-[13px] text-[color:var(--text-muted)]">{plate.label}</div>}

@@ -10,7 +10,7 @@ const SIZES = {
 } as const
 
 export function PlateTag({ label, size, tilt = false, score, scoreLabel }: {
-  number: number; label: string; size: keyof typeof SIZES; tilt?: boolean; score?: number | null; scoreLabel?: string
+  label: string; size: keyof typeof SIZES; tilt?: boolean; score?: number | null; scoreLabel?: string
 }) {
   const s = SIZES[size]
   return (
@@ -18,7 +18,8 @@ export function PlateTag({ label, size, tilt = false, score, scoreLabel }: {
       className={`inline-flex flex-col items-center justify-center bg-[#fffdf9] text-[#2c1f16] shadow-[0_10px_30px_rgba(0,0,0,0.45)] ${s.box}`}
       style={tilt ? { transform: 'rotate(-3deg)' } : undefined}
     >
-      <span className={`font-display leading-none ${s.num}`}>{label}</span>
+      {/* whitespace-nowrap : « N° 3 » ne doit jamais se couper sur deux lignes en taille sm. */}
+      <span className={`font-display leading-none whitespace-nowrap ${s.num}`}>{label}</span>
       {score != null && scoreLabel && <span className={`mt-1 ${s.score}`}>{scoreLabel}</span>}
     </span>
   )

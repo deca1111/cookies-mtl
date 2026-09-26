@@ -5,12 +5,12 @@ import { PlateTag } from '../PlateTag'
 afterEach(cleanup)
 
 test('affiche le numéro, et la note si fournie', () => {
-  render(<PlateTag number={3} label="N° 3" size="lg" score={82} scoreLabel="82/100" />)
+  render(<PlateTag label="N° 3" size="lg" score={82} scoreLabel="82/100" />)
   expect(screen.getByText('N° 3')).toBeTruthy()
   expect(screen.getByText('82/100')).toBeTruthy()
 })
 
 test('sans note : pas de ligne de score', () => {
-  const { container } = render(<PlateTag number={3} label="N° 3" size="sm" />)
+  const { container } = render(<PlateTag label="N° 3" size="sm" />)
   expect(container.textContent).toBe('N° 3')
 })

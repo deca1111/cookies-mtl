@@ -110,12 +110,12 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
               setError(r.ok ? null : (ERR[r.error] ?? 'Erreur.'))
               onDone()
             }}
-            className="text-[13px] text-[color:var(--accent-ink)]"
+            className="whitespace-nowrap text-[13px] text-[color:var(--accent-ink)]"
           >
             Mélanger les numéros
           </button>
         )}
-        <button type="button" onClick={() => setDraft({ number: '', label: '', authorIds: [] })} className="rounded-full bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] text-[color:var(--btn-text)]">
+        <button type="button" onClick={() => setDraft({ number: '', label: '', authorIds: [] })} className="whitespace-nowrap rounded-full bg-[color:var(--btn-bg)] px-3 py-1.5 text-[13px] text-[color:var(--btn-text)]">
           + Ajouter
         </button>
       </div>
