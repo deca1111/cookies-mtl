@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { setRevealStepAction } from '@/app/actions/contest-admin'
 import type { AdminView } from '@/lib/contest-state'
-import { ContestQr } from './ContestQr'
+import { IconEye, IconEyeOff, IconExternal } from '@/components/icons'
+import { AccessPanel } from './AccessPanel'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 
 const ERR: Record<string, string> = {
@@ -34,38 +35,45 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
     onDone()
   }
 
+  const block = 'flex flex-col gap-2 rounded-[var(--radius-card)] bg-[color:var(--surface)] p-3'
+  const caption = 'text-[11px] font-bold uppercase tracking-[0.08em] text-[color:var(--text-muted)]'
+  const inReveal = contest.phase === 'reveal'
   return (
-    <section className="flex flex-col gap-4">
-      <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Pilotage</h2>
+    <section className="flex flex-col gap-3">
+      <h2 className="font-display border-b-2 border-[color:var(--border)] pb-2 text-[20px] text-[color:var(--text-strong)]">Pilotage</h2>
       {error && <p className="text-[13px] text-[color:var(--danger)]">{error}</p>}
 
-      {contest.phase === 'reveal' && (
-        <div className="flex flex-col gap-2 rounded-[var(--radius-card)] bg-[color:var(--surface)] p-3">
-          <p className="text-[13px] text-[color:var(--text-muted)]">Révélation : étape {contest.revealStep + 1}/{steps.length}</p>
-          <div className="flex gap-2">
-            <button type="button" className={btn} disabled={busy || contest.revealStep === 0} onClick={() => step(contest.revealStep - 1)}>← Précédente</button>
-            <button type="button" className={btn} disabled={busy || contest.revealStep >= steps.length - 1} onClick={() => step(contest.revealStep + 1)}>Suivante →</button>
-          </div>
+      <div className={block}>
+        <h3 className={caption}>Scène</h3>
+        <a href={`/admin/concours/${contest.id}/scene`} target="_blank" rel="noopener noreferrer" className={`${btn} flex items-center gap-1.5 self-start`}>
+          Ouvrir la scène <IconExternal size={14} />
+        </a>
+        <div className="flex items-center gap-2">
+          <button type="button" className={btn} disabled={busy || !inReveal || contest.revealStep === 0} onClick={() => step(contest.revealStep - 1)}>‹ Étape</button>
+          <span className="text-[13px] text-[color:var(--text-muted)]">{inReveal ? `${contest.revealStep + 1}/${steps.length}` : `—/${steps.length}`}</span>
+          <button type="button" className={btn} disabled={busy || !inReveal || contest.revealStep >= steps.length - 1} onClick={() => step(contest.revealStep + 1)}>Étape ›</button>
         </div>
-      )}
-      <a href={`/admin/concours/${contest.id}/scene`} target="_blank" rel="noopener noreferrer" className="text-[14px] text-[color:var(--accent-ink)] underline">
-        Ouvrir la scène
-      </a>
+        {!inReveal && <p className="text-[12px] text-[color:var(--text-muted)]">Les étapes se débloquent en Révélation.</p>}
+      </div>
 
-      <ContestQr secret={contest.secret} />
+      <AccessPanel contestId={contest.id} secret={contest.secret} />
 
-      <div>
-        <button type="button" onClick={() => setShowLive(!showLive)} className="text-[13px] text-[color:var(--text-muted)] underline">
-          {showLive ? 'Masquer le classement en direct' : 'Afficher le classement en direct'}
-        </button>
-        {showLive && (
-          <ol className="mt-2 flex flex-col gap-1 text-[13px] text-[color:var(--text-body)]">
+      <div className={block}>
+        <div className="flex items-center">
+          <h3 className={`${caption} flex-1`}>Classement en direct</h3>
+          <button type="button" aria-label={showLive ? 'Masquer le classement en direct' : 'Afficher le classement en direct'} aria-pressed={showLive}
+            onClick={() => setShowLive(!showLive)} className={btn}>
+            {showLive ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+          </button>
+        </div>
+        {showLive ? (
+          <ol className="flex flex-col gap-1 text-[13px] text-[color:var(--text-body)]">
             {rows.map((r) => (
-              <li key={r.plateId}>
-                {r.position ?? '—'}. Assiette {r.number} — {r.score ?? '—'}/100 ({r.votes} voix) {r.authors.join(' & ')}
-              </li>
+              <li key={r.plateId}>{r.position ?? '—'}. Assiette {r.number} — {r.score ?? '—'}/100 ({r.votes} voix) {r.authors.join(' & ')}</li>
             ))}
           </ol>
+        ) : (
+          <p className="text-[12px] text-[color:var(--text-muted)]">Masqué. Clique sur l’œil pour l’afficher.</p>
         )}
       </div>
     </section>

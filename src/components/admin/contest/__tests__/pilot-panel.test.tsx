@@ -6,9 +6,9 @@ const setRevealStepAction = vi.fn()
 vi.mock('@/app/actions/contest-admin', () => ({
   setRevealStepAction: (...a: unknown[]) => setRevealStepAction(...a),
 }))
-// `ContestQr` génère un QR async côté client (librairie `qrcode`) : pas utile ici,
-// et son `navigator.clipboard` absent de jsdom sortirait un bruit inutile.
-vi.mock('../ContestQr', () => ({ ContestQr: () => null }))
+// `AccessPanel` gère son propre export/partage PNG (route API, navigator.share…) :
+// pas utile ici, testé séparément dans access-panel.test.tsx.
+vi.mock('../AccessPanel', () => ({ AccessPanel: () => null }))
 
 import { PilotPanel } from '../PilotPanel'
 
@@ -31,10 +31,23 @@ test('étape de révélation : les flèches se désactivent pendant l’envoi', 
   let resolve: (v: { ok: true }) => void = () => {}
   setRevealStepAction.mockImplementation(() => new Promise((r) => { resolve = r }))
   render(<PilotPanel view={view('reveal', 0)} onDone={vi.fn()} />)
-  const nextStep = screen.getByRole('button', { name: 'Suivante →' })
+  const nextStep = screen.getByRole('button', { name: 'Étape ›' })
   fireEvent.click(nextStep)
   await waitFor(() => expect(nextStep.hasAttribute('disabled')).toBe(true))
   fireEvent.click(nextStep)
   resolve({ ok: true })
   await waitFor(() => expect(setRevealStepAction).toHaveBeenCalledTimes(1))
+})
+
+test('hors révélation : étapes grisées et explication', () => {
+  render(<PilotPanel view={view('voting')} onDone={vi.fn()} />)
+  expect(screen.getByRole('button', { name: 'Étape ›' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByText('Les étapes se débloquent en Révélation.')).toBeTruthy()
+})
+
+test('œil : classement masqué par défaut, affiché au clic', () => {
+  render(<PilotPanel view={view('voting')} onDone={vi.fn()} />)
+  expect(screen.getByText('Masqué. Clique sur l’œil pour l’afficher.')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Afficher le classement en direct' }))
+  expect(screen.getByRole('button', { name: 'Masquer le classement en direct' })).toBeTruthy()
 })
