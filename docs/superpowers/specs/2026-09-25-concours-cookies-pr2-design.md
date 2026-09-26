@@ -93,8 +93,8 @@ de phase (aujourd'hui en texte simple) prend la couleur de sa phase.
   lin `#f6f0e6`, consigne « **Scanne, goûte, classe.** » / « Scan, taste, rank. » en
   Comfortaa. **Pas de pied de page.**
 - **QR seul** (carré, ~1024×1024) : QR chocolat sur fond crème avec marge.
-- Polices : Gill Sans (déjà dans `src/fonts`) ; ajouter `src/fonts/comfortaa-*.ttf`
-  (licence OFL) pour la consigne.
+- Polices : Gill Sans (déjà dans `src/fonts`) ; ajouter `src/fonts/comfortaa-700.woff`
+  (licence OFL, graisse 700 de `@fontsource/comfortaa`) pour la consigne.
 - Nom de fichier téléchargé : `concours-{slug du nom}-carte.png` / `-qr.png`
   (`Content-Disposition` sur demande via `?download=1`).
 - Admin : l'aperçu affiché est `<img src=".../qr?format=carte">` — ce qu'on voit est ce
