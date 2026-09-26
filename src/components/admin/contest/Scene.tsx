@@ -24,7 +24,9 @@ function Bi({ k, v, className, align = 'center' }: { k: ContestMsgKey; v?: Recor
   return (
     <span className={`flex flex-col ${align === 'center' ? 'items-center' : 'items-start'} ${className}`}>
       <span>{fr(k, v)}</span>
-      <span className="text-[0.45em] italic opacity-60">{en(k, v)}</span>
+      {/* Lisibilité TV (vague de correction PR 2, point 2) : 0.6em/opacity-70 plutôt
+          que 0.45em/opacity-60, trop estompé pour être lu depuis le fond d'une salle. */}
+      <span className="text-[0.6em] italic opacity-70">{en(k, v)}</span>
     </span>
   )
 }
@@ -156,7 +158,8 @@ export function Scene({ initial }: { initial: AdminView }) {
       content = (
         <>
           <h1><Bi k="verdict" className="font-display text-[110px] leading-none" /></h1>
-          <Bi k="ballotsPlates" v={{ b: voters, p: rows.length }} className="text-[32px]" />
+          {/* Singulier (point 8 de la vague de correction) : « 1 bulletin », pas « 1 bulletins ». */}
+          <Bi k={voters === 1 ? 'ballotsPlatesOne' : 'ballotsPlates'} v={{ b: voters, p: rows.length }} className="text-[32px]" />
         </>
       )
     } else if (step.kind === 'final') {
@@ -164,7 +167,7 @@ export function Scene({ initial }: { initial: AdminView }) {
       content = (
         <>
           <h1><Bi k="finalRanking" className="font-display text-[56px] leading-none" /></h1>
-          <Podium rows={rows} size="tv" text={fr} lang="fr" />
+          <Podium rows={rows} size="tv" text={fr} lang="fr" subLang="en" />
           <ol data-testid="final-rest" className="grid w-full max-w-6xl grid-cols-1 gap-3 text-left xl:grid-cols-2">
             {podium(rows).rest.map((r) => (
               <li key={r.plateId} className="flex items-baseline gap-4 rounded-[18px] bg-[#fffdf9]/10 px-6 py-3 text-[26px]">
@@ -206,14 +209,14 @@ export function Scene({ initial }: { initial: AdminView }) {
           <div className="flex flex-wrap justify-center gap-10">
             {shown.map((r) => (
               <div key={r.plateId} className="flex flex-col items-center gap-4">
-                <PlateTag number={r.number} label={fr('plateTag', { n: r.number })} size={first ? 'xl' : 'lg'} tilt score={r.score} scoreLabel={r.score === null ? undefined : fr('score', { n: r.score })} />
+                <PlateTag label={fr('plateTag', { n: r.number })} size={first ? 'xl' : 'lg'} tilt score={r.score} scoreLabel={r.score === null ? undefined : fr('score', { n: r.score })} />
                 {r.label && <p className="text-[22px] opacity-70">{r.label}</p>}
               </div>
             ))}
           </div>
 
           <div className="flex flex-col items-start gap-4 text-left">
-            <Bi k="bakedBy" className="text-[24px]" align="start" />
+            <Bi k="bakedBy" className="text-[32px]" align="start" />
             {step.showAuthors ? (
               shown.map((r) => (
                 <p key={r.plateId} className="font-display text-[64px] leading-tight text-[#7f98e0]">
@@ -262,7 +265,10 @@ export function Scene({ initial }: { initial: AdminView }) {
   return (
     <>
       {body}
-      {indicator && <p className="fixed bottom-3 right-4 text-[12px] text-[color:var(--danger)]">{indicator}</p>}
+      {/* Contraste (point 10) : la scène reste sombre quel que soit le thème, donc
+          `var(--danger)` (pensée pour un fond clair) n'y est pas assez lisible —
+          la couleur fixe de la phase « closed » sombre (#e5907a) convient partout. */}
+      {indicator && <p className="fixed bottom-3 right-4 text-[12px]" style={{ color: '#e5907a' }}>{indicator}</p>}
     </>
   )
 }

@@ -27,6 +27,16 @@ test('ex æquo en tête : deux étiquettes sur la marche 1, pas de marche 2', ()
   expect(steps[0].textContent).toContain('N° 2')
 })
 
+// Point 3 de la vague de correction : la scène est toujours bilingue (spec §6).
+// `subLang="en"` doit ajouter l'ordinal anglais sous chaque rang de la pyramide.
+test('subLang="en" : la marche 1 affiche aussi l’ordinal anglais', () => {
+  render(<Podium rows={[row(1, 1, ['Inès']), row(2, 2, ['Camille']), row(3, 3, ['Léo'])]} size="tv" text={t} lang="fr" subLang="en" />)
+  const steps = screen.getAllByTestId('podium-step')
+  const first = steps.find((s) => s.dataset.position === '1')!
+  expect(first.textContent).toContain('1er')
+  expect(first.textContent).toContain('1st')
+})
+
 test('récapitulatif invité : pyramide puis le reste, rangs en ordinaux', () => {
   const rows = [row(1, 1, ['Inès']), row(2, 2), row(3, 3), row(4, 4, ['Zoé']), row(5, null)]
   render(<GuestResults results={{ rows, agreement: null, myPlates: [] }} myBallot={[]} t={t} lang="fr" />)
