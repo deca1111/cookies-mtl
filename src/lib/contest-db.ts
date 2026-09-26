@@ -89,6 +89,17 @@ export async function releaseGuest(contestId: number, guestId: number): Promise<
   await getSql()`UPDATE contest_guests SET claim_token = NULL WHERE id = ${guestId} AND contest_id = ${contestId}`
 }
 
+// L'invité s'est trompé de nom (spec PR 2 §5) : son bulletin a été fait par la
+// mauvaise personne, on l'efface avec la réservation, en une transaction.
+export async function releaseSelf(contestId: number, guestId: number): Promise<void> {
+  const sql = getSql()
+  await sql.transaction([
+    sql`DELETE FROM contest_ballots WHERE guest_id = ${guestId}
+        AND guest_id IN (SELECT id FROM contest_guests WHERE contest_id = ${contestId})`,
+    sql`UPDATE contest_guests SET claim_token = NULL WHERE id = ${guestId} AND contest_id = ${contestId}`,
+  ])
+}
+
 // Atomique : deux téléphones qui choisissent le même nom au même instant, un
 // seul gagne (la condition `claim_token IS NULL` est évaluée par la mise à jour).
 export async function claimGuest(contestId: number, guestId: number, token: string): Promise<boolean> {
