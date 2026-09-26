@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { IconCheck, IconClose } from '@/components/icons'
 import type { ContestMsgKey } from '@/lib/contest-i18n'
 import { moveBy, placeAt, removeFrom } from '@/lib/contest-ranking'
+import { PlateTag } from './PlateTag'
 
 type Plate = { id: number; number: number; label: string | null }
 type T = (k: ContestMsgKey, vars?: Record<string, string | number>) => string
@@ -68,14 +69,11 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
                 key={p.id}
                 type="button"
                 aria-pressed={activePick === p.id}
+                aria-label={t('plate', { n: p.number })}
                 onClick={() => setPicked(picked === p.id ? null : p.id)}
-                className={`rounded-full border px-4 py-2 text-[15px] ${
-                  activePick === p.id
-                    ? 'border-[color:var(--accent)] bg-[color:var(--btn-bg)] text-[color:var(--btn-text)]'
-                    : 'border-[color:var(--border-strong)] bg-[color:var(--surface)] text-[color:var(--text-strong)]'
-                }`}
+                className={`rounded-[10px] ${activePick === p.id ? 'ring-4 ring-[color:var(--btn-bg)]' : ''}`}
               >
-                {t('plate', { n: p.number })}
+                <PlateTag number={p.number} label={t('plateTag', { n: p.number })} size="md" />
               </button>
             ))}
           </div>
@@ -174,7 +172,8 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
           </svg>
         </button>
       )}
-      <span className="font-display w-8 text-center text-[20px] text-[color:var(--accent-ink)]">{index + 1}</span>
+      <span className="font-display w-8 text-center text-[22px] text-[color:var(--btn-bg)]">{index + 1}</span>
+      <PlateTag number={plate.number} label={t('plateTag', { n: plate.number })} size="sm" tilt />
       <div className="flex-1 select-none">
         <div className="text-[16px] font-medium text-[color:var(--text-strong)]">{t('plate', { n: plate.number })}</div>
         {plate.label && <div className="text-[13px] text-[color:var(--text-muted)]">{plate.label}</div>}

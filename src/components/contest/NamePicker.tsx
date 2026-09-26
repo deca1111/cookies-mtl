@@ -61,7 +61,7 @@ export function NamePicker({ guests, onClaim, t, notice }: {
               type="button"
               disabled={g.taken}
               onClick={() => setPending({ id: g.id, name: g.name })}
-              className="flex w-full flex-col items-start rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] px-4 py-3 text-left text-[17px] text-[color:var(--text-strong)] disabled:opacity-50"
+              className="flex w-full flex-col items-start rounded-[var(--radius-card)] border border-[color:var(--border-strong)] bg-[color:var(--surface)] px-4 py-3 text-left text-[17px] text-[color:var(--text-strong)] disabled:opacity-50"
             >
               {g.name}
               {g.taken && <span className="text-[12px] text-[color:var(--text-muted)]">{t('takenHint')}</span>}
