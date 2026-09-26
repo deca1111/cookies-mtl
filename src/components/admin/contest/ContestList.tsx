@@ -5,6 +5,7 @@ import { useState, type FormEvent } from 'react'
 import { createContestAction, deleteContestAction } from '@/app/actions/contest-admin'
 import type { ContestSummary } from '@/lib/contest-db'
 import { PHASE_LABEL } from './phase-label'
+import { phaseColorVar } from './phase-style'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 
 const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', unexpected: UNEXPECTED_ERROR }
@@ -59,7 +60,8 @@ export function ContestList({ contests }: { contests: ContestSummary[] }) {
             <div className="flex items-center gap-4">
               <a href={`/admin/concours/${c.id}`} className="flex-1 text-[16px] font-medium text-[color:var(--text-strong)] hover:underline">{c.name}</a>
               <span className="text-[13px] text-[color:var(--text-muted)]">
-                {PHASE_LABEL[c.phase]} · {c.guestCount} invités · {new Date(c.createdAt).toLocaleDateString('fr-CA')}
+                <span className="font-medium" style={{ color: phaseColorVar(c.phase) }}>{PHASE_LABEL[c.phase]}</span>
+                {' '}· {c.guestCount} invités · {new Date(c.createdAt).toLocaleDateString('fr-CA')}
               </span>
               <button
                 type="button"

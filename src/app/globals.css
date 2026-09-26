@@ -49,6 +49,13 @@
   --accent-gold: #d29a55;
   --accent-gold-ink: #241a13;
 
+  /* Couleurs de phase du concours — code « feu » (PR 2) */
+  --phase-preparation: #7d6d5b;
+  --phase-voting: #5d7e48;
+  --phase-closed: #9a3b2a;
+  --phase-reveal: #4560a9;
+  --phase-ink: #fffdf9; /* texte sur un bouton plein de couleur de phase */
+
   /* Fond de la CARTE — TOUJOURS égal à --bg et à PALETTES[theme].background
      (src/lib/map-style.ts) : le moindre écart flashe au chargement. */
   --map-bg: #dcd2bf;
@@ -96,6 +103,13 @@
   --pin-shadow: rgba(0, 0, 0, 0.55);
 
   --danger: #e5907a;
+
+  /* Couleurs de phase du concours — code « feu » (PR 2) */
+  --phase-preparation: #a49081;
+  --phase-voting: #9dbb86;
+  --phase-closed: #e5907a;
+  --phase-reveal: #7f98e0; /* bleu logo éclairci pour le fond chocolat (choix Léo) */
+  --phase-ink: #241a13;
 
   --map-bg: #2e2318; /* = PALETTES.dark.background — carte plus claire que l'UI */
 
