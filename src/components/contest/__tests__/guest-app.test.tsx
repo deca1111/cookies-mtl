@@ -53,7 +53,7 @@ test('identifié en phase de vote : le classement s’affiche', async () => {
 test('révélation en cours : rien n’est dévoilé', async () => {
   localStorage.setItem('cc_concours_lang', 'fr')
   render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'reveal', me: { id: 1, name: 'Julie' } }} />)
-  expect(await screen.findByText('Les yeux sur l’écran !')).toBeTruthy()
+  expect(await screen.findByText('Votes clos')).toBeTruthy()
 })
 
 test('réclamation refusée (nom déjà pris) : bandeau et bouton de confirmation réutilisable', async () => {

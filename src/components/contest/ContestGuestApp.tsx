@@ -173,7 +173,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
     body = (
       <div className="flex flex-col gap-6">
         <div className="pt-6 text-center">
-          <h1 className="font-display text-[26px] text-[color:var(--text-strong)]">{t('eyesOnScreen')}</h1>
+          <h1 className="font-display text-[26px] text-[color:var(--text-strong)]">{t('closedTitle')}</h1>
           <p className="mt-2 text-[15px] text-[color:var(--text-body)]">{t('closedBody')}</p>
         </div>
         <RankingBoard plates={view.plates} ranking={ranking} onChange={() => {}} locked t={t} />

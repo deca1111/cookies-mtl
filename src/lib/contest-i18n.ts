@@ -30,8 +30,22 @@ const fr = {
   platesLeft: "Encore {n} à goûter",
   offline: "Hors ligne — ton classement sera envoyé au retour du réseau.",
   saveFailed: "Enregistrement impossible, nouvel essai en cours…",
-  eyesOnScreen: "Les yeux sur l’écran !",
-  closedBody: "Les votes sont clos. Le verdict arrive.",
+  closedTitle: "Votes clos",
+  closedBody: "Ton classement est enregistré.",
+  revealTitle: "Révélation en cours",
+  changeName: "Changer de nom",
+  notYou: "Tu n’es pas {name} ?",
+  changeNameBody: "Tu reviendras à la liste des noms. Le classement fait sous « {name} » sera effacé.",
+  changeNameConfirm: "Changer de nom",
+  changeNameFailed: "Impossible de changer de nom maintenant.",
+  plateTag: "N° {n}",
+  verdict: "Le verdict",
+  ballotsPlates: "{b} bulletins · {p} assiettes",
+  bakedBy: "fait par",
+  ptsAhead: "+{n} pts devant le {k}",
+  waitingReveal: "En attente de la révélation…",
+  finalRanking: "Classement final",
+  authorsHidden: "Auteurs à venir",
   resultsTitle: "Le classement",
   yourPalate: "Ton palais",
   agreement: "Tu es à {n} % en phase avec la tablée",
@@ -77,8 +91,22 @@ const en: Record<keyof typeof fr, string> = {
   platesLeft: "{n} left to taste",
   offline: "Offline — your ranking will be sent when you’re back online.",
   saveFailed: "Couldn’t save, retrying…",
-  eyesOnScreen: "Eyes on the screen!",
-  closedBody: "Voting is closed. The verdict is coming.",
+  closedTitle: "Voting closed",
+  closedBody: "Your ranking is saved.",
+  revealTitle: "Reveal in progress",
+  changeName: "Change name",
+  notYou: "Not {name}?",
+  changeNameBody: "You’ll go back to the list of names. The ranking made as “{name}” will be erased.",
+  changeNameConfirm: "Change name",
+  changeNameFailed: "Can’t change name right now.",
+  plateTag: "No. {n}",
+  verdict: "The verdict",
+  ballotsPlates: "{b} ballots · {p} plates",
+  bakedBy: "baked by",
+  ptsAhead: "{n} pts ahead of {k}",
+  waitingReveal: "Waiting for the reveal…",
+  finalRanking: "Final ranking",
+  authorsHidden: "Bakers coming up",
   resultsTitle: "The ranking",
   yourPalate: "Your palate",
   agreement: "You’re {n}% in tune with the table",
@@ -101,4 +129,13 @@ export const contestDict: Record<Lang, Record<ContestMsgKey, string>> = { fr, en
 
 export function fmt(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m))
+}
+
+// Rang écrit en toutes lettres courtes (scène et récapitulatif) : 1er/2e en
+// français, 1st/2nd/3rd/11th en anglais — 11, 12 et 13 font exception.
+export function ordinal(lang: Lang, n: number): string {
+  if (lang === 'fr') return n === 1 ? '1er' : `${n}e`
+  const teen = n % 100 >= 11 && n % 100 <= 13
+  const suffix = teen ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'
+  return `${n}${suffix}`
 }
