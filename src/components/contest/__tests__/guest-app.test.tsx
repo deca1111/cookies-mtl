@@ -4,9 +4,11 @@ import type { GuestView } from '@/lib/contest-state'
 
 const claimNameAction = vi.fn()
 const saveBallotAction = vi.fn()
+const releaseSelfAction = vi.fn()
 vi.mock('@/app/actions/contest-guest', () => ({
   claimNameAction: (...a: unknown[]) => claimNameAction(...a),
   saveBallotAction: (...a: unknown[]) => saveBallotAction(...a),
+  releaseSelfAction: (...a: unknown[]) => releaseSelfAction(...a),
 }))
 
 import { ContestGuestApp } from '../ContestGuestApp'
@@ -25,6 +27,7 @@ beforeEach(() => {
   localStorage.clear()
   claimNameAction.mockReset().mockResolvedValue({ ok: true })
   saveBallotAction.mockReset().mockResolvedValue({ ok: true })
+  releaseSelfAction.mockReset().mockResolvedValue({ ok: true })
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(base))))
 })
 
@@ -50,10 +53,53 @@ test('identifié en phase de vote : le classement s’affiche', async () => {
   expect(await screen.findByText('Mon classement')).toBeTruthy()
 })
 
-test('révélation en cours : rien n’est dévoilé', async () => {
+test('révélation en cours : titre dédié, rien n’est dévoilé', async () => {
   localStorage.setItem('cc_concours_lang', 'fr')
   render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'reveal', me: { id: 1, name: 'Julie' } }} />)
+  expect(await screen.findByText('Révélation en cours')).toBeTruthy()
+})
+
+test('votes clos : titre et classement enregistré', async () => {
+  localStorage.setItem('cc_concours_lang', 'fr')
+  render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'closed', me: { id: 1, name: 'Julie' } }} />)
   expect(await screen.findByText('Votes clos')).toBeTruthy()
+  expect(screen.getByText('Ton classement est enregistré.')).toBeTruthy()
+})
+
+test('changer de nom : confirmation puis retour à « Qui es-tu ? » sans message de libération', async () => {
+  localStorage.setItem('cc_concours_lang', 'fr')
+  const me = { ...base, me: { id: 1, name: 'Julie' } }
+  // Le serveur renvoie l'état sans identité après la libération. `releaseSelfAction`
+  // (mockée séparément) attend déjà l'écriture en base avant de résoudre : la
+  // relecture forcée qui suit (`refresh(true)`, seul appel fetch de ce scénario)
+  // voit donc l'identité absente dès le premier essai — pas besoin d'un second
+  // aller-retour ni du sondage périodique (2,5 s, plus lent que le délai par
+  // défaut de `findByText`).
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(base))))
+  render(<ContestGuestApp secret="s" initial={me} />)
+  fireEvent.click(await screen.findByRole('button', { name: /Julie/ }))
+  expect(screen.getByText('Tu n’es pas Julie ?')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Changer de nom' }))
+  await waitFor(() => expect(releaseSelfAction).toHaveBeenCalledWith('s'))
+  expect(await screen.findByText('Qui es-tu ?')).toBeTruthy()
+  expect(screen.queryByText('Ton nom a été libéré : choisis-le à nouveau.')).toBeNull()
+})
+
+test('changer de nom refusé : message dans la feuille', async () => {
+  localStorage.setItem('cc_concours_lang', 'fr')
+  releaseSelfAction.mockResolvedValue({ ok: false, error: 'locked' })
+  render(<ContestGuestApp secret="s" initial={{ ...base, me: { id: 1, name: 'Julie' } }} />)
+  fireEvent.click(await screen.findByRole('button', { name: /Julie/ }))
+  fireEvent.click(screen.getByRole('button', { name: 'Changer de nom' }))
+  expect(await screen.findByText('Impossible de changer de nom maintenant.')).toBeTruthy()
+})
+
+test('après la clôture : le prénom n’est plus un bouton', async () => {
+  localStorage.setItem('cc_concours_lang', 'fr')
+  render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'closed', me: { id: 1, name: 'Julie' } }} />)
+  await screen.findByText('Votes clos')
+  expect(screen.queryByRole('button', { name: /Julie/ })).toBeNull()
+  expect(screen.getByText('Julie')).toBeTruthy()
 })
 
 test('réclamation refusée (nom déjà pris) : bandeau et bouton de confirmation réutilisable', async () => {
