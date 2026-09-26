@@ -141,10 +141,10 @@ export function IconChevronLeft({ size = 16 }: IconProps) {
   )
 }
 
-export function IconChevronRight({ size = 16 }: IconProps) {
+export function IconChevronDown({ size = 16 }: IconProps) {
   return (
     <svg {...base(size)}>
-      <path d="M9 18l6-6-6-6" />
+      <path d="M6 9l6 6 6-6" />
     </svg>
   )
 }

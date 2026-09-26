@@ -85,7 +85,8 @@ export function GuestResults({ results, myBallot, t, lang }: { results: NonNulla
               </div>
               {r.score !== null ? (
                 <ul className="mt-1 flex flex-col gap-0.5">
-                  <li>{t('score', { n: r.score })} · {t('votes', { n: r.votes })}</li>
+                  {/* Singulier (point 8 de la vague de correction) : « 1 vote », pas « 1 votes ». */}
+                  <li>{t('score', { n: r.score })} · {t(r.votes === 1 ? 'votesOne' : 'votes', { n: r.votes })}</li>
                   <li>{t('bestWorst', { best: r.bestRank!, worst: r.worstRank! })}</li>
                   <li>{t('firsts', { n: r.firsts })}</li>
                 </ul>

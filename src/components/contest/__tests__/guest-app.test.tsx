@@ -61,9 +61,20 @@ test('révélation en cours : titre dédié, rien n’est dévoilé', async () =
 
 test('votes clos : titre et classement enregistré', async () => {
   localStorage.setItem('cc_concours_lang', 'fr')
-  render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'closed', me: { id: 1, name: 'Julie' } }} />)
+  render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'closed', me: { id: 1, name: 'Julie' }, myBallot: [10] }} />)
   expect(await screen.findByText('Votes clos')).toBeTruthy()
   expect(screen.getByText('Ton classement est enregistré.')).toBeTruthy()
+})
+
+// Point 7 de la vague de correction : un invité qui n'a rien classé n'a rien
+// « enregistré » — lui montrer ce texte serait trompeur. Un texte neutre le
+// remplace quand `ranking.length === 0`.
+test('votes clos, rien classé : texte neutre plutôt que « classement enregistré »', async () => {
+  localStorage.setItem('cc_concours_lang', 'fr')
+  render(<ContestGuestApp secret="s" initial={{ ...base, phase: 'closed', me: { id: 1, name: 'Julie' }, myBallot: [] }} />)
+  expect(await screen.findByText('Votes clos')).toBeTruthy()
+  expect(screen.getByText('Les votes sont clos.')).toBeTruthy()
+  expect(screen.queryByText('Ton classement est enregistré.')).toBeNull()
 })
 
 test('changer de nom : confirmation puis retour à « Qui es-tu ? » sans message de libération', async () => {

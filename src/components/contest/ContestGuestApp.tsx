@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { claimNameAction, releaseSelfAction, saveBallotAction } from '@/app/actions/contest-guest'
+import { IconChevronDown } from '@/components/icons'
 import type { GuestView } from '@/lib/contest-state'
 import { ChangeNameSheet } from './ChangeNameSheet'
 import { GuestResults } from './GuestResults'
@@ -202,7 +203,9 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
       <div className="flex flex-col gap-6">
         <div className="pt-6 text-center">
           <h1 className="font-display text-[26px] text-[color:var(--text-strong)]">{t(view.phase === 'reveal' ? 'revealTitle' : 'closedTitle')}</h1>
-          <p className="mt-2 text-[15px] text-[color:var(--text-body)]">{t('closedBody')}</p>
+          {/* Point 7 de la vague de correction : rien classé, rien « enregistré » —
+              le texte par défaut mentirait à l'invité qui n'a pas voté. */}
+          <p className="mt-2 text-[15px] text-[color:var(--text-body)]">{t(ranking.length === 0 ? 'closedBodyEmpty' : 'closedBody')}</p>
         </div>
         <RankingBoard plates={view.plates} ranking={ranking} onChange={() => {}} locked t={t} />
       </div>
@@ -219,7 +222,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
           <button type="button" onClick={() => setSheetOpen(true)} aria-label={`${view.me.name} — ${t('changeName')}`}
             className="flex items-center gap-1 rounded-full border border-[color:var(--border-strong)] px-3 py-1 text-[13px] text-[color:var(--text-body)]">
             {view.me.name}
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+            <IconChevronDown size={12} />
           </button>
         ) : (
           <span className="text-[13px] text-[color:var(--text-body)]">{view.me.name}</span>
