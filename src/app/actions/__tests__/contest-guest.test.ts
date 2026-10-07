@@ -6,7 +6,7 @@ const db = {
   findGuestIdByToken: vi.fn(),
   loadContestData: vi.fn(),
   replaceBallot: vi.fn(),
-  releaseSelf: vi.fn(),
+  releaseGuest: vi.fn(),
 }
 const identity = { generateClaimToken: vi.fn(), readGuestToken: vi.fn(), writeGuestToken: vi.fn(), clearGuestToken: vi.fn() }
 vi.mock('@/lib/contest-db', () => ({
@@ -15,7 +15,7 @@ vi.mock('@/lib/contest-db', () => ({
   findGuestIdByToken: (...a: unknown[]) => db.findGuestIdByToken(...a),
   loadContestData: (...a: unknown[]) => db.loadContestData(...a),
   replaceBallot: (...a: unknown[]) => db.replaceBallot(...a),
-  releaseSelf: (...a: unknown[]) => db.releaseSelf(...a),
+  releaseGuest: (...a: unknown[]) => db.releaseGuest(...a),
 }))
 vi.mock('@/lib/contest-identity', () => ({
   generateClaimToken: () => identity.generateClaimToken(),
@@ -94,7 +94,7 @@ test('sa propre assiette, une assiette inconnue ou un doublon : refusé', async 
 
 test('changer de nom en vote : bulletin effacé, jeton vidé, cookie supprimé', async () => {
   expect(await releaseSelfAction('s')).toEqual({ ok: true })
-  expect(db.releaseSelf).toHaveBeenCalledWith(1, 5)
+  expect(db.releaseGuest).toHaveBeenCalledWith(1, 5)
   expect(identity.clearGuestToken).toHaveBeenCalledWith(1)
 })
 
@@ -108,7 +108,7 @@ test('changer de nom après la clôture : refusé, rien touché', async () => {
     db.getContestBySecret.mockResolvedValue({ ...contest, phase })
     expect(await releaseSelfAction('s')).toEqual({ ok: false, error: 'locked' })
   }
-  expect(db.releaseSelf).not.toHaveBeenCalled()
+  expect(db.releaseGuest).not.toHaveBeenCalled()
   expect(identity.clearGuestToken).not.toHaveBeenCalled()
 })
 
@@ -117,5 +117,5 @@ test('changer de nom sans identité ou concours inconnu', async () => {
   expect(await releaseSelfAction('s')).toEqual({ ok: false, error: 'no-identity' })
   db.getContestBySecret.mockResolvedValue(null)
   expect(await releaseSelfAction('x')).toEqual({ ok: false, error: 'not-found' })
-  expect(db.releaseSelf).not.toHaveBeenCalled()
+  expect(db.releaseGuest).not.toHaveBeenCalled()
 })

@@ -64,8 +64,13 @@ export async function deleteGuestAction(contestId: number, guestId: number): Pro
   return OK
 }
 
+// Le bulletin part avec le nom (voir releaseGuest) : une fois les votes clos,
+// ce serait modifier des résultats figés.
 export async function releaseGuestAction(contestId: number, guestId: number): Promise<AdminResult> {
   await requireAdmin()
+  const contest = await getContestById(contestId)
+  if (!contest) return { ok: false, error: 'not-found' }
+  if (contest.phase !== 'preparation' && contest.phase !== 'voting') return { ok: false, error: 'locked' }
   await releaseGuest(contestId, guestId)
   return OK
 }

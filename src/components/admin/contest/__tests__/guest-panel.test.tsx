@@ -29,7 +29,7 @@ beforeEach(() => {
 test('action qui lève : message générique affiché, l’état est quand même relu', async () => {
   addGuestAction.mockRejectedValue(new Error('Unauthorized'))
   const onDone = vi.fn()
-  render(<GuestPanel contestId={1} guests={[]} onDone={onDone} />)
+  render(<GuestPanel contestId={1} phase="preparation" guests={[]} onDone={onDone} />)
   const input = screen.getByPlaceholderText('Ajouter un invité puis Entrée')
   fireEvent.change(input, { target: { value: 'Julie' } })
   fireEvent.submit(input.closest('form')!)
@@ -42,7 +42,7 @@ test('action qui lève : message générique affiché, l’état est quand même
 test('ajout : le champ se désactive pendant l’envoi, une seule action part', async () => {
   let resolve: (v: { ok: true }) => void = () => {}
   addGuestAction.mockImplementation(() => new Promise((r) => { resolve = r }))
-  render(<GuestPanel contestId={1} guests={[]} onDone={vi.fn()} />)
+  render(<GuestPanel contestId={1} phase="preparation" guests={[]} onDone={vi.fn()} />)
   const input = screen.getByPlaceholderText('Ajouter un invité puis Entrée')
   fireEvent.change(input, { target: { value: 'Julie' } })
   const form = input.closest('form')!
@@ -59,7 +59,7 @@ test('ajout : le champ se désactive pendant l’envoi, une seule action part', 
 test('suppression d’un invité : confirmation à deux clics', async () => {
   deleteGuestAction.mockResolvedValue({ ok: true })
   const onDone = vi.fn()
-  render(<GuestPanel contestId={1} guests={[{ id: 1, name: 'Julie', claimed: false, ranked: 0, rankable: 0 }]} onDone={onDone} />)
+  render(<GuestPanel contestId={1} phase="preparation" guests={[{ id: 1, name: 'Julie', claimed: false, ranked: 0, rankable: 0 }]} onDone={onDone} />)
   const del = screen.getByRole('button', { name: 'Suppr.' })
   fireEvent.click(del)
   expect(screen.getByRole('button', { name: 'Confirmer ?' })).toBeTruthy()
@@ -67,4 +67,21 @@ test('suppression d’un invité : confirmation à deux clics', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Confirmer ?' }))
   await waitFor(() => expect(deleteGuestAction).toHaveBeenCalledWith(1, 1))
   expect(onDone).toHaveBeenCalled()
+})
+
+// Libérer efface le classement de l'invité : même confirmation à deux clics,
+// armée indépendamment du « Suppr. » de la même ligne.
+test('libérer : confirmation à deux clics, sans armer la suppression', async () => {
+  releaseGuestAction.mockResolvedValue({ ok: true })
+  render(<GuestPanel contestId={1} phase="voting" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 2, rankable: 3 }]} onDone={vi.fn()} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Libérer' }))
+  expect(screen.getByRole('button', { name: 'Suppr.' })).toBeTruthy()
+  expect(releaseGuestAction).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Confirmer ?' }))
+  await waitFor(() => expect(releaseGuestAction).toHaveBeenCalledWith(1, 1))
+})
+
+test('libérer : bouton absent une fois les votes clos', () => {
+  render(<GuestPanel contestId={1} phase="closed" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 3, rankable: 3 }]} onDone={vi.fn()} />)
+  expect(screen.queryByRole('button', { name: 'Libérer' })).toBeNull()
 })

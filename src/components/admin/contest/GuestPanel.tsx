@@ -3,19 +3,24 @@
 import { useState } from 'react'
 import { addGuestAction, deleteGuestAction, releaseGuestAction, renameGuestAction } from '@/app/actions/contest-admin'
 import type { AdminGuest } from '@/lib/contest-state'
+import type { Phase } from '@/lib/contest-rules'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 import { useConfirmDelete } from './useConfirmDelete'
 
-const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', 'name-taken': 'Ce nom existe déjà.', unexpected: UNEXPECTED_ERROR }
+const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', 'name-taken': 'Ce nom existe déjà.', locked: 'Votes clos : les noms ne se libèrent plus.', unexpected: UNEXPECTED_ERROR }
 
-export function GuestPanel({ contestId, guests, onDone }: { contestId: number; guests: AdminGuest[]; onDone: () => void }) {
+export function GuestPanel({ contestId, phase, guests, onDone }: { contestId: number; phase: Phase; guests: AdminGuest[]; onDone: () => void }) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null)
   // Un double clic/double Entrée avant que le premier ajout ne soit retombé
   // ajouterait le même invité deux fois d'affilée (finding #1).
   const [adding, setAdding] = useState(false)
-  const { armed, press } = useConfirmDelete<number>()
+  // Un seul armement pour toute la liste : « Suppr. » et « Libérer » (qui efface
+  // le classement) se confirment chacun par un second clic, sans s'armer l'un l'autre.
+  const { armed, press } = useConfirmDelete<string>()
+  // Après la clôture, le bulletin qui partirait avec le nom est déjà compté.
+  const canRelease = phase === 'preparation' || phase === 'voting'
 
   // `runAction` capture aussi bien { ok: false } qu'une levée (session expirée,
   // réseau) : onDone est toujours rappelé pour relire l'état réel du serveur.
@@ -75,17 +80,21 @@ export function GuestPanel({ contestId, guests, onDone }: { contestId: number; g
             <span className={`rounded-full px-2 py-0.5 text-[11px] ${g.claimed
               ? 'bg-[color:var(--accent-wash)] text-[color:var(--accent-ink)]'
               : 'border border-[color:var(--border)] text-[color:var(--text-muted)]'}`}>{status(g)}</span>
-            {g.claimed && (
-              <button type="button" onClick={() => run(releaseGuestAction(contestId, g.id))} className="text-[12px] text-[color:var(--accent-ink)]">
-                Libérer
+            {g.claimed && canRelease && (
+              <button
+                type="button"
+                onClick={() => press(`liberer-${g.id}`, () => run(releaseGuestAction(contestId, g.id)))}
+                className="text-[12px] text-[color:var(--accent-ink)]"
+              >
+                {armed === `liberer-${g.id}` ? 'Confirmer ?' : 'Libérer'}
               </button>
             )}
             <button
               type="button"
-              onClick={() => press(g.id, () => run(deleteGuestAction(contestId, g.id)))}
+              onClick={() => press(`suppr-${g.id}`, () => run(deleteGuestAction(contestId, g.id)))}
               className="text-[12px] text-[color:var(--danger)]"
             >
-              {armed === g.id ? 'Confirmer ?' : 'Suppr.'}
+              {armed === `suppr-${g.id}` ? 'Confirmer ?' : 'Suppr.'}
             </button>
           </li>
         ))}

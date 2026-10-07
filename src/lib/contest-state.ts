@@ -49,7 +49,10 @@ export type AdminView = {
 export function resultRows(data: ContestData): ResultRow[] {
   const nameOf = new Map(data.guests.map((g) => [g.id, g.name]))
   const plateOf = new Map(data.plates.map((p) => [p.id, p]))
-  return computeResults(data.plates, data.ballots).map((r) => {
+  // Bulletins relus à travers `ballotOf` : une assiette dont l'invité est devenu
+  // auteur après avoir voté sort de son bulletin, comme dans son compteur admin.
+  const ballots = data.ballots.map((b) => ({ ...b, plateIds: ballotOf(data, b.guestId) }))
+  return computeResults(data.plates, ballots).map((r) => {
     const p = plateOf.get(r.plateId)!
     return {
       ...r,

@@ -49,6 +49,13 @@ test('invite - recapitulatif a l ecran final, avec accord et ses assiettes', () 
   expect(v.myBallot).toEqual([10, 30])
 })
 
+test('classement - un vote pour sa propre assiette ne compte pas, même s il date d avant l ajout comme auteur', () => {
+  // Julie a classé avant d'être déclarée autrice de la 10 : il ne lui reste que
+  // la 30, un bulletin d'une seule assiette, qui ne compte plus.
+  const late = { ...data, ballots: [...data.ballots, { guestId: 1, plateIds: [10, 30] }] }
+  expect(buildAdminView(contest('voting'), late).rows).toEqual(buildAdminView(contest('voting'), data).rows)
+})
+
 test('admin - avancement par invite et nombre de bulletins complets', () => {
   const v = buildAdminView(contest('voting'), data)
   const byName = Object.fromEntries(v.guests.map((g) => [g.name, g]))

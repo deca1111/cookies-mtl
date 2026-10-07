@@ -24,7 +24,7 @@ vi.mock('@/lib/contest-db', () => ({
 }))
 
 import {
-  addGuestAction, createContestAction, renameContestAction, savePlateAction, setRevealStepAction, shiftPhaseAction,
+  addGuestAction, createContestAction, releaseGuestAction, renameContestAction, savePlateAction, setRevealStepAction, shiftPhaseAction,
   shufflePlatesAction,
 } from '../contest-admin'
 
@@ -142,4 +142,26 @@ test('renommer : nom vide ou trop long refusé, rien écrit', async () => {
 test('renommer : concours inconnu', async () => {
   db.renameContest.mockResolvedValue(false)
   expect(await renameContestAction(9, 'Anniv')).toEqual({ ok: false, error: 'not-found' })
+})
+
+// Même effet que l'invité qui change de nom : le bulletin part avec la
+// réservation, sinon il fausse le classement et le prochain à prendre ce nom
+// en hériterait.
+test('libérer : possible en préparation et pendant le vote', async () => {
+  for (const phase of ['preparation', 'voting']) {
+    db.releaseGuest.mockReset()
+    db.getContestById.mockResolvedValue(contest(phase))
+    expect(await releaseGuestAction(1, 5)).toEqual({ ok: true })
+    expect(db.releaseGuest).toHaveBeenCalledWith(1, 5)
+  }
+})
+
+test('libérer : refusé une fois les votes clos, les résultats sont figés', async () => {
+  for (const phase of ['closed', 'reveal']) {
+    db.getContestById.mockResolvedValue(contest(phase))
+    expect(await releaseGuestAction(1, 5)).toEqual({ ok: false, error: 'locked' })
+  }
+  db.getContestById.mockResolvedValue(null)
+  expect(await releaseGuestAction(1, 5)).toEqual({ ok: false, error: 'not-found' })
+  expect(db.releaseGuest).not.toHaveBeenCalled()
 })

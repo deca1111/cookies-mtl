@@ -85,13 +85,10 @@ export async function deleteGuest(contestId: number, guestId: number): Promise<v
   await getSql()`DELETE FROM contest_guests WHERE id = ${guestId} AND contest_id = ${contestId}`
 }
 
+// Libérer un nom — par l'admin ou par l'invité qui s'est trompé (spec PR 2 §5) —
+// efface aussi son bulletin, en une transaction : fait sous ce nom, il fausserait
+// le classement et le prochain à prendre le nom en hériterait.
 export async function releaseGuest(contestId: number, guestId: number): Promise<void> {
-  await getSql()`UPDATE contest_guests SET claim_token = NULL WHERE id = ${guestId} AND contest_id = ${contestId}`
-}
-
-// L'invité s'est trompé de nom (spec PR 2 §5) : son bulletin a été fait par la
-// mauvaise personne, on l'efface avec la réservation, en une transaction.
-export async function releaseSelf(contestId: number, guestId: number): Promise<void> {
   const sql = getSql()
   await sql.transaction([
     sql`DELETE FROM contest_ballots WHERE guest_id = ${guestId}
