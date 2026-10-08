@@ -64,3 +64,17 @@ test('partager : réponse non-ok (session expirée) → jamais de partage, tél�
     Object.defineProperty(window, 'location', { configurable: true, value: originalLocation })
   }
 })
+
+// À projeter ou à montrer au téléphone d'un invité : un clic sur l'aperçu
+// l'affiche en grand ; Échap, un clic ou le bouton le referment.
+test('aperçu cliquable : QR en plein écran, refermable', () => {
+  render(<AccessPanel contestId={7} secret="k3f9" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Afficher le QR code en grand' }))
+  const dialog = screen.getByRole('dialog', { name: 'QR code du concours' })
+  expect(dialog.querySelector('img')?.getAttribute('src')).toBe('/api/admin/concours/7/qr?format=carte')
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(screen.queryByRole('dialog')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Afficher le QR code en grand' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Fermer' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
