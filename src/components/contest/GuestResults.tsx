@@ -9,6 +9,8 @@ import { Podium } from './Podium'
 
 type T = (k: ContestMsgKey, vars?: Record<string, string | number>) => string
 
+// Sans point : rien à la place du rang dans la liste (comme sur la scène) ;
+// le tableau « ton classement » et « tes cookies » gardent « Au menu », en clair.
 function rankLabel(t: T, lang: Lang, position: number | null) {
   return position === null ? t('unranked') : ordinal(lang, position)
 }
@@ -16,7 +18,7 @@ function rankLabel(t: T, lang: Lang, position: number | null) {
 function Row({ row, t, lang }: { row: ResultRow; t: T; lang: Lang }) {
   return (
     <li data-testid="results-rest-row" className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
-      <span className="font-display min-w-10 text-center text-[18px] text-[color:var(--accent-ink)]">{rankLabel(t, lang, row.position)}</span>
+      <span className="font-display min-w-10 text-center text-[18px] text-[color:var(--accent-ink)]">{row.position !== null && ordinal(lang, row.position)}</span>
       <div className="flex-1">
         <div className="text-[16px] font-medium text-[color:var(--text-strong)]">
           {t('plate', { n: row.number })}

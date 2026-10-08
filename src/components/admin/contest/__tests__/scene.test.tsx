@@ -216,3 +216,12 @@ test('écran final avec peu d’assiettes : mise en page d’origine', () => {
   render(<Scene initial={{ ...v, rows }} />)
   expect(screen.getByTestId('final-rest').className).not.toContain('grid-cols-3')
 })
+
+test('écran final : rien à gauche du nom d’un cookie sans point', () => {
+  const v = view(5)
+  const rows = [...Array.from({ length: 4 }, (_, i) => row(100 + i, i + 1, i + 1, 20 - i, [`Invité ${i + 1}`])), { ...row(200, 9, 0, 0, ['Zoé']), position: null, score: null, votes: 0 }]
+  render(<Scene initial={{ ...v, rows }} />)
+  const zoe = within(screen.getByTestId('final-rest')).getByText('Zoé').closest('li')!
+  expect(zoe.textContent).not.toMatch(/Au menu|On the menu/)
+  expect(zoe.textContent).toContain('N° 9')
+})

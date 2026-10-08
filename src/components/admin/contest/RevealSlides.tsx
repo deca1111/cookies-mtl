@@ -272,9 +272,15 @@ export function FinalSlide({ rows }: { rows: ResultRow[] }) {
             key={r.plateId}
             className={`flex rounded-[18px] bg-[#fffdf9]/10 ${many ? 'items-center gap-3 px-4 py-1.5 text-[18px]' : 'items-baseline gap-4 px-6 py-3 text-[26px]'}`}
           >
+            {/* Sans point (« aussi au menu ») : rien à gauche du nom (retour d'UAT),
+                mais la colonne garde sa largeur pour que les prénoms restent alignés. */}
             <span className={`flex flex-col font-display leading-none text-[#d29a55] ${many ? 'min-w-20 text-[28px]' : 'min-w-24'}`}>
-              {r.position === null ? fr('unranked') : ordinal('fr', r.position)}
-              <span className={`mt-1 italic opacity-60 ${many ? 'text-[13px]' : 'text-[16px]'}`}>{r.position === null ? en('unranked') : ordinal('en', r.position)}</span>
+              {r.position !== null && (
+                <>
+                  {ordinal('fr', r.position)}
+                  <span className={`mt-1 italic opacity-60 ${many ? 'text-[13px]' : 'text-[16px]'}`}>{ordinal('en', r.position)}</span>
+                </>
+              )}
             </span>
             {/* Les prénoms d'abord, le numéro d'assiette en second (retours d'UAT). */}
             <span className={`min-w-0 flex-1 font-display text-[#7f98e0] ${many ? 'truncate text-[26px]' : 'text-[34px]'}`}>{authorsOf(r)}</span>
