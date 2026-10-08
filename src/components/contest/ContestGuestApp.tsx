@@ -197,7 +197,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
   } else if (view.final && view.results) {
     body = <GuestResults results={view.results} myBallot={view.myBallot} t={t} lang={lang} />
   } else if (view.phase === 'voting') {
-    body = <RankingBoard plates={view.plates} ranking={ranking} onChange={onChange} locked={false} t={t} />
+    body = <RankingBoard plates={view.plates} ranking={ranking} onChange={onChange} locked={false} t={t} topK={view.topK} />
   } else {
     body = (
       <div className="flex flex-col gap-6">
@@ -207,17 +207,19 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
               le texte par défaut mentirait à l'invité qui n'a pas voté. */}
           <p className="mt-2 text-[15px] text-[color:var(--text-body)]">{t(ranking.length === 0 ? 'closedBodyEmpty' : 'closedBody')}</p>
         </div>
-        <RankingBoard plates={view.plates} ranking={ranking} onChange={() => {}} locked t={t} />
+        <RankingBoard plates={view.plates} ranking={ranking} onChange={() => {}} locked t={t} topK={view.topK} />
       </div>
     )
   }
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 bg-[color:var(--bg)] px-4 pb-10 pt-4">
-      <header className="flex items-center gap-2">
+      <header className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marque statique */}
-        <img src="/brand/logo.svg" alt="" className="h-7 w-7" />
-        <span className="font-display flex-1 truncate text-[15px] text-[color:var(--text-strong)]">{view.name}</span>
+        {/* 56 px : en dessous, l'arc « COOKIES CLUB » du logo devient illisible (retour d'UAT). */}
+        <img src="/brand/logo.svg" alt="" className="h-14 w-14 flex-none" />
+        {/* Nom long : sur deux lignes plutôt que coupé (retour d'UAT), au-delà seulement des points de suspension. */}
+        <span className="font-display line-clamp-2 min-w-0 flex-1 break-words text-[15px] leading-tight text-[color:var(--text-strong)]">{view.name}</span>
         {lang && view.me && (canChangeName ? (
           <button type="button" onClick={() => setSheetOpen(true)} aria-label={`${view.me.name} — ${t('changeName')}`}
             className="flex items-center gap-1 rounded-full border border-[color:var(--border-strong)] px-3 py-1 text-[13px] text-[color:var(--text-body)]">

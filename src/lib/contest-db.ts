@@ -7,10 +7,10 @@ import type { Contest, ContestData } from './contest-state'
 
 export type ContestSummary = { id: number; name: string; phase: Phase; guestCount: number; createdAt: string }
 
-type ContestRecord = { id: number; name: string; secret: string; phase: string; reveal_step: number }
+type ContestRecord = { id: number; name: string; secret: string; phase: string; reveal_step: number; top_k: number | null }
 
 function toContest(r: ContestRecord): Contest {
-  return { id: r.id, name: r.name, secret: r.secret, phase: isPhase(r.phase) ? r.phase : 'preparation', revealStep: r.reveal_step }
+  return { id: r.id, name: r.name, secret: r.secret, phase: isPhase(r.phase) ? r.phase : 'preparation', revealStep: r.reveal_step, topK: r.top_k }
 }
 
 // Code Postgres d'une violation d'unicité (nom d'invité ou numéro d'assiette pris).
@@ -50,12 +50,12 @@ export async function renameContest(id: number, name: string): Promise<boolean> 
 }
 
 export async function getContestById(id: number): Promise<Contest | null> {
-  const rows = (await getSql()`SELECT id, name, secret, phase, reveal_step FROM contests WHERE id = ${id}`) as ContestRecord[]
+  const rows = (await getSql()`SELECT id, name, secret, phase, reveal_step, top_k FROM contests WHERE id = ${id}`) as ContestRecord[]
   return rows[0] ? toContest(rows[0]) : null
 }
 
 export async function getContestBySecret(secret: string): Promise<Contest | null> {
-  const rows = (await getSql()`SELECT id, name, secret, phase, reveal_step FROM contests WHERE secret = ${secret}`) as ContestRecord[]
+  const rows = (await getSql()`SELECT id, name, secret, phase, reveal_step, top_k FROM contests WHERE secret = ${secret}`) as ContestRecord[]
   return rows[0] ? toContest(rows[0]) : null
 }
 
@@ -67,6 +67,10 @@ export async function setPhase(id: number, phase: Phase): Promise<void> {
       reveal_step = CASE WHEN ${phase}::text = 'reveal' THEN reveal_step ELSE 0 END
     WHERE id = ${id}
   `
+}
+
+export async function setTopK(id: number, topK: number | null): Promise<void> {
+  await getSql()`UPDATE contests SET top_k = ${topK}, updated_at = now() WHERE id = ${id}`
 }
 
 export async function setRevealStep(id: number, step: number): Promise<void> {

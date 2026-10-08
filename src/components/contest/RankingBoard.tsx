@@ -1,22 +1,23 @@
 'use client'
 
 import {
-  DndContext, DragOverlay, KeyboardSensor, TouchSensor, closestCenter, rectIntersection, useDraggable, useDroppable,
+  DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, rectIntersection, useDraggable, useDroppable,
   useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragMoveEvent, type DragStartEvent, type UniqueIdentifier,
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useState, type ReactNode } from 'react'
 import { IconCheck, IconClose } from '@/components/icons'
-import type { ContestMsgKey } from '@/lib/contest-i18n'
+import { scoreKey, type ContestMsgKey } from '@/lib/contest-i18n'
 import { dropIndex, moveBy, placeAt, removeFrom } from '@/lib/contest-ranking'
-import { MousePenSensor } from './MousePenSensor'
 import { PlateTag } from './PlateTag'
 
 type Plate = { id: number; number: number; label: string | null }
 type T = (k: ContestMsgKey, vars?: Record<string, string | number>) => string
 
-type Props = { plates: Plate[]; ranking: number[]; onChange: (next: number[]) => void; locked: boolean; t: T }
+// `topK` : ligne de coupure sous le K-ième (seuls les K premiers rapportent des
+// points) ; null = mode « tout », sans ligne.
+type Props = { plates: Plate[]; ranking: number[]; onChange: (next: number[]) => void; locked: boolean; t: T; topK?: number | null }
 
 // Les assiettes « à goûter » se glissent aussi dans le classement : ce sont des
 // draggables du même DndContext, à l'id préfixé pour ne pas les confondre avec
@@ -55,7 +56,7 @@ const buzz = () => {
   }
 }
 
-export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
+export function RankingBoard({ plates, ranking, onChange, locked, t, topK = null }: Props) {
   const [picked, setPicked] = useState<number | null>(null)
   // Glisser depuis « à goûter » : l'assiette tenue, et où elle tomberait.
   const [dragged, setDragged] = useState<number | null>(null)
@@ -63,6 +64,9 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   // Une ligne classée tenue, et si elle survole « à goûter » (la section l'annonce).
   const [heldRow, setHeldRow] = useState<number | null>(null)
   const [overPool, setOverPool] = useState(false)
+  // Le cookie qu'un nouveau venu vient de pousser sous la ligne : signalé un
+  // instant (« Sorti du top »), pour qu'on sache lequel est sorti.
+  const [bumped, setBumped] = useState<number | null>(null)
   const byId = new Map(plates.map((p) => [p.id, p]))
   // Une assiette supprimée par l'admin disparaît d'elle-même (spec §11).
   const ranked = ranking.filter((id) => byId.has(id))
@@ -72,12 +76,29 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   // on l'ignore pour l'affichage plutôt que d'envoyer un classement invalide.
   const activePick = picked !== null && pool.some((p) => p.id === picked) ? picked : null
 
-  // Appui long de 200 ms avant de saisir une assiette au doigt : sans ce délai,
-  // le simple défilement de la page déclencherait des glisser involontaires. À
-  // la souris, 6 px de mouvement suffisent (MousePenSensor ignore le doigt).
+  // Tout changement passe par ici : si un cookie quitte le top K sans quitter le
+  // classement, il vient de passer sous la ligne — vibration et repère sur sa ligne.
+  const change = (next: number[]) => {
+    if (topK !== null) {
+      const top = new Set(next.slice(0, topK))
+      const out = ranked.slice(0, topK).find((id) => !top.has(id) && next.includes(id))
+      if (out !== undefined) {
+        setBumped(out)
+        buzz()
+        window.setTimeout(() => setBumped((b) => (b === out ? null : b)), 2000)
+      }
+    }
+    onChange(next)
+  }
+
+  // Glisser « classique » : souris ou doigt, le glisser part dès 6 px de
+  // mouvement, sans appui long (retour d'UAT : l'appui long de 200 ms donnait
+  // l'impression que rien ne marchait). Ce qui se glisse — poignée des lignes,
+  // pastilles « à goûter » — porte `touch-none` : le navigateur ne le prend
+  // pas pour un défilement, et un simple toucher reste un clic (« choisir puis
+  // placer »). Le défilement se fait en balayant ailleurs.
   const sensors = useSensors(
-    useSensor(MousePenSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
@@ -116,20 +137,20 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
     resetDrag()
     if (fromPool !== null) {
       const index = poolTarget(event)
-      if (index !== null) onChange(placeAt(ranked, fromPool, index))
+      if (index !== null) change(placeAt(ranked, fromPool, index))
       return
     }
     if (over?.id === POOL_ZONE) {
-      onChange(removeFrom(ranked, Number(active.id)))
+      change(removeFrom(ranked, Number(active.id)))
       return
     }
     if (!over || active.id === over.id) return
-    onChange(arrayMove(ranked, ranked.indexOf(Number(active.id)), ranked.indexOf(Number(over.id))))
+    change(arrayMove(ranked, ranked.indexOf(Number(active.id)), ranked.indexOf(Number(over.id))))
   }
 
   const place = (index: number) => {
     if (activePick === null) return
-    onChange(placeAt(ranked, activePick, index))
+    change(placeAt(ranked, activePick, index))
     setPicked(null)
   }
 
@@ -180,6 +201,7 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
 
         <RankingZone disabled={locked}>
           <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">{t('myRanking')}</h2>
+          {topK !== null && !locked && <p className="text-[13px] text-[color:var(--text-muted)]">{t('topHint', { k: topK })}</p>}
           {ranked.length === 0 && activePick === null && (
             <p
               className={`rounded-[var(--radius-card)] border-dashed p-4 text-[14px] text-[color:var(--text-muted)] ${dropAt === 0
@@ -205,10 +227,22 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
                     count={ranked.length}
                     locked={locked}
                     t={t}
-                    onUp={() => onChange(moveBy(ranked, id, -1))}
-                    onDown={() => onChange(moveBy(ranked, id, 1))}
-                    onRemove={() => onChange(removeFrom(ranked, id))}
+                    points={topK !== null && i < topK ? topK - i : null}
+                    outOfTop={topK !== null && i >= topK}
+                    bumped={bumped === id}
+                    onUp={() => change(moveBy(ranked, id, -1))}
+                    onDown={() => change(moveBy(ranked, id, 1))}
+                    onRemove={() => change(removeFrom(ranked, id))}
                   />
+                  {/* Ligne de coupure dès que le top est plein : ce qui passe dessous
+                      reste classé (on le retrouve à sa place), mais ne rapporte rien. */}
+                  {topK !== null && i === topK - 1 && (
+                    <div role="separator" className="flex items-center gap-2 py-1 text-[12px] font-bold text-[color:var(--accent-ink)]">
+                      <span aria-hidden="true" className="h-0.5 flex-1 rounded-full bg-[color:var(--accent)]" />
+                      {t('cutLine', { k: topK })}
+                      <span aria-hidden="true" className="h-0.5 flex-1 rounded-full bg-[color:var(--accent)]" />
+                    </div>
+                  )}
                   {slot(i + 1)}
                   {i === ranked.length - 1 && dropAt === ranked.length && dropLine('bottom')}
                 </li>
@@ -280,8 +314,8 @@ function PoolChip({ plate, picked, onPick, t }: ChipProps) {
   // le KeyboardSensor les intercepterait pour démarrer un glisser.
   const pointer = { ...listeners }
   delete pointer.onKeyDown
-  // Pas de `touch-none` ici (même raison que la poignée des lignes, plus bas) :
-  // l'appui long du TouchSensor suffit à distinguer le glisser du défilement.
+  // `touch-none` : au doigt, la pastille part tout de suite sous le doigt au lieu
+  // de faire défiler la page. Relâchée hors du classement, elle revient à sa place.
   return (
     <button
       ref={setNodeRef}
@@ -291,7 +325,7 @@ function PoolChip({ plate, picked, onPick, t }: ChipProps) {
       aria-pressed={picked}
       aria-label={t('plate', { n: plate.number })}
       onClick={onPick}
-      className={`select-none rounded-[10px] transition-transform [-webkit-touch-callout:none] active:scale-95 ${picked ? 'ring-4 ring-[color:var(--btn-bg)]' : ''} ${isDragging ? 'opacity-30' : ''}`}
+      className={`touch-none select-none rounded-[10px] transition-transform [-webkit-touch-callout:none] active:scale-95 ${picked ? 'ring-4 ring-[color:var(--btn-bg)]' : ''} ${isDragging ? 'opacity-30' : ''}`}
     >
       <PlateTag label={t('plateTag', { n: plate.number })} size="md" cookie />
     </button>
@@ -300,10 +334,11 @@ function PoolChip({ plate, picked, onPick, t }: ChipProps) {
 
 type RowProps = {
   plate: Plate; index: number; count: number; locked: boolean; t: T
+  points: number | null; outOfTop: boolean; bumped: boolean
   onUp: () => void; onDown: () => void; onRemove: () => void
 }
 
-function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: RowProps) {
+function RankedRow({ plate, index, count, locked, t, points, outOfTop, bumped, onUp, onDown, onRemove }: RowProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: plate.id,
     disabled: locked,
@@ -315,15 +350,17 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
       style={{ transform: CSS.Transform.toString(transform), transition }}
       // Tenue : c'est son clone soulevé (HeldRow) qui suit le doigt ; la ligne
       // elle-même marque sa place en pointillés estompés.
-      className={`flex items-center gap-3 rounded-[var(--radius-card)] border bg-[color:var(--surface)] p-3 ${isDragging
+      // Sous la ligne : estompée (classée, mais sans points). Tout juste poussée
+      // sous la ligne : cerclée, pleinement visible, le temps qu'on la repère.
+      className={`flex items-center gap-3 rounded-[var(--radius-card)] border bg-[color:var(--surface)] p-3 transition-[opacity,box-shadow] ${isDragging
         ? 'border-dashed border-[color:var(--accent)] opacity-40'
-        : 'border-[color:var(--border)] shadow-[var(--shadow-chip)]'}`}
+        : bumped
+          ? 'border-[color:var(--accent)] shadow-[var(--shadow-chip)] ring-2 ring-[color:var(--accent)]'
+          : `border-[color:var(--border)] shadow-[var(--shadow-chip)] ${outOfTop ? 'opacity-60' : ''}`}`}
     >
       {/* Poignée dédiée : `attributes`/`listeners` (et donc `touch-none`) ne
-          portent que sur ce petit bouton, pas sur toute la ligne. Sinon un doigt
-          qui balaie le nom de l'assiette ne peut plus faire défiler la page sur
-          iOS — `touch-action: none` gagne avant que le délai du TouchSensor
-          rende la main au défilement. */}
+          portent que sur ce petit bouton, pas sur toute la ligne : un doigt qui
+          balaie le reste de la ligne fait toujours défiler la page. */}
       {!locked && (
         <button
           type="button"
@@ -338,11 +375,17 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
           </svg>
         </button>
       )}
-      <span className="font-display w-8 text-center text-[22px] text-[color:var(--btn-bg)]">{index + 1}</span>
+      {/* Le rang, et dessous ce qu'il rapporte : sous le chiffre plutôt qu'à
+          droite, la ligne tient sur un téléphone de 360 px. */}
+      <span className="flex w-8 flex-col items-center leading-none">
+        <span className="font-display text-[22px] text-[color:var(--btn-bg)]">{index + 1}</span>
+        {points !== null && <span data-testid="row-points" className="mt-0.5 whitespace-nowrap text-[10px] font-bold text-[color:var(--accent-ink)]">{t(scoreKey(points), { n: points })}</span>}
+      </span>
       {/* Le rang, puis l'assiette : « cookie N° X » dans son étiquette suffit, sans
           « Assiette X » en toutes lettres qui ajoutait un troisième chiffre. */}
       <PlateTag label={t('plateTag', { n: plate.number })} size="sm" tilt cookie />
       <div className="flex-1 select-none">
+        {bumped && <div className="text-[12px] font-bold text-[color:var(--accent-ink)]">{t('outOfTop')}</div>}
         {plate.label && <div className="text-[13px] text-[color:var(--text-muted)]">{plate.label}</div>}
       </div>
       {!locked && (

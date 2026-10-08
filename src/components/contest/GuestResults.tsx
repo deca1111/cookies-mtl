@@ -1,7 +1,7 @@
 'use client'
 
 import type { ContestMsgKey } from '@/lib/contest-i18n'
-import { ordinal } from '@/lib/contest-i18n'
+import { ordinal, scoreKey } from '@/lib/contest-i18n'
 import { podium } from '@/lib/contest-podium'
 import type { GuestView, ResultRow } from '@/lib/contest-state'
 import type { Lang } from '@/lib/i18n'
@@ -9,21 +9,16 @@ import { Podium } from './Podium'
 
 type T = (k: ContestMsgKey, vars?: Record<string, string | number>) => string
 
+// Sans point : rien à la place du rang dans la liste (comme sur la scène) ;
+// le tableau « ton classement » et « tes cookies » gardent « Au menu », en clair.
 function rankLabel(t: T, lang: Lang, position: number | null) {
   return position === null ? t('unranked') : ordinal(lang, position)
-}
-
-// Un rang moyen est une fraction ("2.5") : en français, sa notation attend une
-// virgule ("2,5"), pas un point — `Intl` connaît la règle, pas la peine de la
-// coder à la main ni de la manquer.
-function formatAvgRank(lang: Lang, avgRank: number) {
-  return new Intl.NumberFormat(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(avgRank)
 }
 
 function Row({ row, t, lang }: { row: ResultRow; t: T; lang: Lang }) {
   return (
     <li data-testid="results-rest-row" className="flex items-center gap-3 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-3">
-      <span className="font-display min-w-10 text-center text-[18px] text-[color:var(--accent-ink)]">{rankLabel(t, lang, row.position)}</span>
+      <span className="font-display min-w-10 text-center text-[18px] text-[color:var(--accent-ink)]">{row.position !== null && ordinal(lang, row.position)}</span>
       <div className="flex-1">
         <div className="text-[16px] font-medium text-[color:var(--text-strong)]">
           {t('plate', { n: row.number })}
@@ -31,7 +26,9 @@ function Row({ row, t, lang }: { row: ResultRow; t: T; lang: Lang }) {
         </div>
         {row.score !== null && (
           <div className="text-[13px] text-[color:var(--text-muted)]">
-            {t('score', { n: row.score })} · {t('avgRank', { n: formatAvgRank(lang, row.avgRank!) })}
+            {/* Top K : le rang moyen ne porterait que sur les citations dans un top,
+                trompeur ; les points et le nombre de citations disent l'essentiel. */}
+            {t(scoreKey(row.score), { n: row.score })} · {t(row.votes === 1 ? 'votesOne' : 'votes', { n: row.votes })}
           </div>
         )}
       </div>
@@ -86,7 +83,7 @@ export function GuestResults({ results, myBallot, t, lang }: { results: NonNulla
               {r.score !== null ? (
                 <ul className="mt-1 flex flex-col gap-0.5">
                   {/* Singulier (point 8 de la vague de correction) : « 1 vote », pas « 1 votes ». */}
-                  <li>{t('score', { n: r.score })} · {t(r.votes === 1 ? 'votesOne' : 'votes', { n: r.votes })}</li>
+                  <li>{t(scoreKey(r.score), { n: r.score })} · {t(r.votes === 1 ? 'votesOne' : 'votes', { n: r.votes })}</li>
                   <li>{t('bestWorst', { best: r.bestRank!, worst: r.worstRank! })}</li>
                   <li>{t('firsts', { n: r.firsts })}</li>
                 </ul>

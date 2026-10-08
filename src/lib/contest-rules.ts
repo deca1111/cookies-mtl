@@ -64,3 +64,11 @@ export function checkBallot(raw: unknown, allowed: Set<number>): number[] | null
   }
   return raw as number[]
 }
+
+// Mode de vote (retours d'UAT) : « top K » — seuls les K premiers de chaque
+// bulletin rapportent des points — ou « tout » (null). K borné à 1..50.
+export const TOP_K_MAX = 50
+
+export function isTopK(v: unknown): v is number | null {
+  return v === null || (Number.isInteger(v) && (v as number) >= 1 && (v as number) <= TOP_K_MAX)
+}

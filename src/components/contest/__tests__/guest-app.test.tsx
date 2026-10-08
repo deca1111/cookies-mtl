@@ -20,7 +20,7 @@ afterEach(cleanup)
 const base: GuestView = {
   name: 'Anniv', phase: 'voting', final: false, me: null,
   guests: [{ id: 1, name: 'Julie', taken: false }, { id: 2, name: 'Marc', taken: true }],
-  plates: [{ id: 10, number: 1, label: null }], myBallot: [], results: null,
+  plates: [{ id: 10, number: 1, label: null }], topK: 5, myBallot: [], results: null,
 }
 
 beforeEach(() => {

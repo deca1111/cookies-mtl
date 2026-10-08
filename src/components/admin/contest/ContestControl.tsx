@@ -9,6 +9,7 @@ import { phaseColorVar } from './phase-style'
 import { PhaseTimeline } from './PhaseTimeline'
 import { PilotPanel } from './PilotPanel'
 import { PlatePanel } from './PlatePanel'
+import { VoteModePicker } from './VoteModePicker'
 
 // Écran de pilotage (spec §9), pensé laptop : trois colonnes. Le polling montre
 // les votes arriver ; chaque action relit l'état tout de suite après — `force`
@@ -27,10 +28,10 @@ export function ContestControl({ initial }: { initial: AdminView }) {
       <PhaseTimeline
         contestId={view.contest.id}
         phase={view.contest.phase}
-        complete={view.complete}
-        rankableGuests={view.guests.filter((g) => g.rankable > 0).length}
+        guests={view.guests}
         onDone={done}
       />
+      <VoteModePicker contestId={view.contest.id} phase={view.contest.phase} topK={view.contest.topK} onDone={done} />
       {(offline || gone || error) && (
         <p className="rounded-[var(--radius-field)] border border-[color:var(--danger)] px-3 py-2 text-[13px] text-[color:var(--danger)]">
           {gone

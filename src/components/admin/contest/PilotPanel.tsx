@@ -74,7 +74,7 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
         {showLive ? (
           <ol className="flex flex-col gap-1 text-[13px] text-[color:var(--text-body)]">
             {rows.map((r) => (
-              <li key={r.plateId}>{r.position ?? '—'}. Assiette {r.number} — {r.score ?? '—'}/100 ({r.votes} voix) {r.authors.join(' & ')}</li>
+              <li key={r.plateId}>{r.position ?? '—'}. Cookie {r.number} — {r.score ?? 0} pts ({r.votes} voix) {r.authors.join(' & ')}</li>
             ))}
           </ol>
         ) : (

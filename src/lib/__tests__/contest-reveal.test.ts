@@ -64,15 +64,11 @@ test('une seule assiette classée : pas de duel, le 1er en deux temps', () => {
   const steps = buildRevealSteps([row(1, 1), row(2, null)])
   expect(steps).toEqual([
     { kind: 'title' },
+    { kind: 'menu', plateIds: [2] },
     { kind: 'plate', plateIds: [1], position: 1, showAuthors: false, podium: true },
     { kind: 'plate', plateIds: [1], position: 1, showAuthors: true, podium: true },
     { kind: 'final' },
   ])
-})
-
-test('assiettes sans voix : seulement à l’écran final', () => {
-  const steps = buildRevealSteps([...ranked(5), row(99, null)])
-  expect(JSON.stringify(steps.slice(0, -1))).not.toContain('99')
 })
 
 test('isFinalStep', () => {
@@ -80,4 +76,17 @@ test('isFinalStep', () => {
   expect(isFinalStep(steps.length - 1, steps)).toBe(true)
   expect(isFinalStep(0, steps)).toBe(false)
   expect(isFinalStep(99, steps)).toBe(true)
+})
+
+// Top K : les cookies cités dans aucun top sont montrés ensemble, sans rang,
+// juste après le titre — personne n'est désigné dernier devant la salle.
+test('cookies sans point : une étape « aussi au menu » après le titre, hors des tableaux', () => {
+  const steps = buildRevealSteps([...ranked(5), row(40, null), row(30, null)])
+  expect(steps[1]).toEqual({ kind: 'menu', plateIds: [40, 30] })
+  expect(steps.filter((s) => s.kind === 'menu')).toHaveLength(1)
+  expect(steps.flatMap((s) => ('plateIds' in s && s.kind !== 'menu' ? s.plateIds : []))).not.toContain(40)
+})
+
+test('tous les cookies ont des points : pas d’étape « aussi au menu »', () => {
+  expect(buildRevealSteps(ranked(5)).some((s) => s.kind === 'menu')).toBe(false)
 })

@@ -1,5 +1,5 @@
 import type { ContestMsgKey } from '@/lib/contest-i18n'
-import { ordinal } from '@/lib/contest-i18n'
+import { ordinal, scoreKey } from '@/lib/contest-i18n'
 import { podium } from '@/lib/contest-podium'
 import type { ResultRow } from '@/lib/contest-state'
 import type { Lang } from '@/lib/i18n'
@@ -49,7 +49,7 @@ export function Podium({ rows, size, text, lang, subLang }: { rows: ResultRow[];
           <div className={`flex ${tv ? 'gap-6' : 'gap-2'}`}>
             {s.rows.map((r) => (
               <div key={r.plateId} className="flex flex-col items-center gap-1 text-center">
-                <PlateTag label={text('plateTag', { n: r.number })} size={tv ? 'ml' : 'sm'} tilt score={r.score} scoreLabel={r.score === null ? undefined : text('score', { n: r.score })} />
+                <PlateTag label={text('plateTag', { n: r.number })} size={tv ? 'ml' : 'sm'} tilt score={r.score} scoreLabel={r.score === null ? undefined : text(scoreKey(r.score), { n: r.score })} />
                 <span className={`font-display ${authorsClass(s.position)}`}>{r.authors.join(' & ') || '?'}</span>
               </div>
             ))}

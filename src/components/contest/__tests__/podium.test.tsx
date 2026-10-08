@@ -49,6 +49,6 @@ test('récapitulatif invité : pyramide puis le reste, rangs en ordinaux', () =>
   render(<GuestResults results={{ rows, agreement: null, myPlates: [] }} myBallot={[]} t={t} lang="fr" />)
   expect(screen.getAllByTestId('podium-step').map((s) => s.dataset.position)).toEqual(['2', '1', '3'])
   const rest = screen.getAllByTestId('results-rest-row')
-  expect(rest.map((r) => r.textContent)).toEqual([expect.stringContaining('4e'), expect.stringContaining('Non classée')])
+  expect(rest.map((r) => r.textContent)).toEqual([expect.stringContaining('4e'), expect.not.stringContaining('Au menu')])
   expect(rest[0].textContent).toContain('Zoé')
 })

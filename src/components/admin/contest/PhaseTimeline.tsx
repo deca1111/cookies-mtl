@@ -3,6 +3,8 @@
 import { Fragment, useState } from 'react'
 import { shiftPhaseAction } from '@/app/actions/contest-admin'
 import { PHASES, shiftPhase, type Phase } from '@/lib/contest-rules'
+import type { AdminGuest } from '@/lib/contest-state'
+import { guestSummary, STATE_DOT } from './guest-state'
 import { PHASE_LABEL } from './phase-label'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 
@@ -15,8 +17,8 @@ const ERR: Record<string, string> = {
 // Frise des 4 phases (spec PR 2 §2), boutons collés aux étapes. `busy` : un
 // double clic ferait sauter une phase (actions serveur sérialisées, finding #1
 // de la PR 1).
-export function PhaseTimeline({ contestId, phase, complete, rankableGuests, onDone }: {
-  contestId: number; phase: Phase; complete: number; rankableGuests: number; onDone: () => void
+export function PhaseTimeline({ contestId, phase, guests, onDone }: {
+  contestId: number; phase: Phase; guests: AdminGuest[]; onDone: () => void
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -71,7 +73,16 @@ export function PhaseTimeline({ contestId, phase, complete, rankableGuests, onDo
           </button>
         )}
       </div>
-      <p className="text-[13px] text-[color:var(--text-muted)]">{complete}/{rankableGuests} invités ont un classement complet</p>
+      {/* Même règle que les pastilles de la liste des invités (guest-state) : le
+          résumé suit le mode de vote — top rempli, ou tout classé en mode « tout ». */}
+      <ul data-testid="guest-summary" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[color:var(--text-muted)]">
+        {guestSummary(guests).map(({ state, text }) => (
+          <li key={state} className="flex items-center gap-1.5">
+            <span aria-hidden="true" className={`h-2 w-2 rounded-full ${STATE_DOT[state]}`} />
+            {text}
+          </li>
+        ))}
+      </ul>
       {error && <p className="text-[13px] text-[color:var(--danger)]">{error}</p>}
     </section>
   )

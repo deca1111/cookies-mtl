@@ -84,3 +84,43 @@ test('indicateur de progression', () => {
   rerender(<RankingBoard plates={plates} ranking={[10, 20, 30]} onChange={vi.fn()} locked={false} t={t} />)
   expect(screen.getByText(contestDict.fr.allRanked)).toBeTruthy()
 })
+
+// Glisser « classique » au doigt (retour d'UAT) : pastilles et poignées en
+// `touch-none`, sinon le navigateur prend le geste pour un défilement et le
+// glisser ne part pas sans appui long.
+test('pastilles et poignées en touch-none : le glisser part tout de suite au doigt', () => {
+  render(<RankingBoard plates={plates} ranking={[20]} onChange={vi.fn()} locked={false} t={t} />)
+  expect(screen.getByRole('button', { name: 'Assiette 1' }).className).toContain('touch-none')
+  expect(screen.getByRole('button', { name: contestDict.fr.dragHandle }).className).toContain('touch-none')
+})
+
+const six = Array.from({ length: 6 }, (_, i) => ({ id: (i + 1) * 10, number: i + 1, label: null }))
+
+test('top K : ligne de coupure sous le K-ième, points au-dessus, rien en dessous', () => {
+  render(<RankingBoard plates={six} ranking={[10, 20, 30, 40]} onChange={vi.fn()} locked={false} t={t} topK={3} />)
+  expect(screen.getByText(fmt(contestDict.fr.topHint, { k: 3 }))).toBeTruthy()
+  const sep = screen.getByRole('separator')
+  expect(sep.textContent).toBe('Seul ton top 3 compte')
+  const rows = screen.getAllByRole('listitem')
+  expect(rows.map((r) => r.querySelector('[data-testid="row-points"]')?.textContent ?? null)).toEqual(['3 pts', '2 pts', '1 pt', null])
+  // La ligne est dans le 3e item, juste sous la 3e ligne.
+  expect(rows[2].contains(sep)).toBe(true)
+})
+
+test('mode « tout » : ni ligne ni points', () => {
+  render(<RankingBoard plates={six} ranking={[10, 20, 30, 40]} onChange={vi.fn()} locked={false} t={t} topK={null} />)
+  expect(screen.queryByRole('separator')).toBeNull()
+  expect(screen.queryByText(/\d+ pts?$/)).toBeNull()
+})
+
+test('top plein : un nouveau venu pousse le K-ième sous la ligne, signalé « Sorti du top »', () => {
+  const onChange = vi.fn()
+  const { rerender } = render(<RankingBoard plates={six} ranking={[10, 20, 30]} onChange={onChange} locked={false} t={t} topK={3} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Assiette 5' }))
+  fireEvent.click(screen.getAllByRole('button', { name: contestDict.fr.placeHere })[0])
+  expect(onChange).toHaveBeenCalledWith([50, 10, 20, 30])
+  rerender(<RankingBoard plates={six} ranking={[50, 10, 20, 30]} onChange={onChange} locked={false} t={t} topK={3} />)
+  const pushed = screen.getAllByRole('listitem')[3]
+  expect(pushed.textContent).toContain('N° 3')
+  expect(pushed.textContent).toContain('Sorti du top')
+})

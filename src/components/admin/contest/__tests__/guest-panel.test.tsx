@@ -62,7 +62,7 @@ test('ajout : le champ se désactive pendant l’envoi, une seule action part', 
 test('suppression d’un invité : confirmation à deux clics', async () => {
   deleteGuestAction.mockResolvedValue({ ok: true })
   const onDone = vi.fn()
-  render(<GuestPanel contestId={1} phase="preparation" guests={[{ id: 1, name: 'Julie', claimed: false, ranked: 0, rankable: 0, ballot: [] }]} onDone={onDone} />)
+  render(<GuestPanel contestId={1} phase="preparation" guests={[{ id: 1, name: 'Julie', claimed: false, ranked: 0, rankable: 0, target: 0, ballot: [] }]} onDone={onDone} />)
   const del = screen.getByRole('button', { name: 'Suppr.' })
   fireEvent.click(del)
   expect(screen.getByRole('button', { name: 'Confirmer ?' })).toBeTruthy()
@@ -76,7 +76,7 @@ test('suppression d’un invité : confirmation à deux clics', async () => {
 // armée indépendamment du « Suppr. » de la même ligne.
 test('libérer : confirmation à deux clics, sans armer la suppression', async () => {
   releaseGuestAction.mockResolvedValue({ ok: true })
-  render(<GuestPanel contestId={1} phase="voting" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 2, rankable: 3, ballot: [] }]} onDone={vi.fn()} />)
+  render(<GuestPanel contestId={1} phase="voting" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 2, rankable: 3, target: 3, ballot: [] }]} onDone={vi.fn()} />)
   fireEvent.click(screen.getByRole('button', { name: 'Libérer' }))
   expect(screen.getByRole('button', { name: 'Suppr.' })).toBeTruthy()
   expect(releaseGuestAction).not.toHaveBeenCalled()
@@ -85,12 +85,12 @@ test('libérer : confirmation à deux clics, sans armer la suppression', async (
 })
 
 test('libérer : bouton absent une fois les votes clos', () => {
-  render(<GuestPanel contestId={1} phase="closed" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 3, rankable: 3, ballot: [] }]} onDone={vi.fn()} />)
+  render(<GuestPanel contestId={1} phase="closed" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 3, rankable: 3, target: 3, ballot: [] }]} onDone={vi.fn()} />)
   expect(screen.queryByRole('button', { name: 'Libérer' })).toBeNull()
 })
 
 test('classement d’un invité : affiché au clic, en numéros d’assiette', () => {
-  render(<GuestPanel contestId={1} phase="voting" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 3, rankable: 3, ballot: [4, 1, 2] }]} onDone={vi.fn()} />)
+  render(<GuestPanel contestId={1} phase="voting" guests={[{ id: 1, name: 'Julie', claimed: true, ranked: 3, rankable: 3, target: 3, ballot: [4, 1, 2] }]} onDone={vi.fn()} />)
   expect(screen.queryByText('N° 4')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Voir le classement de Julie' }))
   expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toContain('1N° 4')
@@ -100,7 +100,7 @@ test('classement d’un invité : affiché au clic, en numéros d’assiette', (
 
 test('déconnecter tous les téléphones : confirmation à deux clics, absent une fois les votes clos', async () => {
   releaseAllGuestsAction.mockResolvedValue({ ok: true })
-  const guests = [{ id: 1, name: 'Julie', claimed: true, ranked: 0, rankable: 2, ballot: [] }]
+  const guests = [{ id: 1, name: 'Julie', claimed: true, ranked: 0, rankable: 2, target: 2, ballot: [] }]
   const { unmount } = render(<GuestPanel contestId={7} phase="voting" guests={guests} onDone={vi.fn()} />)
   fireEvent.click(screen.getByRole('button', { name: 'Déconnecter tous les téléphones' }))
   expect(releaseAllGuestsAction).not.toHaveBeenCalled()
@@ -109,4 +109,18 @@ test('déconnecter tous les téléphones : confirmation à deux clics, absent un
   unmount()
   render(<GuestPanel contestId={7} phase="closed" guests={guests} onDone={vi.fn()} />)
   expect(screen.queryByRole('button', { name: 'Déconnecter tous les téléphones' })).toBeNull()
+})
+
+// Retours d'UAT : voir d'un coup d'œil qui a fini. La pastille suit le top K
+// (`target`), pas le nombre total de cookies à classer.
+test('pastille : libre, connecté, pas commencé, en cours, complet (vert, coché)', () => {
+  const g = (id: number, name: string, claimed: boolean, ranked: number, target: number) =>
+    ({ id, name, claimed, ranked, rankable: 8, target, ballot: [] })
+  render(<GuestPanel contestId={1} phase="voting" onDone={vi.fn()} guests={[
+    g(1, 'Ana', false, 0, 5), g(2, 'Bea', true, 0, 0), g(3, 'Cy', true, 0, 5), g(4, 'Dan', true, 3, 5), g(5, 'Eve', true, 7, 5),
+  ]} />)
+  const badge = (name: string) => screen.getByText(name).closest('li')!.querySelector('[data-state]')!
+  expect([badge('Ana'), badge('Bea'), badge('Cy'), badge('Dan'), badge('Eve')].map((b) => [b.getAttribute('data-state'), b.textContent]))
+    .toEqual([['free', 'libre'], ['idle', 'connecté'], ['empty', '0/5 classés'], ['partial', '3/5 classés'], ['complete', '5/5 classés']])
+  expect(badge('Eve').querySelector('svg')).not.toBeNull()
 })

@@ -1,8 +1,8 @@
 import { expect, test } from 'vitest'
 import { buildAdminView, buildGuestView, type Contest, type ContestData } from '../contest-state'
 
-const contest = (phase: Contest['phase'], revealStep = 0): Contest =>
-  ({ id: 1, name: 'Anniv', secret: 's3cr3t', phase, revealStep })
+const contest = (phase: Contest['phase'], revealStep = 0, topK: number | null = 5): Contest =>
+  ({ id: 1, name: 'Anniv', secret: 's3cr3t', phase, revealStep, topK })
 
 // Julie (1) a fait l'assiette 10 ; Marc (2) et Julie ont fait la 20 ; Leo (3) rien.
 const data: ContestData = {
@@ -41,19 +41,23 @@ test('invite - recapitulatif a l ecran final, avec accord et ses assiettes', () 
   const steps = buildAdminView(contest('reveal'), data).steps
   const v = buildGuestView(contest('reveal', steps.length - 1), data, 2)
   expect(v.final).toBe(true)
-  // Leo [30,10,20] → 30=1, 10=0,5, 20=0 ; Marc [10,30] → 10=1, 30=0.
-  // 10 : 75 ; 30 : 50 ; 20 : 0.
-  expect(v.results?.rows[0]).toMatchObject({ plateId: 10, score: 75, authors: ['Julie'] })
+  // Top 5 : Leo [30,10,20] → 30=5, 10=4, 20=3 ; Marc [10,30] → 10=5, 30=4.
+  // 10 et 30 : 9 points, une 1re et une 2e place chacun → ex æquo, par numéro.
+  expect(v.results?.rows[0]).toMatchObject({ plateId: 10, score: 9, position: 1, authors: ['Julie'] })
+  expect(v.results?.rows[1]).toMatchObject({ plateId: 30, score: 9, position: 1 })
+  expect(v.topK).toBe(5)
   expect(v.results?.myPlates.map((r) => r.plateId)).toEqual([20])
   expect(v.results?.myPlates[0].authors).toEqual(['Julie', 'Marc'])
   expect(v.myBallot).toEqual([10, 30])
 })
 
 test('classement - un vote pour sa propre assiette ne compte pas, même s il date d avant l ajout comme auteur', () => {
-  // Julie a classé avant d'être déclarée autrice de la 10 : il ne lui reste que
-  // la 30, un bulletin d'une seule assiette, qui ne compte plus.
+  // Julie a classé avant d'être déclarée autrice de la 10 : la 10 sort de son
+  // bulletin, la 30 remonte à sa 1re place.
   const late = { ...data, ballots: [...data.ballots, { guestId: 1, plateIds: [10, 30] }] }
-  expect(buildAdminView(contest('voting'), late).rows).toEqual(buildAdminView(contest('voting'), data).rows)
+  const score = (d: ContestData, id: number) => buildAdminView(contest('voting'), d).rows.find((r) => r.plateId === id)?.score
+  expect(score(late, 10)).toBe(score(data, 10))
+  expect(score(late, 30)).toBe(score(data, 30)! + 5)
 })
 
 test('admin - avancement par invite et nombre de bulletins complets', () => {
@@ -61,8 +65,7 @@ test('admin - avancement par invite et nombre de bulletins complets', () => {
   const byName = Object.fromEntries(v.guests.map((g) => [g.name, g]))
   expect(byName['Leo']).toMatchObject({ ranked: 3, rankable: 3 })
   expect(byName['Marc']).toMatchObject({ ranked: 2, rankable: 2 })
-  expect(byName['Julie']).toMatchObject({ ranked: 0, rankable: 1 })
-  expect(v.complete).toBe(2)
+  expect(byName['Julie']).toMatchObject({ ranked: 0, rankable: 1, target: 1 })
 })
 
 test('admin - classement de chaque invité, en numéros d assiette, meilleur d abord', () => {
@@ -70,4 +73,14 @@ test('admin - classement de chaque invité, en numéros d assiette, meilleur d a
   expect(byName['Leo'].ballot).toEqual([3, 1, 2])
   expect(byName['Marc'].ballot).toEqual([1, 3])
   expect(byName['Julie'].ballot).toEqual([])
+})
+
+test('admin - top K : un bulletin est complet dès que son top est rempli', () => {
+  const v = buildAdminView(contest('voting', 0, 2), data)
+  const byName = Object.fromEntries(v.guests.map((g) => [g.name, g]))
+  // Leo a 3 cookies à classer mais un top 2 : 2 suffisent. Julie n'en a qu'un.
+  expect(byName['Leo']).toMatchObject({ ranked: 3, target: 2 })
+  expect(byName['Julie']).toMatchObject({ ranked: 0, target: 1 })
+  // Mode « tout » : il faut tout classer.
+  expect(buildAdminView(contest('voting', 0, null), data).guests.find((g) => g.name === 'Leo')?.target).toBe(3)
 })

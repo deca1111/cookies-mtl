@@ -60,3 +60,6 @@ next-env.d.ts
 /.claude/settings.local.json
 /.claude/worktrees/
 /skills-lock.json
+
+# Rapports du test de charge (scripts/stress)
+/scripts/stress/out/

@@ -13,8 +13,12 @@ afterEach(cleanup)
 // coup et restant en attente d'une promesse jamais résolue (timeout de hook).
 beforeEach(() => { shiftPhaseAction.mockReset().mockResolvedValue({ ok: true }) })
 
+const guest = (id: number, claimed: boolean, ranked: number, target: number) =>
+  ({ id, name: `G${id}`, claimed, ranked, rankable: 8, target, ballot: [] })
+// 2 complets (dont un qui classe au-delà de son top), 1 en cours, 1 pas commencé, 1 libre.
+const guests = [guest(1, true, 5, 5), guest(2, true, 7, 5), guest(3, true, 2, 5), guest(4, true, 0, 5), guest(5, false, 0, 5)]
 const renderAt = (phase: 'preparation' | 'voting' | 'closed' | 'reveal') =>
-  render(<PhaseTimeline contestId={1} phase={phase} complete={3} rankableGuests={6} onDone={vi.fn()} />)
+  render(<PhaseTimeline contestId={1} phase={phase} guests={guests} onDone={vi.fn()} />)
 
 test('les 4 étapes, la courante marquée', () => {
   renderAt('voting')
@@ -32,9 +36,10 @@ test('boutons précédent / suivant autour de la frise, absents aux extrémités
   expect(screen.queryByRole('button', { name: /›/ })).toBeNull()
 })
 
-test('avancement des bulletins sous la frise', () => {
+test('avancement des bulletins sous la frise, du plus avancé au moins avancé', () => {
   renderAt('voting')
-  expect(screen.getByText('3/6 invités ont un classement complet')).toBeTruthy()
+  expect([...screen.getByTestId('guest-summary').querySelectorAll('li')].map((li) => li.textContent))
+    .toEqual(['2 complets', '1 en cours', '1 pas commencé', '1 pas connecté'])
 })
 
 test('changement de phase : un seul appel malgré le double clic', async () => {
