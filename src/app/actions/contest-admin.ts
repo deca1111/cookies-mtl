@@ -3,7 +3,7 @@
 import { requireAdmin } from '@/lib/auth'
 import {
   addGuest, addPlate, createContest, deleteContest, deleteGuest, deletePlate, getContestById, isUniqueViolation,
-  loadContestData, releaseGuest, renameContest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
+  loadContestData, releaseAllGuests, releaseGuest, renameContest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
 } from '@/lib/contest-db'
 import { generateSecret } from '@/lib/contest-identity'
 import { cleanLabel, cleanName, nextPlateNumber, shiftPhase, shuffled, type Phase } from '@/lib/contest-rules'
@@ -64,14 +64,28 @@ export async function deleteGuestAction(contestId: number, guestId: number): Pro
   return OK
 }
 
-// Le bulletin part avec le nom (voir releaseGuest) : une fois les votes clos,
-// ce serait modifier des résultats figés.
-export async function releaseGuestAction(contestId: number, guestId: number): Promise<AdminResult> {
-  await requireAdmin()
+// Les bulletins partent avec les noms (voir releaseGuest) : une fois les votes
+// clos, ce serait modifier des résultats figés. null = on peut libérer.
+async function releaseRefusal(contestId: number): Promise<AdminResult | null> {
   const contest = await getContestById(contestId)
   if (!contest) return { ok: false, error: 'not-found' }
   if (contest.phase !== 'preparation' && contest.phase !== 'voting') return { ok: false, error: 'locked' }
+  return null
+}
+
+export async function releaseGuestAction(contestId: number, guestId: number): Promise<AdminResult> {
+  await requireAdmin()
+  const refusal = await releaseRefusal(contestId)
+  if (refusal) return refusal
   await releaseGuest(contestId, guestId)
+  return OK
+}
+
+export async function releaseAllGuestsAction(contestId: number): Promise<AdminResult> {
+  await requireAdmin()
+  const refusal = await releaseRefusal(contestId)
+  if (refusal) return refusal
+  await releaseAllGuests(contestId)
   return OK
 }
 

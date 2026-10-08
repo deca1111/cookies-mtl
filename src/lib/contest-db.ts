@@ -97,6 +97,17 @@ export async function releaseGuest(contestId: number, guestId: number): Promise<
   ])
 }
 
+// « Déconnecter tous les téléphones » : la même chose pour tous les invités. Les
+// cookies ne s'effacent pas à distance, mais leurs jetons ne mènent plus à
+// personne : chaque téléphone revient au choix du nom.
+export async function releaseAllGuests(contestId: number): Promise<void> {
+  const sql = getSql()
+  await sql.transaction([
+    sql`DELETE FROM contest_ballots WHERE guest_id IN (SELECT id FROM contest_guests WHERE contest_id = ${contestId})`,
+    sql`UPDATE contest_guests SET claim_token = NULL WHERE contest_id = ${contestId}`,
+  ])
+}
+
 // Atomique : deux téléphones qui choisissent le même nom au même instant, un
 // seul gagne (la condition `claim_token IS NULL` est évaluée par la mise à jour).
 export async function claimGuest(contestId: number, guestId: number, token: string): Promise<boolean> {

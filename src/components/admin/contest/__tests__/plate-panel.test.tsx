@@ -62,7 +62,7 @@ test('authorIds invalide (non tableau) : erreur lisible', async () => {
 
 test('carte : numéro et auteurs d’abord, note en second', () => {
   render(<PlatePanel contestId={1} phase="voting" onDone={vi.fn()}
-    guests={[{ id: 5, name: 'Camille', claimed: false, ranked: 0, rankable: 0 }, { id: 6, name: 'Hugo', claimed: false, ranked: 0, rankable: 0 }]}
+    guests={[{ id: 5, name: 'Camille', claimed: false, ranked: 0, rankable: 0, ballot: [] }, { id: 6, name: 'Hugo', claimed: false, ranked: 0, rankable: 0, ballot: [] }]}
     plates={[{ id: 10, number: 1, label: 'pécan caramel', authorIds: [5, 6] }]} />)
   const card = screen.getByRole('button', { name: /Modifier l’assiette 1/ })
   expect(card.textContent).toMatch(/1.*Camille & Hugo.*pécan caramel/)

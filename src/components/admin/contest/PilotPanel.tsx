@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { setRevealStepAction } from '@/app/actions/contest-admin'
 import type { AdminView } from '@/lib/contest-state'
-import { IconEye, IconEyeOff, IconExternal } from '@/components/icons'
+import { IconEye, IconEyeOff, IconExternal, IconRefresh } from '@/components/icons'
 import { AccessPanel } from './AccessPanel'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 
@@ -61,6 +61,11 @@ export function PilotPanel({ view, onDone }: { view: AdminView; onDone: () => vo
       <div className={block}>
         <div className="flex items-center">
           <h3 className={`${caption} flex-1`}>Classement en direct</h3>
+          {/* Recalculé à chaque relecture de l'état (toutes les 2,5 s) : ce bouton
+              la déclenche tout de suite. */}
+          <button type="button" aria-label="Rafraîchir le classement" onClick={onDone} className={`${btn} mr-1.5`}>
+            <IconRefresh size={14} />
+          </button>
           <button type="button" aria-label={showLive ? 'Masquer le classement en direct' : 'Afficher le classement en direct'} aria-pressed={showLive}
             onClick={() => setShowLive(!showLive)} className={btn}>
             {showLive ? <IconEyeOff size={14} /> : <IconEye size={14} />}

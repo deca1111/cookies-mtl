@@ -5,7 +5,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 const { db, requireAdmin, loadAdminView } = vi.hoisted(() => {
   const names = [
     'createContest', 'deleteContest', 'renameContest', 'getContestById', 'setPhase', 'setRevealStep', 'addGuest',
-    'renameGuest', 'deleteGuest', 'releaseGuest', 'addPlate', 'updatePlate', 'deletePlate', 'setPlateNumbers',
+    'renameGuest', 'deleteGuest', 'releaseGuest', 'releaseAllGuests', 'addPlate', 'updatePlate', 'deletePlate', 'setPlateNumbers',
     'loadContestData',
   ]
   return {
@@ -24,7 +24,7 @@ vi.mock('@/lib/contest-db', () => ({
 }))
 
 import {
-  addGuestAction, createContestAction, releaseGuestAction, renameContestAction, savePlateAction, setRevealStepAction, shiftPhaseAction,
+  addGuestAction, createContestAction, releaseAllGuestsAction, releaseGuestAction, renameContestAction, savePlateAction, setRevealStepAction, shiftPhaseAction,
   shufflePlatesAction,
 } from '../contest-admin'
 
@@ -164,4 +164,17 @@ test('libérer : refusé une fois les votes clos, les résultats sont figés', a
   db.getContestById.mockResolvedValue(null)
   expect(await releaseGuestAction(1, 5)).toEqual({ ok: false, error: 'not-found' })
   expect(db.releaseGuest).not.toHaveBeenCalled()
+})
+
+// « Déconnecter tous les téléphones » : tous les noms redeviennent libres et
+// les classements partent avec ; invités et assiettes restent.
+test('tout libérer : seulement avant la clôture des votes', async () => {
+  expect(await releaseAllGuestsAction(1)).toEqual({ ok: true })
+  expect(db.releaseAllGuests).toHaveBeenCalledWith(1)
+  db.releaseAllGuests.mockReset()
+  db.getContestById.mockResolvedValue(contest('closed'))
+  expect(await releaseAllGuestsAction(1)).toEqual({ ok: false, error: 'locked' })
+  db.getContestById.mockResolvedValue(null)
+  expect(await releaseAllGuestsAction(1)).toEqual({ ok: false, error: 'not-found' })
+  expect(db.releaseAllGuests).not.toHaveBeenCalled()
 })

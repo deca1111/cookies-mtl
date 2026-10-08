@@ -35,7 +35,8 @@ export type GuestView = {
   results: { rows: ResultRow[]; agreement: number | null; myPlates: ResultRow[] } | null
 }
 
-export type AdminGuest = { id: number; name: string; claimed: boolean; ranked: number; rankable: number }
+// `ballot` : numéros des assiettes classées, meilleur d'abord (affiché à la demande).
+export type AdminGuest = { id: number; name: string; claimed: boolean; ranked: number; rankable: number; ballot: number[] }
 
 export type AdminView = {
   contest: Contest
@@ -100,11 +101,16 @@ export function buildGuestView(contest: Contest, data: ContestData, meId: number
 
 export function buildAdminView(contest: Contest, data: ContestData): AdminView {
   const rows = resultRows(data)
-  const guests = data.guests.map((g) => ({
-    ...g,
-    ranked: ballotOf(data, g.id).length,
-    rankable: rankableFor(data, g.id).length,
-  }))
+  const numberOf = new Map(data.plates.map((p) => [p.id, p.number]))
+  const guests = data.guests.map((g) => {
+    const ballot = ballotOf(data, g.id)
+    return {
+      ...g,
+      ranked: ballot.length,
+      rankable: rankableFor(data, g.id).length,
+      ballot: ballot.map((id) => numberOf.get(id)!),
+    }
+  })
   return {
     contest,
     guests,

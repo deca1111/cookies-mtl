@@ -64,3 +64,10 @@ test('admin - avancement par invite et nombre de bulletins complets', () => {
   expect(byName['Julie']).toMatchObject({ ranked: 0, rankable: 1 })
   expect(v.complete).toBe(2)
 })
+
+test('admin - classement de chaque invité, en numéros d assiette, meilleur d abord', () => {
+  const byName = Object.fromEntries(buildAdminView(contest('voting'), data).guests.map((g) => [g.name, g]))
+  expect(byName['Leo'].ballot).toEqual([3, 1, 2])
+  expect(byName['Marc'].ballot).toEqual([1, 3])
+  expect(byName['Julie'].ballot).toEqual([])
+})
