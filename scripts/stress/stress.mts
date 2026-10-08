@@ -38,9 +38,16 @@ type Kind = 'page' | 'poll' | 'action'
 type Sample = { at: number; kind: Kind; ms: number; ok: boolean }
 const samples: Sample[] = []
 const failures: string[] = []
+// Actions serveur que le navigateur coupe une fois leur réponse lue (net::ERR_ABORTED
+// en prod) : l'invité passe bien à la suite et rien n'est perdu (vérifié en base à
+// la fin). Comptées à part pour ne pas noyer les vraies erreurs.
+let abortedAfterReply = 0
 const started = Date.now()
 let active = 0
 let stageLabel = ''
+
+// Où en est chaque invité virtuel : sert à dater une requête annulée.
+const stepOf = new Map<string, string>()
 
 function instrument(page: Page, who: string) {
   page.on('requestfinished', async (req) => {
@@ -59,8 +66,15 @@ function instrument(page: Page, who: string) {
     const ms = req.timing().responseEnd
     if (ms >= 0) samples.push({ at: Date.now(), kind, ms, ok })
   })
-  page.on('requestfailed', (req) => {
-    if (req.url().startsWith(BASE)) failures.push(`${who} échec réseau ${req.failure()?.errorText} ${req.url()}`)
+  page.on('requestfailed', async (req) => {
+    if (!req.url().startsWith(BASE)) return
+    const h = await req.allHeaders()
+    if (h['next-action'] && req.failure()?.errorText === 'net::ERR_ABORTED') {
+      abortedAfterReply++
+      return
+    }
+    const what = h['next-action'] ? `action ${h['next-action'].slice(0, 8)}` : h['rsc'] ? 'rsc' : req.resourceType()
+    failures.push(`${who} échec réseau ${req.failure()?.errorText} ${req.method()} ${what} (pendant : ${stepOf.get(who)})`)
   })
 }
 
@@ -132,16 +146,23 @@ async function guest(browser: Browser, name: string, secret: string) {
   instrument(page, name)
   try {
     await page.goto(`${BASE}/concours/${secret}`, { waitUntil: 'domcontentloaded', timeout: 30_000 })
+    stepOf.set(name, 'choix du nom')
     await page.getByRole('button', { name, exact: true }).click({ timeout: 30_000 })
     await page.getByRole('button', { name: 'C’est moi' }).click()
     await page.getByRole('heading', { name: 'Mon classement' }).waitFor({ timeout: 30_000 })
     active++
     placed.set(name, 0)
+    stepOf.set(name, 'classement')
     // Un vrai invité goûte, puis place un cookie toutes les 5 à 15 s ; une fois
     // tout classé, il réordonne de temps en temps.
     while (!stopping) {
       await sleep(5000 + rnd(10_000))
       if (stopping) break
+      // Ce que verrait l'invité : le bandeau « hors ligne » ou « enregistrement impossible ».
+      // (Next.js monte aussi un élément vide de même rôle : seul un texte compte.)
+      for (const text of await page.getByRole('status').allInnerTexts()) {
+        if (text.trim()) failures.push(`${name} bandeau affiché : ${text.trim()}`)
+      }
       const chips = page.locator('button[aria-label^="Assiette "]')
       const n = await chips.count()
       if (n > 0) {
@@ -223,8 +244,9 @@ try {
   const verdict = failures.length === 0 && lost.length === 0
     ? `OK — ${active} invités, ${all.n} sondages (p95 ${all.p95} ms), ${act.n} enregistrements (p95 ${act.p95} ms), aucun perdu.`
     : `À regarder — ${failures.length} erreur(s), ${lost.length} bulletin(s) incomplet(s).`
-  console.log(`\n${verdict}`)
-  writeReport(true, verdict)
+  const note = abortedAfterReply ? ` (${abortedAfterReply} action(s) coupée(s) par le navigateur après réponse, sans perte.)` : ''
+  console.log(`\n${verdict}${note}`)
+  writeReport(true, verdict + note)
   for (const s of sessions) await s.ctx.close().catch(() => {})
   await browser.close()
   await cleanup()
