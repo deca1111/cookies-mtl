@@ -7,7 +7,7 @@ import {
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useState, type ReactNode } from 'react'
-import { IconCheck, IconClose } from '@/components/icons'
+import { IconCheck, IconClose, IconPlate } from '@/components/icons'
 import type { ContestMsgKey } from '@/lib/contest-i18n'
 import { dropIndex, moveBy, placeAt, removeFrom } from '@/lib/contest-ranking'
 import { PlateTag } from './PlateTag'
@@ -277,9 +277,11 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
         </button>
       )}
       <span className="font-display w-8 text-center text-[22px] text-[color:var(--btn-bg)]">{index + 1}</span>
+      {/* Le rang, puis l'assiette : son icône et son étiquette suffisent, sans
+          « Assiette X » en toutes lettres qui ajoutait un troisième chiffre. */}
+      <span className="flex-none text-[color:var(--text-muted)]"><IconPlate size={24} /></span>
       <PlateTag label={t('plateTag', { n: plate.number })} size="sm" tilt />
       <div className="flex-1 select-none">
-        <div className="text-[16px] font-medium text-[color:var(--text-strong)]">{t('plate', { n: plate.number })}</div>
         {plate.label && <div className="text-[13px] text-[color:var(--text-muted)]">{plate.label}</div>}
       </div>
       {!locked && (

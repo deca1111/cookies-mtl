@@ -99,7 +99,7 @@ const en: Record<keyof typeof fr, string> = {
   changeNameBody: "You’ll go back to the list of names. The ranking made as “{name}” will be erased.",
   changeNameConfirm: "Change name",
   changeNameFailed: "Can’t change name right now.",
-  plateTag: "No. {n}",
+  plateTag: "N° {n}",
   verdict: "The verdict",
   ballotsPlates: "{b} ballots · {p} plates",
   ballotsPlatesOne: "{b} ballot · {p} plates",

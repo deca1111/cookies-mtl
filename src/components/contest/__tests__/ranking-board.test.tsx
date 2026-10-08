@@ -28,9 +28,12 @@ test('les pastilles à goûter affichent l’étiquette « N° X », sous le nom
   expect(btn.textContent).toBe('N° 2')
 })
 
-test('une ligne classée affiche l’étiquette « N° X »', () => {
+test('une ligne classée : « N° X » et sa note, sans le texte « Assiette X » en double', () => {
   render(<RankingBoard plates={plates} ranking={[20]} onChange={vi.fn()} locked={false} t={t} />)
-  expect(screen.getByText('N° 2')).toBeTruthy()
+  const row = screen.getByRole('listitem')
+  expect(row.textContent).toContain('N° 2')
+  expect(row.textContent).toContain('Noisette')
+  expect(row.textContent).not.toContain('Assiette')
 })
 
 test('toucher une assiette puis « Placer ici » l’insère à cet endroit', () => {
@@ -72,7 +75,7 @@ test('verrouillé : aucune commande', () => {
 
 test('une assiette supprimée disparaît du classement affiché', () => {
   render(<RankingBoard plates={plates.slice(0, 2)} ranking={[30, 10]} onChange={vi.fn()} locked={false} t={t} />)
-  expect(screen.queryByText('Assiette 3')).toBeNull()
+  expect(screen.queryByText('N° 3')).toBeNull()
 })
 
 test('indicateur de progression', () => {
