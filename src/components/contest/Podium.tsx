@@ -28,9 +28,10 @@ export function Podium({ rows, size, text, lang, subLang }: { rows: ResultRow[];
     if (tv) return position === 1 ? 'text-[88px] text-[#f3c787] [text-shadow:0_0_40px_rgba(243,199,135,0.4)]' : 'text-[64px] text-[#d29a55]'
     return position === 1 ? 'text-[36px] text-[color:var(--accent-ink)]' : 'text-[28px] text-[color:var(--accent-ink)]'
   }
-  // Lisibilité TV (vague de correction PR 2, point 2) : auteurs à 34px (au lieu
-  // de 26px), lus depuis le fond d'une salle.
-  const authorsClass = tv ? 'text-[34px] text-[#7f98e0]' : 'text-[14px] text-[color:var(--phase-reveal)]'
+  // Sur la TV, les prénoms priment sur le numéro d'assiette (retours d'UAT) :
+  // grands sous une étiquette plus petite, encore plus grands pour le 1er.
+  const authorsClass = (position: number) =>
+    tv ? `${position === 1 ? 'text-[64px]' : 'text-[48px]'} leading-tight text-[#7f98e0]` : 'text-[14px] text-[color:var(--phase-reveal)]'
 
   return (
     <div className={`flex items-start justify-center ${tv ? 'gap-12' : 'gap-4'}`}>
@@ -43,8 +44,8 @@ export function Podium({ rows, size, text, lang, subLang }: { rows: ResultRow[];
           <div className={`flex ${tv ? 'gap-6' : 'gap-2'}`}>
             {s.rows.map((r) => (
               <div key={r.plateId} className="flex flex-col items-center gap-1 text-center">
-                <PlateTag label={text('plateTag', { n: r.number })} size={tv ? 'lg' : 'sm'} tilt score={r.score} scoreLabel={r.score === null ? undefined : text('score', { n: r.score })} />
-                <span className={`font-display ${authorsClass}`}>{r.authors.join(' & ') || '?'}</span>
+                <PlateTag label={text('plateTag', { n: r.number })} size={tv ? 'ml' : 'sm'} tilt score={r.score} scoreLabel={r.score === null ? undefined : text('score', { n: r.score })} />
+                <span className={`font-display ${authorsClass(s.position)}`}>{r.authors.join(' & ') || '?'}</span>
               </div>
             ))}
           </div>

@@ -5,6 +5,8 @@
 const SIZES = {
   sm: { box: 'min-w-[44px] px-2 py-1.5 rounded-[8px]', num: 'text-[15px]', score: 'text-[10px]' },
   md: { box: 'min-w-[64px] px-3 py-2 rounded-[10px]', num: 'text-[20px]', score: 'text-[11px]' },
+  // Étiquette secondaire sur la TV (écran final, sous les prénoms).
+  ml: { box: 'min-w-[120px] px-5 py-4 rounded-[16px]', num: 'text-[36px]', score: 'text-[18px]' },
   lg: { box: 'min-w-[220px] px-8 py-8 rounded-[24px]', num: 'text-[64px]', score: 'text-[28px]' },
   xl: { box: 'min-w-[280px] px-10 py-10 rounded-[28px]', num: 'text-[84px]', score: 'text-[34px]' },
 } as const

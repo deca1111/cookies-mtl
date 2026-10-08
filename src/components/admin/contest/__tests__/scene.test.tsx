@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { buildRevealSteps } from '@/lib/contest-reveal'
 import type { AdminView } from '@/lib/contest-state'
@@ -38,8 +38,13 @@ test('étape « note » : numéro et note, sans auteur', () => {
   render(<Scene initial={view(3)} />)
   expect(screen.getByText('80/100')).toBeTruthy()
   expect(screen.queryByText(/Julie/)).toBeNull()
-  expect(screen.getByText('+20 pts devant le 2e')).toBeTruthy()
-  expect(screen.getByText('20 pts ahead of 2nd')).toBeTruthy()
+})
+
+// Retours d'UAT : ni rang moyen ni écart de points sur les slides, la note suffit.
+test('slides sans détails : ni rang moyen, ni « pts devant »', () => {
+  render(<Scene initial={view(4)} />)
+  expect(screen.queryByText(/rang moyen|avg\. rank/)).toBeNull()
+  expect(screen.queryByText(/pts devant|pts ahead/)).toBeNull()
 })
 
 test('étape « auteurs » : le nom apparaît', () => {
@@ -47,11 +52,15 @@ test('étape « auteurs » : le nom apparaît', () => {
   expect(screen.getByText(/Julie/)).toBeTruthy()
 })
 
-// Finding #9 : un rang moyen s'écrit avec une virgule en français ("1,0"), jamais
-// le point de `toFixed` — la scène est en français pour l'instant.
-test('rang moyen : virgule française, pas de point', () => {
-  render(<Scene initial={view(4)} />)
-  expect(screen.getByText(/rang moyen 1,0/)).toBeTruthy()
+// Écran final : les prénoms d'abord, le numéro d'assiette en second.
+test('écran final : prénoms en grand, numéro d’assiette en petit', () => {
+  const v = view(5)
+  const rows = [...v.rows, row(30, 3, 3, 40, ['Léa']), row(40, 4, 4, 20, ['Hugo'])]
+  render(<Scene initial={{ ...v, rows }} />)
+  const rest = screen.getByTestId('final-rest')
+  const name = Number.parseInt(within(rest).getByText('Hugo').className.match(/text-\[(\d+)px\]/)![1])
+  const tag = Number.parseInt(within(rest).getByText('N° 4').className.match(/text-\[(\d+)px\]/)![1])
+  expect(name).toBeGreaterThan(tag)
 })
 
 test('hors phase reveal : écran d’attente', () => {

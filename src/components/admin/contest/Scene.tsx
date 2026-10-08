@@ -10,11 +10,6 @@ import { podium } from '@/lib/contest-podium'
 import type { AdminView, ResultRow } from '@/lib/contest-state'
 import { runAction } from './runAction'
 
-// Un rang moyen est une fraction ("3") formatée en "3,0" : `toFixed` rendrait un
-// point, jamais une virgule. Nombres au format `fr-CA` dans les deux langues
-// (spec PR 2 §6), plutôt que la locale du navigateur qui piloterait.
-const formatAvgRank = (n: number) => new Intl.NumberFormat('fr-CA', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)
-
 // Bilingue (spec PR 2 §6) : pas de sélecteur de langue, le français en grand et
 // l'anglais en petit italique estompé juste dessous, toujours les deux. La taille
 // est posée sur le conteneur : `0.45em` se calcule alors sur celle du français.
@@ -135,7 +130,7 @@ export function Scene({ initial }: { initial: AdminView }) {
           ? 'Session expirée ou erreur serveur.'
           : null
 
-  // Habillage commun (spec PR 2 §6) : halo chocolat, logo discret, points de
+  // Habillage commun (spec PR 2 §6) : halo chocolat, logo bien visible, points de
   // progression. La scène est une TV : elle reste sombre quel que soit le thème
   // du site, d'où les couleurs fixes plutôt que les jetons.
   let content: ReactNode
@@ -175,8 +170,9 @@ export function Scene({ initial }: { initial: AdminView }) {
                   {r.position === null ? fr('unranked') : ordinal('fr', r.position)}
                   <span className="mt-1 text-[16px] italic opacity-60">{r.position === null ? en('unranked') : ordinal('en', r.position)}</span>
                 </span>
-                <span className="font-display">{fr('plateTag', { n: r.number })}</span>
-                <span className="flex-1 font-display text-[#7f98e0]">{r.authors.join(' & ') || '?'}</span>
+                {/* Les prénoms d'abord, le numéro d'assiette en second (retours d'UAT). */}
+                <span className="flex-1 font-display text-[34px] text-[#7f98e0]">{r.authors.join(' & ') || '?'}</span>
+                <span className="font-display text-[20px] opacity-70">{fr('plateTag', { n: r.number })}</span>
                 {r.score !== null && <span className="opacity-70">{fr('score', { n: r.score })}</span>}
               </li>
             ))}
@@ -185,15 +181,10 @@ export function Scene({ initial }: { initial: AdminView }) {
       )
     } else {
       const shown = step.plateIds.map((id) => byId.get(id)).filter((r): r is ResultRow => !!r)
-      // Écart avec le rang suivant : « +12 pts devant le 2e » (spec §10). `shown[0]`
-      // peut être absent (assiette supprimée entre-temps) : sans ce garde,
-      // `shown[0]?.score !== null` valait `true` même pour un tableau vide
-      // (`undefined !== null`), et l'accès à `shown[0].score!` plantait.
-      const nextRow = rows.find((r) => r.position !== null && r.position > step.position)
-      const gap = shown[0] && shown[0].score !== null && nextRow?.score != null ? shown[0].score! - nextRow.score : null
       const first = step.position === 1
-      // Ex æquo : les auteurs (et rangs moyens) de chaque assiette sont repérés
-      // par leur « N° X » dans la colonne de droite.
+      // Ex æquo : les auteurs de chaque assiette sont repérés par leur « N° X »
+      // dans la colonne de droite. Ni rang moyen ni écart de points (retours
+      // d'UAT) : la note sur l'étiquette suffit.
       const tagOf = (r: ResultRow) => (shown.length > 1 ? `${fr('plateTag', { n: r.number })} · ` : '')
       if (first) halo = HALO_FIRST
 
@@ -230,19 +221,6 @@ export function Scene({ initial }: { initial: AdminView }) {
                 <span className="sr-only">{fr('authorsHidden')}</span>
               </div>
             )}
-            {shown.map((r) => r.avgRank !== null && (
-              <div key={r.plateId} className="flex flex-col">
-                <span className="text-[24px] opacity-80">{tagOf(r)}{fr('avgRank', { n: formatAvgRank(r.avgRank) })}</span>
-                <span className="text-[18px] italic opacity-60">{en('avgRank', { n: formatAvgRank(r.avgRank) })}</span>
-              </div>
-            ))}
-            {/* `k` diffère d'une langue à l'autre (« 2e » / « 2nd ») : deux lignes à la main plutôt que <Bi>. */}
-            {step.podium && gap !== null && gap > 0 && nextRow?.position != null && (
-              <div className="flex flex-col">
-                <span className="text-[28px]">{fr('ptsAhead', { n: gap, k: ordinal('fr', nextRow.position) })}</span>
-                <span className="text-[20px] italic opacity-60">{en('ptsAhead', { n: gap, k: ordinal('en', nextRow.position) })}</span>
-              </div>
-            )}
           </div>
         </div>
       )
@@ -252,7 +230,7 @@ export function Scene({ initial }: { initial: AdminView }) {
   const body: ReactNode = (
     <main className={`${SHELL} ${finalScreen ? 'justify-start' : 'justify-center'}`} style={{ background: halo }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marque statique */}
-      <img src="/brand/logo.svg" alt="" className="absolute left-6 top-6 h-16 w-16 opacity-80" />
+      <img src="/brand/logo.svg" alt="" className="absolute left-8 top-8 h-32 w-32" />
       {content}
       {contest.phase === 'reveal' && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2" aria-hidden="true">
