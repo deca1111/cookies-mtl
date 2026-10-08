@@ -217,7 +217,8 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
       <header className="flex items-center gap-2">
         {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marque statique */}
         <img src="/brand/logo.svg" alt="" className="h-7 w-7" />
-        <span className="font-display flex-1 truncate text-[15px] text-[color:var(--text-strong)]">{view.name}</span>
+        {/* Nom long : sur deux lignes plutôt que coupé (retour d'UAT), au-delà seulement des points de suspension. */}
+        <span className="font-display line-clamp-2 min-w-0 flex-1 break-words text-[15px] leading-tight text-[color:var(--text-strong)]">{view.name}</span>
         {lang && view.me && (canChangeName ? (
           <button type="button" onClick={() => setSheetOpen(true)} aria-label={`${view.me.name} — ${t('changeName')}`}
             className="flex items-center gap-1 rounded-full border border-[color:var(--border-strong)] px-3 py-1 text-[13px] text-[color:var(--text-body)]">
