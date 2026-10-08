@@ -89,4 +89,9 @@ await sql`
   )
 `
 
+// Mode de vote (retours d'UAT) : seuls les K premiers de chaque bulletin
+// rapportent des points. NULL = « tout » (K = nombre de cookies). Défaut 5 :
+// la bonne échelle pour une vingtaine de cookies.
+await sql`ALTER TABLE contests ADD COLUMN IF NOT EXISTS top_k int DEFAULT 5 CHECK (top_k IS NULL OR top_k >= 1)`
+
 console.log('migration ok')

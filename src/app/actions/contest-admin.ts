@@ -3,10 +3,10 @@
 import { requireAdmin } from '@/lib/auth'
 import {
   addGuest, addPlate, createContest, deleteContest, deleteGuest, deletePlate, getContestById, isUniqueViolation,
-  loadContestData, releaseAllGuests, releaseGuest, renameContest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
+  loadContestData, releaseAllGuests, releaseGuest, renameContest, renameGuest, setPhase, setPlateNumbers, setRevealStep, setTopK, updatePlate,
 } from '@/lib/contest-db'
 import { generateSecret } from '@/lib/contest-identity'
-import { cleanLabel, cleanName, nextPlateNumber, shiftPhase, shuffled, type Phase } from '@/lib/contest-rules'
+import { cleanLabel, cleanName, isTopK, nextPlateNumber, shiftPhase, shuffled, type Phase } from '@/lib/contest-rules'
 import { loadAdminView } from '@/lib/contest-views'
 
 type AdminResult = { ok: true } | { ok: false; error: string }
@@ -146,6 +146,20 @@ export async function shufflePlatesAction(contestId: number): Promise<AdminResul
   const { plates } = await loadContestData(contestId)
   const numbers = shuffled(plates.map((p) => p.number))
   await setPlateNumbers(contestId, plates.map((p, i) => ({ plateId: p.id, number: numbers[i] })))
+  return OK
+}
+
+// Mode de vote (top K) : réglable jusqu'à la clôture des votes. Les bulletins
+// gardent l'ordre complet de chaque invité, donc changer K pendant les votes ne
+// perd rien — les téléphones déplacent leur ligne de coupure au sondage suivant.
+// Une fois les votes clos, les résultats sont figés : plus de changement.
+export async function setTopKAction(contestId: number, topK: number | null): Promise<AdminResult> {
+  await requireAdmin()
+  if (!isTopK(topK)) return { ok: false, error: 'top-k' }
+  const contest = await getContestById(contestId)
+  if (!contest) return { ok: false, error: 'not-found' }
+  if (contest.phase !== 'preparation' && contest.phase !== 'voting') return { ok: false, error: 'locked' }
+  await setTopK(contestId, topK)
   return OK
 }
 

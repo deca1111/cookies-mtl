@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import { PlateTag } from '@/components/contest/PlateTag'
 import { Medal, MysteryMedal } from '@/components/contest/Medal'
 import { Podium } from '@/components/contest/Podium'
-import { contestDict, fmt, ordinal, type ContestMsgKey } from '@/lib/contest-i18n'
+import { contestDict, fmt, ordinal, scoreKey, type ContestMsgKey } from '@/lib/contest-i18n'
 import { podium } from '@/lib/contest-podium'
 import type { DuelStage } from '@/lib/contest-reveal'
 import type { ResultRow } from '@/lib/contest-state'
@@ -29,7 +29,7 @@ export function Bi({ k, v, className, align = 'center' }: { k: ContestMsgKey; v?
 }
 
 const authorsOf = (r: ResultRow) => r.authors.join(' & ') || '?'
-const scoreOf = (r: ResultRow) => (r.score === null ? undefined : fr('score', { n: r.score }))
+const scoreOf = (r: ResultRow) => (r.score === null ? undefined : fr(scoreKey(r.score), { n: r.score }))
 
 // Miettes de cookie qui jaillissent derrière le gagnant, aux couleurs du cookie
 // de la marque. Pseudo-aléatoire à graine fixe : même rendu côté serveur et
@@ -69,6 +69,27 @@ export function TitleSlide({ voters, plates }: { voters: number; plates: number 
       <h1><Bi k="verdict" className="font-display text-[110px] leading-none" /></h1>
       {/* Singulier : « 1 bulletin », pas « 1 bulletins ». */}
       <Bi k={voters === 1 ? 'ballotsPlatesOne' : 'ballotsPlates'} v={{ b: voters, p: plates }} className="text-[32px]" />
+    </div>
+  )
+}
+
+// Top K : les cookies cités dans aucun top, montrés ensemble au début de la
+// soirée, sans rang ni note — on salue les pâtissiers sans désigner de dernier.
+export function MenuSlide({ rows }: { rows: ResultRow[] }) {
+  // Jusqu'à 4 par ligne ; au-delà, la grille rétrécit pour tenir sur la TV.
+  const cols = Math.min(4, rows.length)
+  const small = rows.length > 8
+  return (
+    <div className="flex w-full max-w-[1760px] flex-col items-center gap-12">
+      <h1 className="rv-rise"><Bi k="menuTitle" className="font-display text-[64px] leading-none" /></h1>
+      <ul data-testid="menu" className="grid w-full justify-center gap-x-10 gap-y-10" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 360px))` }}>
+        {rows.map((r, i) => (
+          <li key={r.plateId} className="rv-rise flex flex-col items-center gap-4 text-center" style={{ animationDelay: `${300 + i * 180}ms` }}>
+            <PlateTag label={fr('plateTag', { n: r.number })} size={small ? 'md' : 'ml'} tilt cookie />
+            <span className={`font-display leading-tight text-[#7f98e0] ${small ? 'text-[28px]' : 'text-[36px]'}`}>{authorsOf(r)}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }

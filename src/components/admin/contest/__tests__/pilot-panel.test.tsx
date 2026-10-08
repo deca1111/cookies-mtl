@@ -15,12 +15,11 @@ import { PilotPanel } from '../PilotPanel'
 afterEach(cleanup)
 
 const view = (phase: AdminView['contest']['phase'], revealStep = 0): AdminView => ({
-  contest: { id: 1, name: 'Anniv', secret: 's', phase, revealStep },
+  contest: { id: 1, name: 'Anniv', secret: 's', phase, revealStep, topK: 5 },
   guests: [],
   plates: [],
   rows: [],
   steps: [{ kind: 'title' }, { kind: 'final' }],
-  complete: 0,
 })
 
 beforeEach(() => {
