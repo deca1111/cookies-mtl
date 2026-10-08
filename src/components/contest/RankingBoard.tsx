@@ -1,7 +1,7 @@
 'use client'
 
 import {
-  DndContext, DragOverlay, KeyboardSensor, TouchSensor, closestCenter, rectIntersection, useDraggable, useDroppable,
+  DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, rectIntersection, useDraggable, useDroppable,
   useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragMoveEvent, type DragStartEvent, type UniqueIdentifier,
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -10,7 +10,6 @@ import { useState, type ReactNode } from 'react'
 import { IconCheck, IconClose } from '@/components/icons'
 import type { ContestMsgKey } from '@/lib/contest-i18n'
 import { dropIndex, moveBy, placeAt, removeFrom } from '@/lib/contest-ranking'
-import { MousePenSensor } from './MousePenSensor'
 import { PlateTag } from './PlateTag'
 
 type Plate = { id: number; number: number; label: string | null }
@@ -72,12 +71,14 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   // on l'ignore pour l'affichage plutôt que d'envoyer un classement invalide.
   const activePick = picked !== null && pool.some((p) => p.id === picked) ? picked : null
 
-  // Appui long de 200 ms avant de saisir une assiette au doigt : sans ce délai,
-  // le simple défilement de la page déclencherait des glisser involontaires. À
-  // la souris, 6 px de mouvement suffisent (MousePenSensor ignore le doigt).
+  // Glisser « classique » : souris ou doigt, le glisser part dès 6 px de
+  // mouvement, sans appui long (retour d'UAT : l'appui long de 200 ms donnait
+  // l'impression que rien ne marchait). Ce qui se glisse — poignée des lignes,
+  // pastilles « à goûter » — porte `touch-none` : le navigateur ne le prend
+  // pas pour un défilement, et un simple toucher reste un clic (« choisir puis
+  // placer »). Le défilement se fait en balayant ailleurs.
   const sensors = useSensors(
-    useSensor(MousePenSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
@@ -280,8 +281,8 @@ function PoolChip({ plate, picked, onPick, t }: ChipProps) {
   // le KeyboardSensor les intercepterait pour démarrer un glisser.
   const pointer = { ...listeners }
   delete pointer.onKeyDown
-  // Pas de `touch-none` ici (même raison que la poignée des lignes, plus bas) :
-  // l'appui long du TouchSensor suffit à distinguer le glisser du défilement.
+  // `touch-none` : au doigt, la pastille part tout de suite sous le doigt au lieu
+  // de faire défiler la page. Relâchée hors du classement, elle revient à sa place.
   return (
     <button
       ref={setNodeRef}
@@ -291,7 +292,7 @@ function PoolChip({ plate, picked, onPick, t }: ChipProps) {
       aria-pressed={picked}
       aria-label={t('plate', { n: plate.number })}
       onClick={onPick}
-      className={`select-none rounded-[10px] transition-transform [-webkit-touch-callout:none] active:scale-95 ${picked ? 'ring-4 ring-[color:var(--btn-bg)]' : ''} ${isDragging ? 'opacity-30' : ''}`}
+      className={`touch-none select-none rounded-[10px] transition-transform [-webkit-touch-callout:none] active:scale-95 ${picked ? 'ring-4 ring-[color:var(--btn-bg)]' : ''} ${isDragging ? 'opacity-30' : ''}`}
     >
       <PlateTag label={t('plateTag', { n: plate.number })} size="md" cookie />
     </button>
@@ -320,10 +321,8 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
         : 'border-[color:var(--border)] shadow-[var(--shadow-chip)]'}`}
     >
       {/* Poignée dédiée : `attributes`/`listeners` (et donc `touch-none`) ne
-          portent que sur ce petit bouton, pas sur toute la ligne. Sinon un doigt
-          qui balaie le nom de l'assiette ne peut plus faire défiler la page sur
-          iOS — `touch-action: none` gagne avant que le délai du TouchSensor
-          rende la main au défilement. */}
+          portent que sur ce petit bouton, pas sur toute la ligne : un doigt qui
+          balaie le reste de la ligne fait toujours défiler la page. */}
       {!locked && (
         <button
           type="button"

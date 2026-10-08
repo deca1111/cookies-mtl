@@ -84,3 +84,12 @@ test('indicateur de progression', () => {
   rerender(<RankingBoard plates={plates} ranking={[10, 20, 30]} onChange={vi.fn()} locked={false} t={t} />)
   expect(screen.getByText(contestDict.fr.allRanked)).toBeTruthy()
 })
+
+// Glisser « classique » au doigt (retour d'UAT) : pastilles et poignées en
+// `touch-none`, sinon le navigateur prend le geste pour un défilement et le
+// glisser ne part pas sans appui long.
+test('pastilles et poignées en touch-none : le glisser part tout de suite au doigt', () => {
+  render(<RankingBoard plates={plates} ranking={[20]} onChange={vi.fn()} locked={false} t={t} />)
+  expect(screen.getByRole('button', { name: 'Assiette 1' }).className).toContain('touch-none')
+  expect(screen.getByRole('button', { name: contestDict.fr.dragHandle }).className).toContain('touch-none')
+})
