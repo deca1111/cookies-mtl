@@ -14,3 +14,10 @@ test('sans note : pas de ligne de score', () => {
   const { container } = render(<PlateTag label="N° 3" size="sm" />)
   expect(container.textContent).toBe('N° 3')
 })
+
+// Retours d'UAT : « cookie N° X » se lit mieux qu'une icône d'assiette abstraite.
+test('avec cookie : le cookie de marque à côté du numéro, dans l’étiquette', () => {
+  const { container } = render(<PlateTag label="N° 3" size="sm" cookie />)
+  expect(container.querySelector('use')?.getAttribute('href')).toBe('#cmtl-cookie-full')
+  expect(container.textContent).toBe('N° 3')
+})

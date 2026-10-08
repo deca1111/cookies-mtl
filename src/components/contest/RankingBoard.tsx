@@ -1,15 +1,16 @@
 'use client'
 
 import {
-  DndContext, DragOverlay, KeyboardSensor, PointerSensor, TouchSensor, closestCenter, rectIntersection, useDraggable, useDroppable,
+  DndContext, DragOverlay, KeyboardSensor, TouchSensor, closestCenter, rectIntersection, useDraggable, useDroppable,
   useSensor, useSensors, type CollisionDetection, type DragEndEvent, type DragMoveEvent, type DragStartEvent, type UniqueIdentifier,
 } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useState, type ReactNode } from 'react'
-import { IconCheck, IconClose, IconPlate } from '@/components/icons'
+import { IconCheck, IconClose } from '@/components/icons'
 import type { ContestMsgKey } from '@/lib/contest-i18n'
 import { dropIndex, moveBy, placeAt, removeFrom } from '@/lib/contest-ranking'
+import { MousePenSensor } from './MousePenSensor'
 import { PlateTag } from './PlateTag'
 
 type Plate = { id: number; number: number; label: string | null }
@@ -21,20 +22,37 @@ type Props = { plates: Plate[]; ranking: number[]; onChange: (next: number[]) =>
 // draggables du même DndContext, à l'id préfixé pour ne pas les confondre avec
 // les lignes classées (ids numériques). La zone du classement est un droppable,
 // pour accueillir la première assiette d'une liste encore vide.
+// À l'inverse, la section « à goûter » est un droppable : une ligne classée qu'on
+// y relâche sort du classement.
 const POOL = 'pool-'
 const ZONE = 'ranking'
+const POOL_ZONE = 'pool'
 const poolPlateId = (id: UniqueIdentifier) => (typeof id === 'string' && id.startsWith(POOL) ? Number(id.slice(POOL.length)) : null)
 
-// Une ligne classée qu'on déplace vise la ligne la plus proche, comme avant.
-// Une assiette venue d'« à goûter » ne vise rien tant qu'elle ne touche pas la
-// zone du classement : la relâcher ailleurs la laisse où elle était.
+// Une ligne classée vise la ligne la plus proche, sauf si elle touche la section
+// « à goûter ». Une assiette venue d'« à goûter » ne vise rien tant qu'elle ne
+// touche pas la zone du classement : la relâcher ailleurs la laisse où elle était.
 const collision: CollisionDetection = (args) => {
-  const rows = args.droppableContainers.filter((c) => c.id !== ZONE)
-  if (poolPlateId(args.active.id) === null) return closestCenter({ ...args, droppableContainers: rows })
-  const zone = rectIntersection({ ...args, droppableContainers: args.droppableContainers.filter((c) => c.id === ZONE) })
+  const only = (id: string) => args.droppableContainers.filter((c) => c.id === id)
+  const rows = args.droppableContainers.filter((c) => c.id !== ZONE && c.id !== POOL_ZONE)
+  if (poolPlateId(args.active.id) === null) {
+    const pool = rectIntersection({ ...args, droppableContainers: only(POOL_ZONE) })
+    return pool.length > 0 ? pool : closestCenter({ ...args, droppableContainers: rows })
+  }
+  const zone = rectIntersection({ ...args, droppableContainers: only(ZONE) })
   if (zone.length === 0) return []
   const hits = closestCenter({ ...args, droppableContainers: rows })
   return hits.length > 0 ? hits : zone
+}
+
+// « Attrapé » : une vibration brève là où le téléphone le permet (Android), en
+// plus de la ligne qui se soulève à l'écran.
+const buzz = () => {
+  try {
+    navigator.vibrate?.(12)
+  } catch {
+    // Vibration refusée ou indisponible : le retour visuel suffit.
+  }
 }
 
 export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
@@ -42,6 +60,8 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   // Glisser depuis « à goûter » : l'assiette tenue, et où elle tomberait.
   const [dragged, setDragged] = useState<number | null>(null)
   const [dropAt, setDropAt] = useState<number | null>(null)
+  // Une ligne classée tenue au-dessus d'« à goûter » : la section l'annonce.
+  const [overPool, setOverPool] = useState(false)
   const byId = new Map(plates.map((p) => [p.id, p]))
   // Une assiette supprimée par l'admin disparaît d'elle-même (spec §11).
   const ranked = ranking.filter((id) => byId.has(id))
@@ -51,10 +71,11 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   // on l'ignore pour l'affichage plutôt que d'envoyer un classement invalide.
   const activePick = picked !== null && pool.some((p) => p.id === picked) ? picked : null
 
-  // Appui long de 200 ms avant de saisir une ligne au doigt : sans ce délai, le
-  // simple défilement de la page déclencherait des glisser involontaires.
+  // Appui long de 200 ms avant de saisir une assiette au doigt : sans ce délai,
+  // le simple défilement de la page déclencherait des glisser involontaires. À
+  // la souris, 6 px de mouvement suffisent (MousePenSensor ignore le doigt).
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MousePenSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
@@ -71,15 +92,18 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   const resetDrag = () => {
     setDragged(null)
     setDropAt(null)
+    setOverPool(false)
   }
 
   const onDragStart = ({ active }: DragStartEvent) => {
     setDragged(poolPlateId(active.id))
     setPicked(null)
+    buzz()
   }
 
   const onDragMove = (event: DragMoveEvent) => {
     if (poolPlateId(event.active.id) !== null) setDropAt(poolTarget(event))
+    else setOverPool(event.over?.id === POOL_ZONE)
   }
 
   const onDragEnd = (event: DragEndEvent) => {
@@ -89,6 +113,10 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
     if (fromPool !== null) {
       const index = poolTarget(event)
       if (index !== null) onChange(placeAt(ranked, fromPool, index))
+      return
+    }
+    if (over?.id === POOL_ZONE) {
+      onChange(removeFrom(ranked, Number(active.id)))
       return
     }
     if (!over || active.id === over.id) return
@@ -128,9 +156,11 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
     <DndContext sensors={sensors} collisionDetection={collision} onDragStart={onDragStart} onDragMove={onDragMove} onDragEnd={onDragEnd} onDragCancel={resetDrag}>
       <div className="flex flex-col gap-6">
         {!locked && pool.length > 0 && (
-          <section className="flex flex-col gap-2">
+          <PoolZone highlight={overPool}>
             <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">{t('toTaste')}</h2>
-            <p className="text-[13px] text-[color:var(--text-muted)]">{t('toTasteHint')}</p>
+            <p className={`text-[13px] ${overPool ? 'font-medium text-[color:var(--accent-ink)]' : 'text-[color:var(--text-muted)]'}`}>
+              {overPool ? t('dropToRemove') : t('toTasteHint')}
+            </p>
             <div className="flex flex-wrap gap-2">
               {pool.map((p) => (
                 <PoolChip key={p.id} plate={p} picked={activePick === p.id} onPick={() => setPicked(picked === p.id ? null : p.id)} t={t} />
@@ -141,7 +171,7 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
                 {t('cancelPlace')}
               </button>
             )}
-          </section>
+          </PoolZone>
         )}
 
         <RankingZone disabled={locked}>
@@ -199,9 +229,28 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
       {/* L'assiette suit le doigt dans une couche à part : déplacée sur place,
           elle passerait sous la section du classement. */}
       <DragOverlay dropAnimation={null}>
-        {draggedPlate && <PlateTag label={t('plateTag', { n: draggedPlate.number })} size="md" />}
+        {draggedPlate && (
+          // Soulevée : plus grande, inclinée, contour de couleur — on voit qu'elle est tenue.
+          <span className="inline-block scale-110 -rotate-3 rounded-[10px] ring-4 ring-[color:var(--accent)]">
+            <PlateTag label={t('plateTag', { n: draggedPlate.number })} size="md" cookie />
+          </span>
+        )}
       </DragOverlay>
     </DndContext>
+  )
+}
+
+function PoolZone({ highlight, children }: { highlight: boolean; children: ReactNode }) {
+  const { setNodeRef } = useDroppable({ id: POOL_ZONE })
+  return (
+    <section
+      ref={setNodeRef}
+      className={`-m-2 flex flex-col gap-2 rounded-[var(--radius-card)] border-2 border-dashed p-2 transition-colors ${highlight
+        ? 'border-[color:var(--accent)] bg-[color:var(--accent-wash)]'
+        : 'border-transparent'}`}
+    >
+      {children}
+    </section>
   )
 }
 
@@ -233,9 +282,9 @@ function PoolChip({ plate, picked, onPick, t }: ChipProps) {
       aria-pressed={picked}
       aria-label={t('plate', { n: plate.number })}
       onClick={onPick}
-      className={`select-none rounded-[10px] [-webkit-touch-callout:none] ${picked ? 'ring-4 ring-[color:var(--btn-bg)]' : ''} ${isDragging ? 'opacity-40' : ''}`}
+      className={`select-none rounded-[10px] transition-transform [-webkit-touch-callout:none] active:scale-95 ${picked ? 'ring-4 ring-[color:var(--btn-bg)]' : ''} ${isDragging ? 'opacity-30' : ''}`}
     >
-      <PlateTag label={t('plateTag', { n: plate.number })} size="md" />
+      <PlateTag label={t('plateTag', { n: plate.number })} size="md" cookie />
     </button>
   )
 }
@@ -255,7 +304,11 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-3 rounded-[var(--radius-card)] border border-[color:var(--border)] bg-[color:var(--surface)] p-3 shadow-[var(--shadow-chip)] ${isDragging ? 'relative z-10 opacity-90' : ''}`}
+      // Tenue : la ligne se soulève (agrandie, ombre portée, contour de couleur)
+      // pour qu'on voie bien qu'elle est attrapée.
+      className={`flex items-center gap-3 rounded-[var(--radius-card)] border bg-[color:var(--surface)] p-3 ${isDragging
+        ? 'relative z-10 scale-[1.04] border-[color:var(--accent)] shadow-[0_16px_36px_rgba(0,0,0,0.5)] ring-2 ring-[color:var(--accent)]'
+        : 'border-[color:var(--border)] shadow-[var(--shadow-chip)]'}`}
     >
       {/* Poignée dédiée : `attributes`/`listeners` (et donc `touch-none`) ne
           portent que sur ce petit bouton, pas sur toute la ligne. Sinon un doigt
@@ -277,10 +330,9 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
         </button>
       )}
       <span className="font-display w-8 text-center text-[22px] text-[color:var(--btn-bg)]">{index + 1}</span>
-      {/* Le rang, puis l'assiette : son icône et son étiquette suffisent, sans
+      {/* Le rang, puis l'assiette : « cookie N° X » dans son étiquette suffit, sans
           « Assiette X » en toutes lettres qui ajoutait un troisième chiffre. */}
-      <span className="flex-none text-[color:var(--text-muted)]"><IconPlate size={24} /></span>
-      <PlateTag label={t('plateTag', { n: plate.number })} size="sm" tilt />
+      <PlateTag label={t('plateTag', { n: plate.number })} size="sm" tilt cookie />
       <div className="flex-1 select-none">
         {plate.label && <div className="text-[13px] text-[color:var(--text-muted)]">{plate.label}</div>}
       </div>

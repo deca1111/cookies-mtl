@@ -183,12 +183,3 @@ export function IconRefresh({ size = 16 }: IconProps) {
   )
 }
 
-// Assiette vue de dessus : le bord et le creux.
-export function IconPlate({ size = 16 }: IconProps) {
-  return (
-    <svg {...base(size)}>
-      <circle cx="12" cy="12" r="9.5" />
-      <circle cx="12" cy="12" r="5.5" />
-    </svg>
-  )
-}
