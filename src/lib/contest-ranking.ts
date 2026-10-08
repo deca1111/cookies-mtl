@@ -25,3 +25,11 @@ export function moveBy(ranking: number[], id: number, delta: -1 | 1): number[] {
   ;[out[i], out[j]] = [out[j], out[i]]
   return out
 }
+
+// Où atterrit une assiette glissée depuis « à goûter » : avant la ligne survolée,
+// ou après si l'assiette est passée sur sa moitié basse ; à la fin quand aucune
+// ligne n'est survolée (classement vide, ou zone sous la liste).
+export function dropIndex(ranking: number[], overId: number | null, below: boolean): number {
+  const i = overId === null ? -1 : ranking.indexOf(overId)
+  return i < 0 ? ranking.length : i + (below ? 1 : 0)
+}

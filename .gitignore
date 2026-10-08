@@ -51,3 +51,12 @@ next-env.d.ts
 
 # Dossier de travail du pipeline de tuiles (scripts/render-tiles.mjs)
 .tiles-work/
+
+# outillage local des assistants IA : captures Playwright, skills installés
+# (liens symboliques à chemin absolu), réglages perso de Claude Code
+/.playwright-mcp/
+/.agents/
+/.claude/skills/
+/.claude/settings.local.json
+/.claude/worktrees/
+/skills-lock.json

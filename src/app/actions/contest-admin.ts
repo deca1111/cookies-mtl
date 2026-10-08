@@ -3,7 +3,7 @@
 import { requireAdmin } from '@/lib/auth'
 import {
   addGuest, addPlate, createContest, deleteContest, deleteGuest, deletePlate, getContestById, isUniqueViolation,
-  loadContestData, releaseGuest, renameContest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
+  loadContestData, releaseAllGuests, releaseGuest, renameContest, renameGuest, setPhase, setPlateNumbers, setRevealStep, updatePlate,
 } from '@/lib/contest-db'
 import { generateSecret } from '@/lib/contest-identity'
 import { cleanLabel, cleanName, nextPlateNumber, shiftPhase, shuffled, type Phase } from '@/lib/contest-rules'
@@ -64,9 +64,28 @@ export async function deleteGuestAction(contestId: number, guestId: number): Pro
   return OK
 }
 
+// Les bulletins partent avec les noms (voir releaseGuest) : une fois les votes
+// clos, ce serait modifier des résultats figés. null = on peut libérer.
+async function releaseRefusal(contestId: number): Promise<AdminResult | null> {
+  const contest = await getContestById(contestId)
+  if (!contest) return { ok: false, error: 'not-found' }
+  if (contest.phase !== 'preparation' && contest.phase !== 'voting') return { ok: false, error: 'locked' }
+  return null
+}
+
 export async function releaseGuestAction(contestId: number, guestId: number): Promise<AdminResult> {
   await requireAdmin()
+  const refusal = await releaseRefusal(contestId)
+  if (refusal) return refusal
   await releaseGuest(contestId, guestId)
+  return OK
+}
+
+export async function releaseAllGuestsAction(contestId: number): Promise<AdminResult> {
+  await requireAdmin()
+  const refusal = await releaseRefusal(contestId)
+  if (refusal) return refusal
+  await releaseAllGuests(contestId)
   return OK
 }
 
@@ -78,18 +97,23 @@ export async function savePlateAction(contestId: number, input: PlateInput): Pro
   // plus bas plutôt que de rendre une erreur propre.
   if (!Array.isArray(input.authorIds)) return { ok: false, error: 'authors' }
   const label = cleanLabel(input.label)
-  const authorIds = input.authorIds.filter(Number.isInteger)
+  let authorIds = input.authorIds.filter(Number.isInteger)
   let number = input.number
   // Renuméroter une assiette existante est réservé à la préparation (spec §9) :
   // hors de cette phase, un numéro modifié côté client — ou forgé côté requête,
   // le champ n'étant verrouillé que dans l'écran — est ignoré, on garde celui
-  // déjà en base.
+  // déjà en base. Même chose pour les auteurs une fois les votes clos : ils
+  // décident quels votes comptent (pas de vote pour sa propre assiette), les
+  // changer modifierait des résultats figés et décalerait la scène en cours.
   if (input.id !== undefined) {
     const contest = await getContestById(contestId)
     if (contest && contest.phase !== 'preparation') {
       const { plates } = await loadContestData(contestId)
       const current = plates.find((p) => p.id === input.id)
-      if (current) number = current.number
+      if (current) {
+        number = current.number
+        if (contest.phase !== 'voting') authorIds = current.authorIds
+      }
     }
   }
   if (number === undefined) {

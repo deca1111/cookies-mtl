@@ -37,6 +37,13 @@ test('subLang="en" : la marche 1 affiche aussi l’ordinal anglais', () => {
   expect(first.textContent).toContain('1st')
 })
 
+// Écran final de la scène : les prénoms priment sur le numéro d'assiette.
+test('TV : prénoms plus grands que l’étiquette « N° X »', () => {
+  render(<Podium rows={[row(1, 1, ['Inès']), row(2, 2, ['Camille']), row(3, 3, ['Léo'])]} size="tv" text={t} lang="fr" subLang="en" />)
+  const px = (el: HTMLElement) => Number.parseInt(el.className.match(/text-\[(\d+)px\]/)![1])
+  expect(px(screen.getByText('Camille'))).toBeGreaterThan(px(screen.getByText('N° 2')))
+})
+
 test('récapitulatif invité : pyramide puis le reste, rangs en ordinaux', () => {
   const rows = [row(1, 1, ['Inès']), row(2, 2), row(3, 3), row(4, 4, ['Zoé']), row(5, null)]
   render(<GuestResults results={{ rows, agreement: null, myPlates: [] }} myBallot={[]} t={t} lang="fr" />)

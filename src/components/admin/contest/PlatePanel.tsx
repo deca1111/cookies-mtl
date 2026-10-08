@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { deletePlateAction, savePlateAction, shufflePlatesAction } from '@/app/actions/contest-admin'
+import { IconExternal } from '@/components/icons'
 import type { AdminGuest, PlateRow } from '@/lib/contest-state'
 import type { Phase } from '@/lib/contest-rules'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
@@ -33,6 +34,9 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
   // est de toute façon ignoré côté serveur, cf. savePlateAction) — une assiette
   // neuve, elle, garde sa numérotation automatique dans tous les cas.
   const numberLocked = !!draft?.id && phase !== 'preparation'
+  // Auteurs figés à la clôture des votes : ils décident quels votes comptent,
+  // les changer modifierait des résultats déjà figés (même règle côté serveur).
+  const authorsLocked = !!draft?.id && phase !== 'preparation' && phase !== 'voting'
 
   const save = async () => {
     if (!draft || saving) return
@@ -74,7 +78,7 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
           <input value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} placeholder="Note facultative…" className="flex-1 rounded border px-2 py-1 text-[14px]" />
         </div>
         {numberLocked && <p className="text-[11px] text-[color:var(--text-muted)]">Numéro figé hors préparation.</p>}
-        <p className="text-[12px] text-[color:var(--text-muted)]">Auteurs</p>
+        <p className="text-[12px] text-[color:var(--text-muted)]">{authorsLocked ? 'Auteurs figés depuis la clôture des votes.' : 'Auteurs'}</p>
         <div className="flex flex-wrap gap-1.5">
           {guests.map((g) => (
             <button
@@ -82,7 +86,8 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
               type="button"
               aria-pressed={draft.authorIds.includes(g.id)}
               onClick={() => toggleAuthor(g.id)}
-              className={`rounded-full border px-2.5 py-1 text-[12px] ${draft.authorIds.includes(g.id) ? 'border-[color:var(--accent)] bg-[color:var(--accent-wash)] text-[color:var(--text-strong)]' : 'border-[color:var(--border)] text-[color:var(--text-body)]'}`}
+              disabled={authorsLocked}
+              className={`rounded-full border px-2.5 py-1 text-[12px] disabled:opacity-60 ${draft.authorIds.includes(g.id) ? 'border-[color:var(--accent)] bg-[color:var(--accent-wash)] text-[color:var(--text-strong)]' : 'border-[color:var(--border)] text-[color:var(--text-body)]'}`}
             >
               {g.name}
             </button>
@@ -102,6 +107,16 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
         <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Assiettes</h2>
         <span className="text-[13px] text-[color:var(--text-muted)]">{plates.length}</span>
         <span className="flex-1" />
+        {/* Toujours là : la page permet de forcer un nombre d'étiquettes avant
+            même d'avoir saisi les assiettes. */}
+        <a
+          href={`/admin/concours/${contestId}/etiquettes`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[color:var(--accent-ink)]"
+        >
+          Étiquettes à imprimer <IconExternal size={12} />
+        </a>
         {phase === 'preparation' && plates.length > 1 && (
           <button
             type="button"

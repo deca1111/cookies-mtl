@@ -28,11 +28,12 @@ export async function qrCardImage({ url, name }: { url: string; name: string }):
   return new ImageResponse(
     (
       <div style={{ width: '100%', height: '100%', display: 'flex', background: 'transparent' }}>
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 36, background: '#fffdf9', border: '14px solid #d29a55', borderRadius: 48, margin: 0 }}>
-          <img src={logoUri} width={260} height={260} alt="" />
-          <div style={{ fontFamily: 'Gill Sans Ultra', fontSize: 76, color: CHOCO, textAlign: 'center', maxWidth: 900 }}>{name}</div>
-          <div style={{ display: 'flex', background: '#f6f0e6', borderRadius: 40, padding: 44 }}>
-            <img src={qr} width={560} height={560} alt="" />
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 28, background: '#fffdf9', border: '14px solid #d29a55', borderRadius: 48, margin: 0 }}>
+          <img src={logoUri} width={400} height={400} alt="" style={{ margin: '-24px 0' }} />
+          {/* Un nom long passe sur moins de lignes : sur trois, le logo agrandi pousserait le slogan hors de la carte. */}
+          <div style={{ fontFamily: 'Gill Sans Ultra', fontSize: name.length > 24 ? 60 : 76, color: CHOCO, textAlign: 'center', maxWidth: 900 }}>{name}</div>
+          <div style={{ display: 'flex', background: '#f6f0e6', borderRadius: 40, padding: 40 }}>
+            <img src={qr} width={540} height={540} alt="" />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: 'Comfortaa', fontSize: 44 }}>
             <div style={{ color: CHOCO }}>Scanne, goûte, classe.</div>

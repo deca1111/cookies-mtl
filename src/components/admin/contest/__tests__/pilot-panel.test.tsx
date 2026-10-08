@@ -51,3 +51,12 @@ test('œil : classement masqué par défaut, affiché au clic', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Afficher le classement en direct' }))
   expect(screen.getByRole('button', { name: 'Masquer le classement en direct' })).toBeTruthy()
 })
+
+// Le classement est recalculé à chaque relecture de l'état (toutes les 2,5 s) ;
+// le bouton la déclenche tout de suite.
+test('classement en direct : le bouton rafraîchir relit l’état', () => {
+  const onDone = vi.fn()
+  render(<PilotPanel view={view('voting')} onDone={onDone} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Rafraîchir le classement' }))
+  expect(onDone).toHaveBeenCalledTimes(1)
+})

@@ -1,21 +1,30 @@
 'use client'
 
 import { useState } from 'react'
-import { addGuestAction, deleteGuestAction, releaseGuestAction, renameGuestAction } from '@/app/actions/contest-admin'
+import { addGuestAction, deleteGuestAction, releaseAllGuestsAction, releaseGuestAction, renameGuestAction } from '@/app/actions/contest-admin'
+import { IconEye, IconEyeOff } from '@/components/icons'
 import type { AdminGuest } from '@/lib/contest-state'
+import type { Phase } from '@/lib/contest-rules'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 import { useConfirmDelete } from './useConfirmDelete'
 
-const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', 'name-taken': 'Ce nom existe déjà.', unexpected: UNEXPECTED_ERROR }
+const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', 'name-taken': 'Ce nom existe déjà.', locked: 'Votes clos : les noms ne se libèrent plus.', unexpected: UNEXPECTED_ERROR }
 
-export function GuestPanel({ contestId, guests, onDone }: { contestId: number; guests: AdminGuest[]; onDone: () => void }) {
+export function GuestPanel({ contestId, phase, guests, onDone }: { contestId: number; phase: Phase; guests: AdminGuest[]; onDone: () => void }) {
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<{ id: number; name: string } | null>(null)
   // Un double clic/double Entrée avant que le premier ajout ne soit retombé
   // ajouterait le même invité deux fois d'affilée (finding #1).
   const [adding, setAdding] = useState(false)
-  const { armed, press } = useConfirmDelete<number>()
+  // Un seul armement pour toute la liste : « Suppr. » et « Libérer » (qui efface
+  // le classement) se confirment chacun par un second clic, sans s'armer l'un l'autre.
+  const { armed, press } = useConfirmDelete<string>()
+  // Après la clôture, le bulletin qui partirait avec le nom est déjà compté.
+  const canRelease = phase === 'preparation' || phase === 'voting'
+  // Classement d'un invité, déplié à la demande : fermé par défaut pour ne pas
+  // se spoiler en tant que participant.
+  const [shown, setShown] = useState<number | null>(null)
 
   // `runAction` capture aussi bien { ok: false } qu'une levée (session expirée,
   // réseau) : onDone est toujours rappelé pour relire l'état réel du serveur.
@@ -34,6 +43,15 @@ export function GuestPanel({ contestId, guests, onDone }: { contestId: number; g
       <div className="flex items-center gap-2 border-b-2 border-[color:var(--border)] pb-2">
         <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Invités</h2>
         <span className="text-[13px] text-[color:var(--text-muted)]">{guests.length}</span>
+        {canRelease && guests.some((g) => g.claimed) && (
+          <button
+            type="button"
+            onClick={() => press('tous', () => run(releaseAllGuestsAction(contestId)))}
+            className="ml-auto text-[12px] text-[color:var(--accent-ink)]"
+          >
+            {armed === 'tous' ? 'Confirmer : noms libérés, classements effacés' : 'Déconnecter tous les téléphones'}
+          </button>
+        )}
       </div>
       <form
         onSubmit={async (e) => {
@@ -56,37 +74,64 @@ export function GuestPanel({ contestId, guests, onDone }: { contestId: number; g
       {error && <p className="text-[13px] text-[color:var(--danger)]">{error}</p>}
       <ul className="flex flex-col gap-1">
         {guests.map((g) => (
-          <li key={g.id} className="flex items-center gap-2 rounded-[var(--radius-field)] px-2 py-1.5 hover:bg-[color:var(--surface-2)]">
-            {editing?.id === g.id ? (
-              <form
-                className="flex-1"
-                onSubmit={async (e) => {
-                  e.preventDefault()
-                  if (await run(renameGuestAction(contestId, g.id, editing.name))) setEditing(null)
-                }}
+          <li key={g.id} className="flex flex-col gap-1 rounded-[var(--radius-field)] px-2 py-1.5 hover:bg-[color:var(--surface-2)]">
+            <div className="flex items-center gap-2">
+              {editing?.id === g.id ? (
+                <form
+                  className="flex-1"
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    if (await run(renameGuestAction(contestId, g.id, editing.name))) setEditing(null)
+                  }}
+                >
+                  <input autoFocus value={editing.name} onChange={(e) => setEditing({ id: g.id, name: e.target.value })} onBlur={() => setEditing(null)} className="w-full rounded border px-2 py-1 text-[14px]" />
+                </form>
+              ) : (
+                <button type="button" onClick={() => setEditing({ id: g.id, name: g.name })} className="flex-1 text-left text-[14px] text-[color:var(--text-strong)]">
+                  {g.name}
+                </button>
+              )}
+              <span className={`rounded-full px-2 py-0.5 text-[11px] ${g.claimed
+                ? 'bg-[color:var(--accent-wash)] text-[color:var(--accent-ink)]'
+                : 'border border-[color:var(--border)] text-[color:var(--text-muted)]'}`}>{status(g)}</span>
+              {g.ranked > 0 && (
+                <button
+                  type="button"
+                  aria-label={`${shown === g.id ? 'Masquer' : 'Voir'} le classement de ${g.name}`}
+                  aria-pressed={shown === g.id}
+                  onClick={() => setShown(shown === g.id ? null : g.id)}
+                  className="text-[color:var(--text-muted)] hover:text-[color:var(--text-strong)]"
+                >
+                  {shown === g.id ? <IconEyeOff size={14} /> : <IconEye size={14} />}
+                </button>
+              )}
+              {g.claimed && canRelease && (
+                <button
+                  type="button"
+                  onClick={() => press(`liberer-${g.id}`, () => run(releaseGuestAction(contestId, g.id)))}
+                  className="text-[12px] text-[color:var(--accent-ink)]"
+                >
+                  {armed === `liberer-${g.id}` ? 'Confirmer ?' : 'Libérer'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => press(`suppr-${g.id}`, () => run(deleteGuestAction(contestId, g.id)))}
+                className="text-[12px] text-[color:var(--danger)]"
               >
-                <input autoFocus value={editing.name} onChange={(e) => setEditing({ id: g.id, name: e.target.value })} onBlur={() => setEditing(null)} className="w-full rounded border px-2 py-1 text-[14px]" />
-              </form>
-            ) : (
-              <button type="button" onClick={() => setEditing({ id: g.id, name: g.name })} className="flex-1 text-left text-[14px] text-[color:var(--text-strong)]">
-                {g.name}
+                {armed === `suppr-${g.id}` ? 'Confirmer ?' : 'Suppr.'}
               </button>
+            </div>
+            {shown === g.id && (
+              <ol className="flex flex-wrap gap-x-3 gap-y-1 pb-1 text-[13px] text-[color:var(--text-body)]">
+                {g.ballot.map((n, i) => (
+                  <li key={n} className="flex items-baseline gap-1">
+                    <span className="text-[11px] text-[color:var(--text-muted)]">{i + 1}</span>
+                    <span>N° {n}</span>
+                  </li>
+                ))}
+              </ol>
             )}
-            <span className={`rounded-full px-2 py-0.5 text-[11px] ${g.claimed
-              ? 'bg-[color:var(--accent-wash)] text-[color:var(--accent-ink)]'
-              : 'border border-[color:var(--border)] text-[color:var(--text-muted)]'}`}>{status(g)}</span>
-            {g.claimed && (
-              <button type="button" onClick={() => run(releaseGuestAction(contestId, g.id))} className="text-[12px] text-[color:var(--accent-ink)]">
-                Libérer
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => press(g.id, () => run(deleteGuestAction(contestId, g.id)))}
-              className="text-[12px] text-[color:var(--danger)]"
-            >
-              {armed === g.id ? 'Confirmer ?' : 'Suppr.'}
-            </button>
           </li>
         ))}
       </ul>

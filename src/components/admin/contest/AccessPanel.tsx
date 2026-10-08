@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { IconCopy, IconDownload, IconShare } from '@/components/icons'
+import { IconClose, IconCopy, IconDownload, IconShare } from '@/components/icons'
 
 // Bloc « Accès invités » (spec PR 2 §4). L'aperçu EST le PNG exporté : ce que
 // l'organisateur voit est exactement ce qu'il imprime ou partage.
@@ -9,6 +9,8 @@ export function AccessPanel({ contestId, secret }: { contestId: number; secret: 
   const [url, setUrl] = useState('')
   const [copied, setCopied] = useState(false)
   const [imgError, setImgError] = useState(false)
+  // Aperçu en grand, pour projeter le QR ou le tendre à un invité.
+  const [zoomed, setZoomed] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const png = (format: 'carte' | 'qr', download = false) => `/api/admin/concours/${contestId}/qr?format=${format}${download ? '&download=1' : ''}`
 
@@ -17,6 +19,12 @@ export function AccessPanel({ contestId, secret }: { contestId: number; secret: 
     setUrl(`${window.location.origin}/concours/${secret}`)
   }, [secret])
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  useEffect(() => {
+    if (!zoomed) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomed(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [zoomed])
 
   const copy = async () => {
     try {
@@ -58,8 +66,10 @@ export function AccessPanel({ contestId, secret }: { contestId: number; secret: 
         {imgError ? (
           <p className="flex-1 text-[13px] text-[color:var(--danger)]">QR code indisponible — utilise le lien ci-dessous.</p>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- PNG dynamique protégé par session, pas d'optimisation voulue
-          <img src={png('carte')} alt="QR code du concours" onError={() => setImgError(true)} className="w-[140px] rounded-[var(--radius-field)]" />
+          <button type="button" aria-label="Afficher le QR code en grand" onClick={() => setZoomed(true)} className="flex-none cursor-zoom-in">
+            {/* eslint-disable-next-line @next/next/no-img-element -- PNG dynamique protégé par session, pas d'optimisation voulue */}
+            <img src={png('carte')} alt="QR code du concours" onError={() => setImgError(true)} className="w-[140px] rounded-[var(--radius-field)]" />
+          </button>
         )}
         <div className="flex flex-col gap-2">
           <a href={png('carte', true)} className={btn}><IconDownload size={14} />PNG carte</a>
@@ -72,6 +82,26 @@ export function AccessPanel({ contestId, secret }: { contestId: number; secret: 
         {copied && <span className="text-[12px] text-[color:var(--accent-ink)]">Copié</span>}
         <button type="button" aria-label="Copier le lien" onClick={copy} className="text-[color:var(--accent-ink)]"><IconCopy size={14} /></button>
       </div>
+      {zoomed && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="QR code du concours"
+          onClick={() => setZoomed(false)}
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-6"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- même PNG que l'aperçu */}
+          <img src={png('carte')} alt="" className="max-h-full max-w-full rounded-[var(--radius-card)]" />
+          <button
+            type="button"
+            aria-label="Fermer"
+            onClick={() => setZoomed(false)}
+            className="absolute right-4 top-4 rounded-full bg-[color:var(--surface)] p-2 text-[color:var(--text-strong)]"
+          >
+            <IconClose size={18} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -588,3 +588,124 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Scène de révélation du concours (retours d'UAT) : un mouvement par geste du
+   présentateur — une slide qui monte, des noms qui tombent comme un tampon, un
+   tableau qui se remplit par le bas, et un seul moment fort : le verdict du
+   duel (médaille qui tombe, miettes de cookie). */
+.rv-rise {
+  animation: rv-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes rv-rise {
+  from {
+    opacity: 0;
+    transform: translateY(48px) scale(0.96);
+  }
+}
+
+.rv-stamp {
+  animation: rv-stamp 520ms cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+@keyframes rv-stamp {
+  from {
+    opacity: 0;
+    transform: scale(1.6);
+    filter: blur(8px);
+  }
+  60% {
+    opacity: 1;
+  }
+}
+
+.rv-from-left {
+  animation: rv-from-left 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rv-from-right {
+  animation: rv-from-right 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes rv-from-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40vw) rotate(-12deg);
+  }
+}
+
+@keyframes rv-from-right {
+  from {
+    opacity: 0;
+    transform: translateX(40vw) rotate(12deg);
+  }
+}
+
+/* Verdict : le gagnant se soulève, le suivant recule. */
+.rv-win {
+  animation: rv-win 900ms cubic-bezier(0.2, 1.3, 0.4, 1) forwards;
+}
+
+@keyframes rv-win {
+  to {
+    transform: translateY(-24px) scale(1.12);
+  }
+}
+
+.rv-lose {
+  animation: rv-lose 900ms ease forwards;
+}
+
+@keyframes rv-lose {
+  to {
+    transform: translateY(20px) scale(0.86);
+    opacity: 0.6;
+  }
+}
+
+.rv-medal-drop {
+  animation: rv-medal-drop 900ms cubic-bezier(0.3, 1.45, 0.5, 1) 350ms both;
+}
+
+@keyframes rv-medal-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-60vh) rotate(-30deg);
+  }
+}
+
+/* Miettes : chaque miette porte sa trajectoire en variables (--dx, --up, --rot). */
+.rv-crumb {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  animation: rv-crumb var(--dur, 1600ms) cubic-bezier(0.2, 0.6, 0.4, 1) var(--delay, 0ms) both;
+}
+
+@keyframes rv-crumb {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+  }
+  35% {
+    opacity: 1;
+    transform: translate(calc(var(--dx) * 0.7), calc(var(--up) * -1)) rotate(calc(var(--rot) * 0.4));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), 55vh) rotate(var(--rot));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* La règle globale plus bas raccourcit les animations ; les délais en cascade
+     resteraient, laissant des lignes invisibles quelques secondes. */
+  .rv-rise,
+  .rv-stamp,
+  .rv-medal-drop {
+    animation-delay: 0s !important;
+  }
+  .rv-crumb {
+    display: none;
+  }
+}

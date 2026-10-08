@@ -3,33 +3,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { setRevealStepAction } from '@/app/actions/contest-admin'
 import { usePolling } from '@/components/contest/usePolling'
-import { PlateTag } from '@/components/contest/PlateTag'
-import { Podium } from '@/components/contest/Podium'
-import { contestDict, fmt, ordinal, type ContestMsgKey } from '@/lib/contest-i18n'
-import { podium } from '@/lib/contest-podium'
 import type { AdminView, ResultRow } from '@/lib/contest-state'
+import { BoardSlide, Bi, DuelSlide, FinalSlide, PlateSlide, TitleSlide } from './RevealSlides'
 import { runAction } from './runAction'
-
-// Un rang moyen est une fraction ("3") formatée en "3,0" : `toFixed` rendrait un
-// point, jamais une virgule. Nombres au format `fr-CA` dans les deux langues
-// (spec PR 2 §6), plutôt que la locale du navigateur qui piloterait.
-const formatAvgRank = (n: number) => new Intl.NumberFormat('fr-CA', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(n)
-
-// Bilingue (spec PR 2 §6) : pas de sélecteur de langue, le français en grand et
-// l'anglais en petit italique estompé juste dessous, toujours les deux. La taille
-// est posée sur le conteneur : `0.45em` se calcule alors sur celle du français.
-const fr = (k: ContestMsgKey, v?: Record<string, string | number>) => (v ? fmt(contestDict.fr[k], v) : contestDict.fr[k])
-const en = (k: ContestMsgKey, v?: Record<string, string | number>) => (v ? fmt(contestDict.en[k], v) : contestDict.en[k])
-function Bi({ k, v, className, align = 'center' }: { k: ContestMsgKey; v?: Record<string, string | number>; className: string; align?: 'center' | 'start' }) {
-  return (
-    <span className={`flex flex-col ${align === 'center' ? 'items-center' : 'items-start'} ${className}`}>
-      <span>{fr(k, v)}</span>
-      {/* Lisibilité TV (vague de correction PR 2, point 2) : 0.6em/opacity-70 plutôt
-          que 0.45em/opacity-60, trop estompé pour être lu depuis le fond d'une salle. */}
-      <span className="text-[0.6em] italic opacity-70">{en(k, v)}</span>
-    </span>
-  )
-}
 
 const SHELL = 'relative flex min-h-dvh flex-col items-center gap-8 overflow-hidden p-12 pb-16 text-center text-[#f4ebdd]'
 const HALO = 'radial-gradient(circle at 50% 45%, #3d2e20, #1f170f 75%)'
@@ -135,9 +111,11 @@ export function Scene({ initial }: { initial: AdminView }) {
           ? 'Session expirée ou erreur serveur.'
           : null
 
-  // Habillage commun (spec PR 2 §6) : halo chocolat, logo discret, points de
+  // Habillage commun (spec PR 2 §6) : halo chocolat, logo bien visible, points de
   // progression. La scène est une TV : elle reste sombre quel que soit le thème
-  // du site, d'où les couleurs fixes plutôt que les jetons.
+  // du site, d'où les couleurs fixes plutôt que les jetons. Chaque slide porte une
+  // clé stable : les étapes d'une même slide (auteurs, verdict du duel) gardent
+  // l'instance et n'animent que ce qui change ; une nouvelle slide rejoue son entrée.
   let content: ReactNode
   let halo = HALO
   let finalScreen = false
@@ -150,101 +128,35 @@ export function Scene({ initial }: { initial: AdminView }) {
       </>
     )
   } else {
-    const step = steps[Math.min(effectiveStep, steps.length - 1)]
+    const index = Math.min(effectiveStep, steps.length - 1)
+    const step = steps[index]
     const byId = new Map(rows.map((r) => [r.plateId, r]))
+    // Une assiette supprimée entre-temps disparaît de la slide plutôt que de la planter.
+    const pick = (ids: number[]) => ids.map((id) => byId.get(id)).filter((r): r is ResultRow => !!r)
 
     if (step.kind === 'title') {
       const voters = new Set(view.guests.filter((g) => g.ranked >= 2).map((g) => g.id)).size
-      content = (
-        <>
-          <h1><Bi k="verdict" className="font-display text-[110px] leading-none" /></h1>
-          {/* Singulier (point 8 de la vague de correction) : « 1 bulletin », pas « 1 bulletins ». */}
-          <Bi k={voters === 1 ? 'ballotsPlatesOne' : 'ballotsPlates'} v={{ b: voters, p: rows.length }} className="text-[32px]" />
-        </>
-      )
+      content = <TitleSlide key="title" voters={voters} plates={rows.length} />
     } else if (step.kind === 'final') {
       finalScreen = true
-      content = (
-        <>
-          <h1><Bi k="finalRanking" className="font-display text-[56px] leading-none" /></h1>
-          <Podium rows={rows} size="tv" text={fr} lang="fr" subLang="en" />
-          <ol data-testid="final-rest" className="grid w-full max-w-6xl grid-cols-1 gap-3 text-left xl:grid-cols-2">
-            {podium(rows).rest.map((r) => (
-              <li key={r.plateId} className="flex items-baseline gap-4 rounded-[18px] bg-[#fffdf9]/10 px-6 py-3 text-[26px]">
-                <span className="flex min-w-24 flex-col font-display leading-none text-[#d29a55]">
-                  {r.position === null ? fr('unranked') : ordinal('fr', r.position)}
-                  <span className="mt-1 text-[16px] italic opacity-60">{r.position === null ? en('unranked') : ordinal('en', r.position)}</span>
-                </span>
-                <span className="font-display">{fr('plateTag', { n: r.number })}</span>
-                <span className="flex-1 font-display text-[#7f98e0]">{r.authors.join(' & ') || '?'}</span>
-                {r.score !== null && <span className="opacity-70">{fr('score', { n: r.score })}</span>}
-              </li>
-            ))}
-          </ol>
-        </>
-      )
+      content = <FinalSlide key="final" rows={rows} />
+    } else if (step.kind === 'board') {
+      content = <BoardSlide key={`board-${index}`} rows={pick(step.plateIds)} />
+    } else if (step.kind === 'duel') {
+      if (step.stage !== 'intro') halo = HALO_FIRST
+      // Affichés par numéro d'assiette : un ordre qui ne dit rien du classement.
+      const finalists = pick(step.plateIds).sort((a, b) => a.number - b.number)
+      content = <DuelSlide key="duel" finalists={finalists} stage={step.stage} />
     } else {
-      const shown = step.plateIds.map((id) => byId.get(id)).filter((r): r is ResultRow => !!r)
-      // Écart avec le rang suivant : « +12 pts devant le 2e » (spec §10). `shown[0]`
-      // peut être absent (assiette supprimée entre-temps) : sans ce garde,
-      // `shown[0]?.score !== null` valait `true` même pour un tableau vide
-      // (`undefined !== null`), et l'accès à `shown[0].score!` plantait.
-      const nextRow = rows.find((r) => r.position !== null && r.position > step.position)
-      const gap = shown[0] && shown[0].score !== null && nextRow?.score != null ? shown[0].score! - nextRow.score : null
-      const first = step.position === 1
-      // Ex æquo : les auteurs (et rangs moyens) de chaque assiette sont repérés
-      // par leur « N° X » dans la colonne de droite.
-      const tagOf = (r: ResultRow) => (shown.length > 1 ? `${fr('plateTag', { n: r.number })} · ` : '')
-      if (first) halo = HALO_FIRST
-
+      if (step.position === 1) halo = HALO_FIRST
       content = (
-        <div className="flex items-center gap-16">
-          <div className="flex flex-col items-center">
-            <span className={`font-display leading-none ${first ? 'text-[260px] text-[#f3c787] [text-shadow:0_0_60px_rgba(243,199,135,0.4)]' : step.podium ? 'text-[220px] text-[#d29a55]' : 'text-[180px] text-[#d29a55]'}`}>
-              {ordinal('fr', step.position)}
-            </span>
-            <span className="text-[36px] italic opacity-60">{ordinal('en', step.position)}</span>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-10">
-            {shown.map((r) => (
-              <div key={r.plateId} className="flex flex-col items-center gap-4">
-                <PlateTag label={fr('plateTag', { n: r.number })} size={first ? 'xl' : 'lg'} tilt score={r.score} scoreLabel={r.score === null ? undefined : fr('score', { n: r.score })} />
-                {r.label && <p className="text-[22px] opacity-70">{r.label}</p>}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col items-start gap-4 text-left">
-            <Bi k="bakedBy" className="text-[32px]" align="start" />
-            {step.showAuthors ? (
-              shown.map((r) => (
-                <p key={r.plateId} className="font-display text-[64px] leading-tight text-[#7f98e0]">
-                  {shown.length > 1 && <span className="text-[28px] opacity-70">{tagOf(r)}</span>}
-                  {r.authors.join(' & ') || '?'}
-                </p>
-              ))
-            ) : (
-              <div className="rounded-[20px] border-4 border-dashed border-[#f4ebdd]/25 px-10 py-6 text-[56px] opacity-50">
-                <span aria-hidden="true">?</span>
-                <span className="sr-only">{fr('authorsHidden')}</span>
-              </div>
-            )}
-            {shown.map((r) => r.avgRank !== null && (
-              <div key={r.plateId} className="flex flex-col">
-                <span className="text-[24px] opacity-80">{tagOf(r)}{fr('avgRank', { n: formatAvgRank(r.avgRank) })}</span>
-                <span className="text-[18px] italic opacity-60">{en('avgRank', { n: formatAvgRank(r.avgRank) })}</span>
-              </div>
-            ))}
-            {/* `k` diffère d'une langue à l'autre (« 2e » / « 2nd ») : deux lignes à la main plutôt que <Bi>. */}
-            {step.podium && gap !== null && gap > 0 && nextRow?.position != null && (
-              <div className="flex flex-col">
-                <span className="text-[28px]">{fr('ptsAhead', { n: gap, k: ordinal('fr', nextRow.position) })}</span>
-                <span className="text-[20px] italic opacity-60">{en('ptsAhead', { n: gap, k: ordinal('en', nextRow.position) })}</span>
-              </div>
-            )}
-          </div>
-        </div>
+        <PlateSlide
+          key={`plate-${step.position}`}
+          shown={pick(step.plateIds)}
+          position={step.position}
+          podium={step.podium}
+          showAuthors={step.showAuthors}
+        />
       )
     }
   }
@@ -252,7 +164,7 @@ export function Scene({ initial }: { initial: AdminView }) {
   const body: ReactNode = (
     <main className={`${SHELL} ${finalScreen ? 'justify-start' : 'justify-center'}`} style={{ background: halo }}>
       {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marque statique */}
-      <img src="/brand/logo.svg" alt="" className="absolute left-6 top-6 h-16 w-16 opacity-80" />
+      <img src="/brand/logo.svg" alt="" className="absolute left-8 top-8 h-32 w-32" />
       {content}
       {contest.phase === 'reveal' && (
         <div className="absolute bottom-6 left-1/2 flex -translate-x-1/2 gap-2" aria-hidden="true">

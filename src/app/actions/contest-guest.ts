@@ -1,6 +1,6 @@
 'use server'
 
-import { claimGuest, findGuestIdByToken, getContestBySecret, loadContestData, replaceBallot, releaseSelf } from '@/lib/contest-db'
+import { claimGuest, findGuestIdByToken, getContestBySecret, loadContestData, replaceBallot, releaseGuest } from '@/lib/contest-db'
 import { generateClaimToken, readGuestToken, writeGuestToken, clearGuestToken } from '@/lib/contest-identity'
 import { checkBallot } from '@/lib/contest-rules'
 
@@ -48,7 +48,7 @@ export async function releaseSelfAction(secret: string): Promise<ReleaseResult> 
   const guestId = await currentGuestId(contest.id)
   if (guestId === null) return { ok: false, error: 'no-identity' }
   if (contest.phase !== 'preparation' && contest.phase !== 'voting') return { ok: false, error: 'locked' }
-  await releaseSelf(contest.id, guestId)
+  await releaseGuest(contest.id, guestId)
   await clearGuestToken(contest.id)
   return { ok: true }
 }

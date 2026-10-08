@@ -62,7 +62,7 @@ test('authorIds invalide (non tableau) : erreur lisible', async () => {
 
 test('carte : numéro et auteurs d’abord, note en second', () => {
   render(<PlatePanel contestId={1} phase="voting" onDone={vi.fn()}
-    guests={[{ id: 5, name: 'Camille', claimed: false, ranked: 0, rankable: 0 }, { id: 6, name: 'Hugo', claimed: false, ranked: 0, rankable: 0 }]}
+    guests={[{ id: 5, name: 'Camille', claimed: false, ranked: 0, rankable: 0, ballot: [] }, { id: 6, name: 'Hugo', claimed: false, ranked: 0, rankable: 0, ballot: [] }]}
     plates={[{ id: 10, number: 1, label: 'pécan caramel', authorIds: [5, 6] }]} />)
   const card = screen.getByRole('button', { name: /Modifier l’assiette 1/ })
   expect(card.textContent).toMatch(/1.*Camille & Hugo.*pécan caramel/)
@@ -84,4 +84,19 @@ test('« + Ajouter » : carte provisoire en bas de liste', () => {
   fireEvent.click(screen.getByRole('button', { name: '+ Ajouter' }))
   const items = screen.getAllByRole('listitem')
   expect(items[items.length - 1].querySelector('input[placeholder="Note facultative…"]')).not.toBeNull()
+})
+
+test('votes clos : les auteurs d’une assiette ne se modifient plus', () => {
+  render(
+    <PlatePanel
+      contestId={1}
+      phase="reveal"
+      plates={[{ id: 10, number: 1, label: null, authorIds: [5] }]}
+      guests={[{ id: 5, name: 'Camille', claimed: false, ranked: 0, rankable: 0, ballot: [] }]}
+      onDone={vi.fn()}
+    />,
+  )
+  fireEvent.click(screen.getByText('Camille').closest('button')!)
+  expect(screen.getByText('Auteurs figés depuis la clôture des votes.')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Camille', pressed: true }).hasAttribute('disabled')).toBe(true)
 })

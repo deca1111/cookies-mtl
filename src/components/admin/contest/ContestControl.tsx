@@ -41,7 +41,7 @@ export function ContestControl({ initial }: { initial: AdminView }) {
         </p>
       )}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <GuestPanel contestId={view.contest.id} guests={view.guests} onDone={done} />
+        <GuestPanel contestId={view.contest.id} phase={view.contest.phase} guests={view.guests} onDone={done} />
         <PlatePanel contestId={view.contest.id} phase={view.contest.phase} plates={view.plates} guests={view.guests} onDone={done} />
         <PilotPanel view={view} onDone={done} />
       </div>
