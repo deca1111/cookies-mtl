@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { IconChevronLeft } from '@/components/icons'
 
 // Étiquettes à poser sur les assiettes (retours d'UAT) : pages US Letter de
@@ -8,9 +9,18 @@ import { IconChevronLeft } from '@/components/icons'
 // page est un aperçu blanc sur le fond sombre du pilotage ; à l'impression,
 // seules les pages sortent, en noir sur blanc.
 const PER_PAGE = 9
+// Garde-fou du nombre forcé : 200 étiquettes = 23 pages, bien au-delà d'une soirée.
+const MAX_FORCED = 200
 
 export function PlateLabels({ contestId, contestName, plates }: { contestId?: number; contestName: string; plates: { number: number }[] }) {
-  const numbers = plates.map((p) => p.number).sort((a, b) => a - b)
+  // Par défaut, une étiquette par assiette saisie. Un nombre forcé (assiettes
+  // pas encore saisies, étiquettes de rechange) imprime les numéros 1 à N.
+  // On garde le texte brut du champ pour pouvoir le vider pendant la saisie.
+  const [forced, setForced] = useState<string | null>(null)
+  const forcedCount = forced === null ? null : Math.min(MAX_FORCED, Math.max(0, Math.trunc(Number(forced)) || 0))
+  const numbers = forcedCount === null
+    ? plates.map((p) => p.number).sort((a, b) => a - b)
+    : Array.from({ length: forcedCount }, (_, i) => i + 1)
   const pages = Array.from({ length: Math.ceil(numbers.length / PER_PAGE) }, (_, i) => numbers.slice(i * PER_PAGE, (i + 1) * PER_PAGE))
 
   return (
@@ -36,8 +46,32 @@ export function PlateLabels({ contestId, contestName, plates }: { contestId?: nu
           </button>
         )}
       </div>
+      <div className="flex w-full max-w-[8.5in] flex-wrap items-center gap-3 print:hidden">
+        <label className="flex items-center gap-2 text-[14px] text-[color:var(--text-body)]">
+          Nombre d’étiquettes
+          <input
+            type="number"
+            min={0}
+            max={MAX_FORCED}
+            inputMode="numeric"
+            value={forced ?? String(numbers.length)}
+            onChange={(e) => setForced(e.target.value)}
+            className="w-20 rounded border px-2 py-1 text-[14px]"
+          />
+        </label>
+        <span className="text-[13px] text-[color:var(--text-muted)]">
+          {forcedCount === null ? 'Une par assiette saisie.' : `Numéros 1 à ${forcedCount}.`}
+        </span>
+        {forced !== null && (
+          <button type="button" onClick={() => setForced(null)} className="text-[13px] text-[color:var(--accent-ink)]">
+            Revenir aux assiettes ({plates.length})
+          </button>
+        )}
+      </div>
       {pages.length === 0 ? (
-        <p className="text-[14px] text-[color:var(--text-muted)]">Aucune assiette pour l’instant : ajoute-les dans le pilotage.</p>
+        <p className="text-[14px] text-[color:var(--text-muted)]">
+          {forced === null ? 'Aucune assiette pour l’instant : ajoute-les dans le pilotage, ou choisis un nombre d’étiquettes.' : 'Choisis au moins une étiquette.'}
+        </p>
       ) : (
         <>
           <p className="max-w-[8.5in] text-[13px] text-[color:var(--text-muted)] print:hidden">

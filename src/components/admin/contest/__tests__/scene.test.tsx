@@ -197,3 +197,23 @@ test('duel à 4 finalistes : colonnes rétrécies pour tenir à l’écran', asy
   const total = columns.reduce((sum, c) => sum + Number.parseInt(c.style.width) + 48, 0)
   expect(total).toBeLessThanOrEqual(1920 - 96)
 })
+
+// À l'échelle de la soirée (20 assiettes), la liste sous le podium passe en
+// trois colonnes compactes remplies colonne par colonne, pour tenir sur la TV.
+test('écran final à 20 assiettes : trois colonnes, lues de haut en bas', () => {
+  const v = view(5)
+  const rows = Array.from({ length: 20 }, (_, i) => row(100 + i, i + 1, i + 1, 100 - i * 5, [`Invité ${i + 1}`]))
+  render(<Scene initial={{ ...v, rows }} />)
+  const rest = screen.getByTestId('final-rest')
+  expect(rest.className).toContain('grid-cols-3')
+  expect(rest.className).toContain('grid-flow-col')
+  expect(rest.style.gridTemplateRows).toBe('repeat(6, auto)')
+  expect(rest.querySelectorAll('li')).toHaveLength(17)
+})
+
+test('écran final avec peu d’assiettes : mise en page d’origine', () => {
+  const v = view(5)
+  const rows = Array.from({ length: 8 }, (_, i) => row(100 + i, i + 1, i + 1, 100 - i * 5, [`Invité ${i + 1}`]))
+  render(<Scene initial={{ ...v, rows }} />)
+  expect(screen.getByTestId('final-rest').className).not.toContain('grid-cols-3')
+})

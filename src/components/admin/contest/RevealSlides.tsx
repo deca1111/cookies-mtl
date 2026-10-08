@@ -86,11 +86,13 @@ export function BoardSlide({ rows }: { rows: ResultRow[] }) {
         <span className="text-[60px]">{fr('boardRange', { a: ordinal('fr', worst), b: ordinal('fr', best) })}</span>
         <span className="mt-2 text-[34px] italic opacity-70">{en('boardRange', { a: ordinal('en', worst), b: ordinal('en', best) })}</span>
       </h1>
-      <ol data-testid="board" className="flex w-full flex-col gap-3">
+      {/* Colonnes partagées (subgrid) : « N° 20 » est plus large que « N° 9 »,
+          les prénoms restent alignés d'une ligne à l'autre. */}
+      <ol data-testid="board" className="grid w-full grid-cols-[140px_auto_1fr_auto] gap-x-8 gap-y-3">
         {top.map((r, i) => (
           <li
             key={r.plateId}
-            className="rv-rise grid grid-cols-[140px_auto_1fr_auto] items-center gap-8 rounded-[20px] bg-[#fffdf9]/[0.07] px-8 py-3 text-left"
+            className="rv-rise col-span-4 grid grid-cols-subgrid items-center rounded-[20px] bg-[#fffdf9]/[0.07] px-8 py-3 text-left"
             style={{ animationDelay: `${400 + (top.length - 1 - i) * 550}ms` }}
           >
             <span className="flex flex-col font-display leading-none text-[#d29a55]">
@@ -228,21 +230,44 @@ export function DuelSlide({ finalists, stage }: { finalists: ResultRow[]; stage:
 }
 
 export function FinalSlide({ rows }: { rows: ResultRow[] }) {
+  const rest = podium(rows).rest
+  // À l'échelle de la soirée (une vingtaine d'assiettes), deux colonnes de
+  // grandes lignes débordent de la TV : au-delà de 8, trois colonnes de lignes
+  // compactes, numéro et note empilés à droite pour laisser la place aux prénoms.
+  const many = rest.length > 8
+  // Rempli colonne par colonne : on lit 4e, 5e, 6e… de haut en bas, comme une liste.
+  const manyRows = Math.ceil(rest.length / 3)
   return (
-    <div className="rv-rise flex w-full flex-col items-center gap-8">
+    <div className={`rv-rise flex w-full flex-col items-center ${many ? 'gap-5' : 'gap-8'}`}>
       <h1><Bi k="finalRanking" className="font-display text-[56px] leading-none" /></h1>
       <Podium rows={rows} size="tv" text={fr} lang="fr" subLang="en" />
-      <ol data-testid="final-rest" className="grid w-full max-w-6xl grid-cols-1 gap-3 text-left xl:grid-cols-2">
-        {podium(rows).rest.map((r) => (
-          <li key={r.plateId} className="flex items-baseline gap-4 rounded-[18px] bg-[#fffdf9]/10 px-6 py-3 text-[26px]">
-            <span className="flex min-w-24 flex-col font-display leading-none text-[#d29a55]">
+      <ol
+        data-testid="final-rest"
+        className={`grid w-full text-left ${many ? 'max-w-[1760px] grid-flow-col grid-cols-3 gap-x-4 gap-y-2' : 'max-w-6xl grid-cols-1 gap-3 xl:grid-cols-2'}`}
+        style={many ? { gridTemplateRows: `repeat(${manyRows}, auto)` } : undefined}
+      >
+        {rest.map((r) => (
+          <li
+            key={r.plateId}
+            className={`flex rounded-[18px] bg-[#fffdf9]/10 ${many ? 'items-center gap-3 px-4 py-1.5 text-[18px]' : 'items-baseline gap-4 px-6 py-3 text-[26px]'}`}
+          >
+            <span className={`flex flex-col font-display leading-none text-[#d29a55] ${many ? 'min-w-20 text-[28px]' : 'min-w-24'}`}>
               {r.position === null ? fr('unranked') : ordinal('fr', r.position)}
-              <span className="mt-1 text-[16px] italic opacity-60">{r.position === null ? en('unranked') : ordinal('en', r.position)}</span>
+              <span className={`mt-1 italic opacity-60 ${many ? 'text-[13px]' : 'text-[16px]'}`}>{r.position === null ? en('unranked') : ordinal('en', r.position)}</span>
             </span>
             {/* Les prénoms d'abord, le numéro d'assiette en second (retours d'UAT). */}
-            <span className="flex-1 font-display text-[34px] text-[#7f98e0]">{authorsOf(r)}</span>
-            <span className="font-display text-[20px] opacity-70">{fr('plateTag', { n: r.number })}</span>
-            {r.score !== null && <span className="opacity-70">{scoreOf(r)}</span>}
+            <span className={`min-w-0 flex-1 font-display text-[#7f98e0] ${many ? 'truncate text-[26px]' : 'text-[34px]'}`}>{authorsOf(r)}</span>
+            {many ? (
+              <span className="flex flex-col items-end leading-tight opacity-70">
+                <span className="font-display text-[16px]">{fr('plateTag', { n: r.number })}</span>
+                {r.score !== null && <span>{scoreOf(r)}</span>}
+              </span>
+            ) : (
+              <>
+                <span className="font-display text-[20px] opacity-70">{fr('plateTag', { n: r.number })}</span>
+                {r.score !== null && <span className="opacity-70">{scoreOf(r)}</span>}
+              </>
+            )}
           </li>
         ))}
       </ol>

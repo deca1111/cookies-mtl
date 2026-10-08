@@ -107,16 +107,16 @@ export function PlatePanel({ contestId, phase, plates, guests, onDone }: {
         <h2 className="font-display text-[20px] text-[color:var(--text-strong)]">Assiettes</h2>
         <span className="text-[13px] text-[color:var(--text-muted)]">{plates.length}</span>
         <span className="flex-1" />
-        {plates.length > 0 && (
-          <a
-            href={`/admin/concours/${contestId}/etiquettes`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[color:var(--accent-ink)]"
-          >
-            Étiquettes à imprimer <IconExternal size={12} />
-          </a>
-        )}
+        {/* Toujours là : la page permet de forcer un nombre d'étiquettes avant
+            même d'avoir saisi les assiettes. */}
+        <a
+          href={`/admin/concours/${contestId}/etiquettes`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 whitespace-nowrap text-[13px] text-[color:var(--accent-ink)]"
+        >
+          Étiquettes à imprimer <IconExternal size={12} />
+        </a>
         {phase === 'preparation' && plates.length > 1 && (
           <button
             type="button"

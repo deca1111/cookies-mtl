@@ -27,3 +27,27 @@ test('aucune assiette : message plutôt qu’une page blanche', () => {
   expect(screen.queryByTestId('label-page')).toBeNull()
   expect(screen.getByText(/Aucune assiette/)).toBeTruthy()
 })
+
+test('nombre forcé : numéros 1 à N, quel que soit le nombre d’assiettes, et retour aux assiettes', () => {
+  render(<PlateLabels contestName="Anniv" plates={plates(3)} />)
+  const field = screen.getByLabelText(/Nombre d’étiquettes/) as HTMLInputElement
+  expect(field.value).toBe('3')
+  fireEvent.change(field, { target: { value: '12' } })
+  expect(screen.getAllByTestId('label').map((l) => l.textContent)).toEqual(Array.from({ length: 12 }, (_, i) => `N° ${i + 1}`))
+  expect(screen.getAllByTestId('label-page')).toHaveLength(2)
+  fireEvent.click(screen.getByRole('button', { name: /Revenir aux assiettes/ }))
+  expect(screen.getAllByTestId('label')).toHaveLength(3)
+  expect(field.value).toBe('3')
+})
+
+test('nombre forcé sans assiette saisie, borné à 200, champ vidé sans planter', () => {
+  render(<PlateLabels contestName="Anniv" plates={[]} />)
+  const field = screen.getByLabelText(/Nombre d’étiquettes/)
+  fireEvent.change(field, { target: { value: '5' } })
+  expect(screen.getAllByTestId('label')).toHaveLength(5)
+  fireEvent.change(field, { target: { value: '999' } })
+  expect(screen.getAllByTestId('label')).toHaveLength(200)
+  fireEvent.change(field, { target: { value: '' } })
+  expect(screen.queryByTestId('label-page')).toBeNull()
+  expect(screen.getByText(/au moins une étiquette/)).toBeTruthy()
+})
