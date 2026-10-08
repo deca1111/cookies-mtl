@@ -3,28 +3,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { setRevealStepAction } from '@/app/actions/contest-admin'
 import { usePolling } from '@/components/contest/usePolling'
-import { PlateTag } from '@/components/contest/PlateTag'
-import { Podium } from '@/components/contest/Podium'
-import { contestDict, fmt, ordinal, type ContestMsgKey } from '@/lib/contest-i18n'
-import { podium } from '@/lib/contest-podium'
 import type { AdminView, ResultRow } from '@/lib/contest-state'
+import { BoardSlide, Bi, DuelSlide, FinalSlide, PlateSlide, TitleSlide } from './RevealSlides'
 import { runAction } from './runAction'
-
-// Bilingue (spec PR 2 §6) : pas de sélecteur de langue, le français en grand et
-// l'anglais en petit italique estompé juste dessous, toujours les deux. La taille
-// est posée sur le conteneur : `0.45em` se calcule alors sur celle du français.
-const fr = (k: ContestMsgKey, v?: Record<string, string | number>) => (v ? fmt(contestDict.fr[k], v) : contestDict.fr[k])
-const en = (k: ContestMsgKey, v?: Record<string, string | number>) => (v ? fmt(contestDict.en[k], v) : contestDict.en[k])
-function Bi({ k, v, className, align = 'center' }: { k: ContestMsgKey; v?: Record<string, string | number>; className: string; align?: 'center' | 'start' }) {
-  return (
-    <span className={`flex flex-col ${align === 'center' ? 'items-center' : 'items-start'} ${className}`}>
-      <span>{fr(k, v)}</span>
-      {/* Lisibilité TV (vague de correction PR 2, point 2) : 0.6em/opacity-70 plutôt
-          que 0.45em/opacity-60, trop estompé pour être lu depuis le fond d'une salle. */}
-      <span className="text-[0.6em] italic opacity-70">{en(k, v)}</span>
-    </span>
-  )
-}
 
 const SHELL = 'relative flex min-h-dvh flex-col items-center gap-8 overflow-hidden p-12 pb-16 text-center text-[#f4ebdd]'
 const HALO = 'radial-gradient(circle at 50% 45%, #3d2e20, #1f170f 75%)'
@@ -132,7 +113,9 @@ export function Scene({ initial }: { initial: AdminView }) {
 
   // Habillage commun (spec PR 2 §6) : halo chocolat, logo bien visible, points de
   // progression. La scène est une TV : elle reste sombre quel que soit le thème
-  // du site, d'où les couleurs fixes plutôt que les jetons.
+  // du site, d'où les couleurs fixes plutôt que les jetons. Chaque slide porte une
+  // clé stable : les étapes d'une même slide (auteurs, verdict du duel) gardent
+  // l'instance et n'animent que ce qui change ; une nouvelle slide rejoue son entrée.
   let content: ReactNode
   let halo = HALO
   let finalScreen = false
@@ -145,84 +128,35 @@ export function Scene({ initial }: { initial: AdminView }) {
       </>
     )
   } else {
-    const step = steps[Math.min(effectiveStep, steps.length - 1)]
+    const index = Math.min(effectiveStep, steps.length - 1)
+    const step = steps[index]
     const byId = new Map(rows.map((r) => [r.plateId, r]))
+    // Une assiette supprimée entre-temps disparaît de la slide plutôt que de la planter.
+    const pick = (ids: number[]) => ids.map((id) => byId.get(id)).filter((r): r is ResultRow => !!r)
 
     if (step.kind === 'title') {
       const voters = new Set(view.guests.filter((g) => g.ranked >= 2).map((g) => g.id)).size
-      content = (
-        <>
-          <h1><Bi k="verdict" className="font-display text-[110px] leading-none" /></h1>
-          {/* Singulier (point 8 de la vague de correction) : « 1 bulletin », pas « 1 bulletins ». */}
-          <Bi k={voters === 1 ? 'ballotsPlatesOne' : 'ballotsPlates'} v={{ b: voters, p: rows.length }} className="text-[32px]" />
-        </>
-      )
+      content = <TitleSlide key="title" voters={voters} plates={rows.length} />
     } else if (step.kind === 'final') {
       finalScreen = true
-      content = (
-        <>
-          <h1><Bi k="finalRanking" className="font-display text-[56px] leading-none" /></h1>
-          <Podium rows={rows} size="tv" text={fr} lang="fr" subLang="en" />
-          <ol data-testid="final-rest" className="grid w-full max-w-6xl grid-cols-1 gap-3 text-left xl:grid-cols-2">
-            {podium(rows).rest.map((r) => (
-              <li key={r.plateId} className="flex items-baseline gap-4 rounded-[18px] bg-[#fffdf9]/10 px-6 py-3 text-[26px]">
-                <span className="flex min-w-24 flex-col font-display leading-none text-[#d29a55]">
-                  {r.position === null ? fr('unranked') : ordinal('fr', r.position)}
-                  <span className="mt-1 text-[16px] italic opacity-60">{r.position === null ? en('unranked') : ordinal('en', r.position)}</span>
-                </span>
-                {/* Les prénoms d'abord, le numéro d'assiette en second (retours d'UAT). */}
-                <span className="flex-1 font-display text-[34px] text-[#7f98e0]">{r.authors.join(' & ') || '?'}</span>
-                <span className="font-display text-[20px] opacity-70">{fr('plateTag', { n: r.number })}</span>
-                {r.score !== null && <span className="opacity-70">{fr('score', { n: r.score })}</span>}
-              </li>
-            ))}
-          </ol>
-        </>
-      )
+      content = <FinalSlide key="final" rows={rows} />
+    } else if (step.kind === 'board') {
+      content = <BoardSlide key={`board-${index}`} rows={pick(step.plateIds)} />
+    } else if (step.kind === 'duel') {
+      if (step.stage !== 'intro') halo = HALO_FIRST
+      // Affichés par numéro d'assiette : un ordre qui ne dit rien du classement.
+      const finalists = pick(step.plateIds).sort((a, b) => a.number - b.number)
+      content = <DuelSlide key="duel" finalists={finalists} stage={step.stage} />
     } else {
-      const shown = step.plateIds.map((id) => byId.get(id)).filter((r): r is ResultRow => !!r)
-      const first = step.position === 1
-      // Ex æquo : les auteurs de chaque assiette sont repérés par leur « N° X »
-      // dans la colonne de droite. Ni rang moyen ni écart de points (retours
-      // d'UAT) : la note sur l'étiquette suffit.
-      const tagOf = (r: ResultRow) => (shown.length > 1 ? `${fr('plateTag', { n: r.number })} · ` : '')
-      if (first) halo = HALO_FIRST
-
+      if (step.position === 1) halo = HALO_FIRST
       content = (
-        <div className="flex items-center gap-16">
-          <div className="flex flex-col items-center">
-            <span className={`font-display leading-none ${first ? 'text-[260px] text-[#f3c787] [text-shadow:0_0_60px_rgba(243,199,135,0.4)]' : step.podium ? 'text-[220px] text-[#d29a55]' : 'text-[180px] text-[#d29a55]'}`}>
-              {ordinal('fr', step.position)}
-            </span>
-            <span className="text-[36px] italic opacity-60">{ordinal('en', step.position)}</span>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-10">
-            {shown.map((r) => (
-              <div key={r.plateId} className="flex flex-col items-center gap-4">
-                <PlateTag label={fr('plateTag', { n: r.number })} size={first ? 'xl' : 'lg'} tilt score={r.score} scoreLabel={r.score === null ? undefined : fr('score', { n: r.score })} />
-                {r.label && <p className="text-[22px] opacity-70">{r.label}</p>}
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col items-start gap-4 text-left">
-            <Bi k="bakedBy" className="text-[32px]" align="start" />
-            {step.showAuthors ? (
-              shown.map((r) => (
-                <p key={r.plateId} className="font-display text-[64px] leading-tight text-[#7f98e0]">
-                  {shown.length > 1 && <span className="text-[28px] opacity-70">{tagOf(r)}</span>}
-                  {r.authors.join(' & ') || '?'}
-                </p>
-              ))
-            ) : (
-              <div className="rounded-[20px] border-4 border-dashed border-[#f4ebdd]/25 px-10 py-6 text-[56px] opacity-50">
-                <span aria-hidden="true">?</span>
-                <span className="sr-only">{fr('authorsHidden')}</span>
-              </div>
-            )}
-          </div>
-        </div>
+        <PlateSlide
+          key={`plate-${step.position}`}
+          shown={pick(step.plateIds)}
+          position={step.position}
+          podium={step.podium}
+          showAuthors={step.showAuthors}
+        />
       )
     }
   }

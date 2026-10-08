@@ -88,7 +88,7 @@ test('étape refusée par le serveur : l’affichage reste sur l’étape en cou
 })
 
 // Fabrique à 4 assiettes (positions 1..4), étapes calculées comme en production :
-// [title, 4e ?, 4e auteurs, 3e ?, 3e auteurs, 2e ?, 2e auteurs, 1er ?, 1er auteurs, final].
+// [title, 4e ?, 4e auteurs, 3e ?, 3e auteurs, duel, verdict, auteurs du duel, final].
 const rows4 = [
   row(10, 1, 1, 90, ['Inès']),
   row(20, 2, 2, 70, ['Camille', 'Hugo']),
@@ -112,18 +112,61 @@ test('scène bilingue : titre FR et EN', async () => {
   expect(screen.getByText('0 ballots · 4 plates')).toBeTruthy()
 })
 
-test('rang, premier temps : auteurs masqués ; second temps : auteurs', async () => {
-  render(<Scene initial={viewAt('reveal', stepOf(2, false))} />)
+test('3e, premier temps : médaille, auteurs masqués ; second temps : auteurs', async () => {
+  render(<Scene initial={viewAt('reveal', stepOf(3, false))} />)
   expect(await screen.findByText('Auteurs à venir')).toBeTruthy()
-  expect(screen.queryByText('Camille & Hugo')).toBeNull()
-  expect(screen.getByText('2e')).toBeTruthy()
-  expect(screen.getByText('2nd')).toBeTruthy()
+  expect(screen.queryByText('Léo')).toBeNull()
+  // Le rang est écrit sur la médaille (SVG), l'anglais dessous.
+  expect(screen.getByText('3e').closest('svg')).toBeTruthy()
+  expect(screen.getByText('3rd')).toBeTruthy()
   expect(screen.getByText('fait par')).toBeTruthy()
   expect(screen.getByText('baked by')).toBeTruthy()
   cleanup()
-  render(<Scene initial={viewAt('reveal', stepOf(2, true))} />)
-  expect(await screen.findByText('Camille & Hugo')).toBeTruthy()
+  render(<Scene initial={viewAt('reveal', stepOf(3, true))} />)
+  expect(await screen.findByText('Léo')).toBeTruthy()
   expect(screen.queryByText('Auteurs à venir')).toBeNull()
+})
+
+const duelAt = (stage: string) => steps4.findIndex((s) => s.kind === 'duel' && s.stage === stage)
+
+// Le 1er ne se devine plus par élimination : les deux finalistes arrivent
+// ensemble, sans note ni médaille ni auteurs.
+test('duel, intro : les deux finalistes, rien qui trahisse le gagnant', async () => {
+  render(<Scene initial={viewAt('reveal', duelAt('intro'))} />)
+  expect(await screen.findByText('Il en reste deux…')).toBeTruthy()
+  expect(screen.getByText('Two left…')).toBeTruthy()
+  expect(screen.getAllByTestId('finalist').map((f) => f.textContent)).toEqual([expect.stringContaining('N° 1'), expect.stringContaining('N° 2')])
+  expect(screen.queryByText('90/100')).toBeNull()
+  expect(screen.queryByText('1er')).toBeNull()
+  expect(screen.queryByText('Inès')).toBeNull()
+})
+
+test('duel, verdict : médailles et notes, gagnant soulevé ; puis les auteurs', async () => {
+  render(<Scene initial={viewAt('reveal', duelAt('result'))} />)
+  expect(await screen.findByText('Le cookie de la soirée')).toBeTruthy()
+  const [first, second] = screen.getAllByTestId('finalist')
+  expect(first.textContent).toContain('1er')
+  expect(first.textContent).toContain('90/100')
+  expect(first.querySelector('.rv-win')).toBeTruthy()
+  expect(second.textContent).toContain('2e')
+  expect(second.querySelector('.rv-lose')).toBeTruthy()
+  expect(screen.queryByText('Inès')).toBeNull()
+  cleanup()
+  render(<Scene initial={viewAt('reveal', duelAt('authors'))} />)
+  expect(await screen.findByText('Inès')).toBeTruthy()
+  expect(screen.getByText('Camille & Hugo')).toBeTruthy()
+})
+
+// Rangs du bas nombreux : un tableau qui se remplit par le bas, le meilleur en haut.
+test('rangs du bas groupés : un tableau, meilleur en haut', async () => {
+  const many = [...rows4, row(50, 5, 5, 20, ['Max']), row(60, 6, 6, 10, ['Ana']), row(70, 7, 7, 5, ['Tom'])]
+  const steps = buildRevealSteps(many)
+  render(<Scene initial={{ ...viewAt('reveal', 1), rows: many, steps }} />)
+  expect(await screen.findByText('Du 7e au 4e')).toBeTruthy()
+  expect(screen.getByText('7th to 4th')).toBeTruthy()
+  const lines = [...screen.getByTestId('board').querySelectorAll('li')].map((li) => li.textContent)
+  expect(lines[0]).toContain('Zoé')
+  expect(lines.at(-1)).toContain('Tom')
 })
 
 test('écran final : pyramide puis liste', async () => {
