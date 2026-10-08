@@ -108,8 +108,8 @@ test('scène bilingue : titre FR et EN', async () => {
   render(<Scene initial={viewAt('reveal', 0)} />)
   expect(await screen.findByText('Le verdict')).toBeTruthy()
   expect(screen.getByText('The verdict')).toBeTruthy()
-  expect(screen.getByText('0 bulletins · 4 assiettes')).toBeTruthy()
-  expect(screen.getByText('0 ballots · 4 plates')).toBeTruthy()
+  expect(screen.getByText('0 bulletins · 4 cookies')).toBeTruthy()
+  expect(screen.getByText('0 ballots · 4 cookies')).toBeTruthy()
 })
 
 test('3e, premier temps : médaille, auteurs masqués ; second temps : auteurs', async () => {
