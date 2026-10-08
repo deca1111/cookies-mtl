@@ -172,6 +172,11 @@ export function DuelSlide({ finalists, stage }: { finalists: ResultRow[]; stage:
   const revealed = stage !== 'intro'
   const winners = finalists.filter((r) => r.position === 1).length
   const middle = (finalists.length - 1) / 2
+  // Ex æquo en série (1, 2, 2, 2 ou plusieurs 1ers) : à partir de 4 finalistes,
+  // tout rétrécit pour tenir sur une TV de 1 920 px (la scène coupe ce qui déborde).
+  const many = finalists.length > 3
+  const columnWidth = Math.min(540, Math.floor(1760 / finalists.length) - 48)
+  const medal = (size: number) => (many ? Math.round(size * 0.7) : size)
   return (
     <div className="flex flex-col items-center gap-10">
       <h1 key={revealed ? 'verdict' : 'intro'} className={revealed ? 'rv-stamp' : 'rv-rise'}>
@@ -187,19 +192,19 @@ export function DuelSlide({ finalists, stage }: { finalists: ResultRow[]; stage:
           const enter = i < middle ? 'rv-from-left' : i > middle ? 'rv-from-right' : 'rv-rise'
           return (
             // Colonnes de largeur fixe : l'arrivée d'un nom long ne déplace pas l'autre finaliste.
-            <div key={r.plateId} data-testid="finalist" className={`${enter} relative flex w-[540px] flex-col items-center gap-6`}>
+            <div key={r.plateId} data-testid="finalist" className={`${enter} relative flex flex-col items-center gap-6`} style={{ width: columnWidth }}>
               {/* pb : le gagnant soulevé (rv-win) ne vient pas chevaucher sa médaille. */}
               <div className="flex h-[300px] items-end pb-8">
                 {revealed ? (
-                  <Medal position={r.position!} size={win ? 200 : 150} className="rv-medal-drop" />
+                  <Medal position={r.position!} size={medal(win ? 200 : 150)} className="rv-medal-drop" />
                 ) : (
-                  <MysteryMedal size={150} />
+                  <MysteryMedal size={medal(150)} />
                 )}
               </div>
               <div className={revealed ? (win ? 'rv-win' : 'rv-lose') : ''}>
                 <PlateTag
                   label={fr('plateTag', { n: r.number })}
-                  size="xl"
+                  size={many ? 'ml' : 'xl'}
                   tilt
                   cookie
                   score={revealed ? r.score : null}
@@ -209,7 +214,7 @@ export function DuelSlide({ finalists, stage }: { finalists: ResultRow[]; stage:
               {revealed && win && <Crumbs seed={r.plateId} />}
               <div className="flex min-h-[110px] items-center">
                 {stage === 'authors' ? (
-                  <p className={`rv-stamp font-display leading-tight text-[#7f98e0] ${win ? 'text-[72px]' : 'text-[52px]'}`}>{authorsOf(r)}</p>
+                  <p className={`rv-stamp font-display leading-tight text-[#7f98e0] ${many ? 'text-[40px]' : win ? 'text-[72px]' : 'text-[52px]'}`}>{authorsOf(r)}</p>
                 ) : (
                   <HiddenAuthors size={44} />
                 )}

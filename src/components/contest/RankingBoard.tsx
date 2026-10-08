@@ -60,7 +60,8 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   // Glisser depuis « à goûter » : l'assiette tenue, et où elle tomberait.
   const [dragged, setDragged] = useState<number | null>(null)
   const [dropAt, setDropAt] = useState<number | null>(null)
-  // Une ligne classée tenue au-dessus d'« à goûter » : la section l'annonce.
+  // Une ligne classée tenue, et si elle survole « à goûter » (la section l'annonce).
+  const [heldRow, setHeldRow] = useState<number | null>(null)
   const [overPool, setOverPool] = useState(false)
   const byId = new Map(plates.map((p) => [p.id, p]))
   // Une assiette supprimée par l'admin disparaît d'elle-même (spec §11).
@@ -92,11 +93,14 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
   const resetDrag = () => {
     setDragged(null)
     setDropAt(null)
+    setHeldRow(null)
     setOverPool(false)
   }
 
   const onDragStart = ({ active }: DragStartEvent) => {
-    setDragged(poolPlateId(active.id))
+    const fromPool = poolPlateId(active.id)
+    setDragged(fromPool)
+    setHeldRow(fromPool === null ? Number(active.id) : null)
     setPicked(null)
     buzz()
   }
@@ -226,14 +230,19 @@ export function RankingBoard({ plates, ranking, onChange, locked, t }: Props) {
           </p>
         )}
       </div>
-      {/* L'assiette suit le doigt dans une couche à part : déplacée sur place,
-          elle passerait sous la section du classement. */}
+      {/* Ce qui est tenu suit le doigt dans une couche à part : déplacé sur place,
+          il passerait sous l'autre section. dnd-kit crée cette couche pour TOUT
+          glisser dès que <DragOverlay> est monté — les lignes classées y ont donc
+          aussi leur clone, sans quoi rien ne suivrait le doigt. */}
       <DragOverlay dropAnimation={null}>
         {draggedPlate && (
           // Soulevée : plus grande, inclinée, contour de couleur — on voit qu'elle est tenue.
           <span className="inline-block scale-110 -rotate-3 rounded-[10px] ring-4 ring-[color:var(--accent)]">
             <PlateTag label={t('plateTag', { n: draggedPlate.number })} size="md" cookie />
           </span>
+        )}
+        {heldRow !== null && byId.has(heldRow) && (
+          <HeldRow plate={byId.get(heldRow)!} index={ranked.indexOf(heldRow)} t={t} />
         )}
       </DragOverlay>
     </DndContext>
@@ -304,10 +313,10 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      // Tenue : la ligne se soulève (agrandie, ombre portée, contour de couleur)
-      // pour qu'on voie bien qu'elle est attrapée.
+      // Tenue : c'est son clone soulevé (HeldRow) qui suit le doigt ; la ligne
+      // elle-même marque sa place en pointillés estompés.
       className={`flex items-center gap-3 rounded-[var(--radius-card)] border bg-[color:var(--surface)] p-3 ${isDragging
-        ? 'relative z-10 scale-[1.04] border-[color:var(--accent)] shadow-[0_16px_36px_rgba(0,0,0,0.5)] ring-2 ring-[color:var(--accent)]'
+        ? 'border-dashed border-[color:var(--accent)] opacity-40'
         : 'border-[color:var(--border)] shadow-[var(--shadow-chip)]'}`}
     >
       {/* Poignée dédiée : `attributes`/`listeners` (et donc `touch-none`) ne
@@ -349,6 +358,21 @@ function RankedRow({ plate, index, count, locked, t, onUp, onDown, onRemove }: R
           </button>
         </div>
       )}
+    </div>
+  )
+}
+
+// Clone d'une ligne classée pendant qu'on la tient : soulevé (agrandi, ombre
+// portée, contour de couleur) pour qu'on voie bien qu'elle est attrapée.
+function HeldRow({ plate, index, t }: { plate: Plate; index: number; t: T }) {
+  return (
+    <div className="flex scale-[1.04] cursor-grabbing items-center gap-3 rounded-[var(--radius-card)] border border-[color:var(--accent)] bg-[color:var(--surface)] p-3 shadow-[0_16px_36px_rgba(0,0,0,0.5)] ring-2 ring-[color:var(--accent)]">
+      <span className="w-[32px]" />
+      <span className="font-display w-8 text-center text-[22px] text-[color:var(--btn-bg)]">{index + 1}</span>
+      <PlateTag label={t('plateTag', { n: plate.number })} size="sm" tilt cookie />
+      <div className="flex-1 select-none">
+        {plate.label && <div className="text-[13px] text-[color:var(--text-muted)]">{plate.label}</div>}
+      </div>
     </div>
   )
 }

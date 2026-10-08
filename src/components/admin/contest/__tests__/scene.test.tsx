@@ -185,3 +185,15 @@ test('attente : nom du concours et texte bilingue', () => {
   expect(screen.getByText('En attente de la révélation…')).toBeTruthy()
   expect(screen.getByText('Waiting for the reveal…')).toBeTruthy()
 })
+
+// Ex æquo en série : 4 finalistes doivent tenir sur une TV de 1 920 px.
+test('duel à 4 finalistes : colonnes rétrécies pour tenir à l’écran', async () => {
+  const tied = [row(10, 1, 1, 90, ['Inès']), row(20, 2, 2, 70, ['Camille']), row(30, 3, 2, 70, ['Léo']), row(40, 4, 2, 70, ['Zoé'])]
+  const steps = buildRevealSteps(tied)
+  const at = steps.findIndex((s) => s.kind === 'duel')
+  render(<Scene initial={{ ...viewAt('reveal', at), rows: tied, steps }} />)
+  const columns = await screen.findAllByTestId('finalist')
+  expect(columns).toHaveLength(4)
+  const total = columns.reduce((sum, c) => sum + Number.parseInt(c.style.width) + 48, 0)
+  expect(total).toBeLessThanOrEqual(1920 - 96)
+})

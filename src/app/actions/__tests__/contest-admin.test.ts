@@ -77,6 +77,26 @@ test('assiette modifiée hors préparation : le numéro tapé est ignoré, celui
   expect(db.updatePlate).toHaveBeenCalledWith(1, 10, { number: 1, label: 'Noisette', authorIds: [] })
 })
 
+// Votes clos : les résultats sont figés. Changer les auteurs retirerait des
+// bulletins le vote d'un invité pour sa « nouvelle » assiette, donc changerait le
+// classement et le nombre d'étapes de la scène en pleine révélation.
+test('assiette modifiée après la clôture : auteurs figés, la note reste modifiable', async () => {
+  for (const phase of ['closed', 'reveal']) {
+    db.updatePlate.mockReset()
+    db.getContestById.mockResolvedValue(contest(phase))
+    db.loadContestData.mockResolvedValue({ guests: [], plates: [{ id: 10, number: 1, label: null, authorIds: [5] }], ballots: [] })
+    expect(await savePlateAction(1, { id: 10, number: 1, label: 'Noisette', authorIds: [5, 6] })).toEqual({ ok: true })
+    expect(db.updatePlate).toHaveBeenCalledWith(1, 10, { number: 1, label: 'Noisette', authorIds: [5] })
+  }
+})
+
+test('assiette modifiée pendant le vote : auteurs encore modifiables', async () => {
+  db.getContestById.mockResolvedValue(contest('voting'))
+  db.loadContestData.mockResolvedValue({ guests: [], plates: [{ id: 10, number: 1, label: null, authorIds: [5] }], ballots: [] })
+  await savePlateAction(1, { id: 10, number: 1, label: null as unknown as string, authorIds: [5, 6] })
+  expect(db.updatePlate).toHaveBeenCalledWith(1, 10, expect.objectContaining({ authorIds: [5, 6] }))
+})
+
 test('mélange : seulement en préparation, permutation des numéros existants', async () => {
   expect(await shufflePlatesAction(1)).toEqual({ ok: true })
   const pairs = db.setPlateNumbers.mock.calls[0][1] as { plateId: number; number: number }[]

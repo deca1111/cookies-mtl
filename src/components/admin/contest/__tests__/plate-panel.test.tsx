@@ -85,3 +85,18 @@ test('« + Ajouter » : carte provisoire en bas de liste', () => {
   const items = screen.getAllByRole('listitem')
   expect(items[items.length - 1].querySelector('input[placeholder="Note facultative…"]')).not.toBeNull()
 })
+
+test('votes clos : les auteurs d’une assiette ne se modifient plus', () => {
+  render(
+    <PlatePanel
+      contestId={1}
+      phase="reveal"
+      plates={[{ id: 10, number: 1, label: null, authorIds: [5] }]}
+      guests={[{ id: 5, name: 'Camille', claimed: false, ranked: 0, rankable: 0, ballot: [] }]}
+      onDone={vi.fn()}
+    />,
+  )
+  fireEvent.click(screen.getByText('Camille').closest('button')!)
+  expect(screen.getByText('Auteurs figés depuis la clôture des votes.')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Camille', pressed: true }).hasAttribute('disabled')).toBe(true)
+})
