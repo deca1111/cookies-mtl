@@ -197,7 +197,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
   } else if (view.final && view.results) {
     body = <GuestResults results={view.results} myBallot={view.myBallot} t={t} lang={lang} />
   } else if (view.phase === 'voting') {
-    body = <RankingBoard plates={view.plates} ranking={ranking} onChange={onChange} locked={false} t={t} />
+    body = <RankingBoard plates={view.plates} ranking={ranking} onChange={onChange} locked={false} t={t} topK={view.topK} />
   } else {
     body = (
       <div className="flex flex-col gap-6">
@@ -207,7 +207,7 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
               le texte par défaut mentirait à l'invité qui n'a pas voté. */}
           <p className="mt-2 text-[15px] text-[color:var(--text-body)]">{t(ranking.length === 0 ? 'closedBodyEmpty' : 'closedBody')}</p>
         </div>
-        <RankingBoard plates={view.plates} ranking={ranking} onChange={() => {}} locked t={t} />
+        <RankingBoard plates={view.plates} ranking={ranking} onChange={() => {}} locked t={t} topK={view.topK} />
       </div>
     )
   }

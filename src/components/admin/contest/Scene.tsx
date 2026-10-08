@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { setRevealStepAction } from '@/app/actions/contest-admin'
 import { usePolling } from '@/components/contest/usePolling'
 import type { AdminView, ResultRow } from '@/lib/contest-state'
-import { BoardSlide, Bi, DuelSlide, FinalSlide, PlateSlide, TitleSlide } from './RevealSlides'
+import { BoardSlide, Bi, DuelSlide, FinalSlide, MenuSlide, PlateSlide, TitleSlide } from './RevealSlides'
 import { runAction } from './runAction'
 
 const SHELL = 'relative flex min-h-dvh flex-col items-center gap-8 overflow-hidden p-12 pb-16 text-center text-[#f4ebdd]'
@@ -135,11 +135,14 @@ export function Scene({ initial }: { initial: AdminView }) {
     const pick = (ids: number[]) => ids.map((id) => byId.get(id)).filter((r): r is ResultRow => !!r)
 
     if (step.kind === 'title') {
-      const voters = new Set(view.guests.filter((g) => g.ranked >= 2).map((g) => g.id)).size
+      // Top K : un bulletin d'un seul cookie compte (c'est un coup de cœur).
+      const voters = view.guests.filter((g) => g.ranked >= 1).length
       content = <TitleSlide key="title" voters={voters} plates={rows.length} />
     } else if (step.kind === 'final') {
       finalScreen = true
       content = <FinalSlide key="final" rows={rows} />
+    } else if (step.kind === 'menu') {
+      content = <MenuSlide key="menu" rows={pick(step.plateIds)} />
     } else if (step.kind === 'board') {
       content = <BoardSlide key={`board-${index}`} rows={pick(step.plateIds)} />
     } else if (step.kind === 'duel') {

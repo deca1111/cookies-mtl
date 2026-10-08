@@ -6,7 +6,7 @@ const { db, requireAdmin, loadAdminView } = vi.hoisted(() => {
   const names = [
     'createContest', 'deleteContest', 'renameContest', 'getContestById', 'setPhase', 'setRevealStep', 'addGuest',
     'renameGuest', 'deleteGuest', 'releaseGuest', 'releaseAllGuests', 'addPlate', 'updatePlate', 'deletePlate', 'setPlateNumbers',
-    'loadContestData',
+    'loadContestData', 'setTopK',
   ]
   return {
     db: Object.fromEntries(names.map((n) => [n, vi.fn()])) as Record<string, ReturnType<typeof vi.fn>>,
@@ -25,7 +25,7 @@ vi.mock('@/lib/contest-db', () => ({
 
 import {
   addGuestAction, createContestAction, releaseAllGuestsAction, releaseGuestAction, renameContestAction, savePlateAction, setRevealStepAction, shiftPhaseAction,
-  shufflePlatesAction,
+  setTopKAction, shufflePlatesAction,
 } from '../contest-admin'
 
 const contest = (phase: string) => ({ id: 1, name: 'Anniv', secret: 's', phase, revealStep: 0 })
@@ -197,4 +197,18 @@ test('tout libérer : seulement avant la clôture des votes', async () => {
   db.getContestById.mockResolvedValue(null)
   expect(await releaseAllGuestsAction(1)).toEqual({ ok: false, error: 'not-found' })
   expect(db.releaseAllGuests).not.toHaveBeenCalled()
+})
+
+test('mode de vote : top K entier de 1 à 50 ou « tout », réglable jusqu’à la clôture', async () => {
+  expect(await setTopKAction(1, 3)).toEqual({ ok: true })
+  expect(db.setTopK).toHaveBeenCalledWith(1, 3)
+  expect(await setTopKAction(1, null)).toEqual({ ok: true })
+  for (const bad of [0, 51, 2.5, Number.NaN, '5' as unknown as number]) {
+    expect(await setTopKAction(1, bad)).toEqual({ ok: false, error: 'top-k' })
+  }
+  db.getContestById.mockResolvedValue(contest('voting'))
+  expect(await setTopKAction(1, 5)).toEqual({ ok: true })
+  db.getContestById.mockResolvedValue(contest('closed'))
+  expect(await setTopKAction(1, 5)).toEqual({ ok: false, error: 'locked' })
+  expect(db.setTopK).toHaveBeenCalledTimes(3)
 })

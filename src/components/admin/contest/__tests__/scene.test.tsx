@@ -20,7 +20,7 @@ const row = (plateId: number, number: number, position: number, score: number, a
 })
 
 const view = (revealStep: number): AdminView => ({
-  contest: { id: 1, name: 'Anniv', secret: 's', phase: 'reveal', revealStep },
+  contest: { id: 1, name: 'Anniv', secret: 's', phase: 'reveal', revealStep, topK: 5 },
   guests: [], plates: [],
   rows: [row(10, 1, 1, 80, ['Julie']), row(20, 2, 2, 60, ['Marc'])],
   steps: [
@@ -31,12 +31,11 @@ const view = (revealStep: number): AdminView => ({
     { kind: 'plate', plateIds: [10], position: 1, showAuthors: true, podium: true },
     { kind: 'final' },
   ],
-  complete: 0,
 })
 
 test('étape « note » : numéro et note, sans auteur', () => {
   render(<Scene initial={view(3)} />)
-  expect(screen.getByText('80/100')).toBeTruthy()
+  expect(screen.getByText('80 pts')).toBeTruthy()
   expect(screen.queryByText(/Julie/)).toBeNull()
 })
 
@@ -84,7 +83,7 @@ test('étape refusée par le serveur : l’affichage reste sur l’étape en cou
   fireEvent.keyDown(window, { key: 'ArrowRight' })
   await waitFor(() => expect(setRevealStepAction).toHaveBeenCalled())
   await waitFor(() => expect(screen.queryByText(/Julie/)).toBeNull())
-  expect(screen.getByText('80/100')).toBeTruthy()
+  expect(screen.getByText('80 pts')).toBeTruthy()
 })
 
 // Fabrique à 4 assiettes (positions 1..4), étapes calculées comme en production :
@@ -98,8 +97,8 @@ const rows4 = [
 const steps4 = buildRevealSteps(rows4)
 const LAST = steps4.length - 1
 const viewAt = (phase: AdminView['contest']['phase'], revealStep: number): AdminView => ({
-  contest: { id: 1, name: 'Anniv', secret: 's', phase, revealStep },
-  guests: [], plates: [], rows: rows4, steps: steps4, complete: 0,
+  contest: { id: 1, name: 'Anniv', secret: 's', phase, revealStep, topK: 5 },
+  guests: [], plates: [], rows: rows4, steps: steps4,
 })
 const stepOf = (position: number, showAuthors: boolean) =>
   steps4.findIndex((s) => s.kind === 'plate' && s.position === position && s.showAuthors === showAuthors)
@@ -136,7 +135,7 @@ test('duel, intro : les deux finalistes, rien qui trahisse le gagnant', async ()
   expect(await screen.findByText('Il en reste deux…')).toBeTruthy()
   expect(screen.getByText('Two left…')).toBeTruthy()
   expect(screen.getAllByTestId('finalist').map((f) => f.textContent)).toEqual([expect.stringContaining('N° 1'), expect.stringContaining('N° 2')])
-  expect(screen.queryByText('90/100')).toBeNull()
+  expect(screen.queryByText('90 pts')).toBeNull()
   expect(screen.queryByText('1er')).toBeNull()
   expect(screen.queryByText('Inès')).toBeNull()
 })
@@ -146,7 +145,7 @@ test('duel, verdict : médailles et notes, gagnant soulevé ; puis les auteurs',
   expect(await screen.findByText('Le cookie de la soirée')).toBeTruthy()
   const [first, second] = screen.getAllByTestId('finalist')
   expect(first.textContent).toContain('1er')
-  expect(first.textContent).toContain('90/100')
+  expect(first.textContent).toContain('90 pts')
   expect(first.querySelector('.rv-win')).toBeTruthy()
   expect(second.textContent).toContain('2e')
   expect(second.querySelector('.rv-lose')).toBeTruthy()

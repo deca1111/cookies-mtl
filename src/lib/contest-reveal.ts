@@ -2,7 +2,9 @@
 // un index dans ce tableau ; le recalculer à partir des résultats (figés hors
 // phase de vote) rend la reprise après rechargement exacte.
 //
-// Déroulé : titre → rangs du bas → 3e → duel final → écran final.
+// Déroulé : titre → « aussi au menu » → rangs du bas → 3e → duel final → écran final.
+// - « Aussi au menu » : les cookies cités dans aucun top K, ensemble, sans rang
+//   ni note — personne n'est désigné dernier devant la salle.
 // - Rangs du bas (au-delà du podium) : groupés en tableaux qui se remplissent en
 //   cascade, une étape par tableau ; s'il n'y en a que quelques-uns, une slide
 //   par rang (numéro et note, puis auteurs).
@@ -15,6 +17,7 @@ export type DuelStage = 'intro' | 'result' | 'authors'
 
 export type RevealStep =
   | { kind: 'title' }
+  | { kind: 'menu'; plateIds: number[] }
   | { kind: 'board'; plateIds: number[] }
   | { kind: 'plate'; plateIds: number[]; position: number; showAuthors: boolean; podium: boolean }
   | { kind: 'duel'; plateIds: number[]; stage: DuelStage }
@@ -37,6 +40,10 @@ export function buildRevealSteps(results: PlateResult[]): RevealStep[] {
   }
 
   const steps: RevealStep[] = [{ kind: 'title' }]
+
+  // `results` arrive trié : ceux sans point en dernier, par numéro.
+  const unranked = results.filter((r) => r.position === null).map((r) => r.plateId)
+  if (unranked.length > 0) steps.push({ kind: 'menu', plateIds: unranked })
 
   // Du moins bon au meilleur. `results` arrive trié du meilleur au moins bon.
   const lower = ranked.filter((r) => r.position > 3).reverse()

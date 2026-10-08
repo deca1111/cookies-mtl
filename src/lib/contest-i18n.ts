@@ -18,6 +18,9 @@ const fr = {
   toTasteHint: "Glisse un cookie goûté dans ton classement, ou touche-le puis choisis sa place.",
   dropToRemove: "Relâche ici pour la retirer du classement",
   myRanking: "Mon classement",
+  topHint: "Ton top {k} rapporte des points : {k} pour ton préféré, puis un de moins à chaque place.",
+  cutLine: "Seul ton top {k} compte",
+  outOfTop: "Sorti du top",
   emptyRanking: "Rien pour l’instant : goûte une assiette et place-la ici.",
   placeHere: "Placer ici",
   cancelPlace: "Annuler",
@@ -44,6 +47,7 @@ const fr = {
   ballotsPlates: "{b} bulletins · {p} cookies",
   ballotsPlatesOne: "{b} bulletin · {p} cookies",
   bakedBy: "fait par",
+  menuTitle: "Aussi au menu ce soir",
   waitingReveal: "En attente de la révélation…",
   finalRanking: "Classement final",
   boardRange: "Du {a} au {b}",
@@ -58,13 +62,13 @@ const fr = {
   yourPick: "Ton classement",
   finalRank: "Classement final",
   yourPlates: "Tes cookies",
-  score: "{n}/100",
-  avgRank: "rang moyen {n}",
+  score: "{n} pts",
+  scoreOne: "{n} pt",
   votes: "{n} voix",
   votesOne: "{n} voix",
   bestWorst: "meilleure place {best}, pire place {worst}",
   firsts: "mis 1er par {n} personne(s)",
-  unranked: "Non classée",
+  unranked: "Au menu",
   notFound: "Ce concours n’existe plus.",
 }
 
@@ -84,6 +88,9 @@ const en: Record<keyof typeof fr, string> = {
   toTasteHint: "Drag a cookie you tasted into your ranking, or tap it then choose its spot.",
   dropToRemove: "Drop here to take it out of your ranking",
   myRanking: "My ranking",
+  topHint: "Your top {k} earns points: {k} for your favourite, then one less for each spot.",
+  cutLine: "Only your top {k} counts",
+  outOfTop: "Out of your top",
   emptyRanking: "Nothing yet: taste a plate and place it here.",
   placeHere: "Place here",
   cancelPlace: "Cancel",
@@ -110,6 +117,7 @@ const en: Record<keyof typeof fr, string> = {
   ballotsPlates: "{b} ballots · {p} cookies",
   ballotsPlatesOne: "{b} ballot · {p} cookies",
   bakedBy: "baked by",
+  menuTitle: "Also on the menu tonight",
   waitingReveal: "Waiting for the reveal…",
   finalRanking: "Final ranking",
   boardRange: "{a} to {b}",
@@ -124,18 +132,21 @@ const en: Record<keyof typeof fr, string> = {
   yourPick: "Your ranking",
   finalRank: "Final ranking",
   yourPlates: "Your cookies",
-  score: "{n}/100",
-  avgRank: "avg. rank {n}",
+  score: "{n} pts",
+  scoreOne: "{n} pt",
   votes: "{n} votes",
   votesOne: "{n} vote",
   bestWorst: "best spot {best}, worst spot {worst}",
   firsts: "ranked #1 by {n} guest(s)",
-  unranked: "Unranked",
+  unranked: "On the menu",
   notFound: "This contest no longer exists.",
 }
 
 export type ContestMsgKey = keyof typeof fr
 export const contestDict: Record<Lang, Record<ContestMsgKey, string>> = { fr, en }
+
+// « 1 pt », pas « 1 pts ».
+export const scoreKey = (n: number): ContestMsgKey => (n === 1 ? 'scoreOne' : 'score')
 
 export function fmt(template: string, vars: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? String(vars[k]) : m))

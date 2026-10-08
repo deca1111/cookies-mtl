@@ -5,7 +5,8 @@ import { agreement, computeResults, type Ballot } from './contest-scoring'
 import type { Phase } from './contest-rules'
 import { buildRevealSteps, isFinalStep, type RevealStep } from './contest-reveal'
 
-export type Contest = { id: number; name: string; secret: string; phase: Phase; revealStep: number }
+// `topK` : seuls les K premiers de chaque bulletin rapportent des points ; null = « tout ».
+export type Contest = { id: number; name: string; secret: string; phase: Phase; revealStep: number; topK: number | null }
 export type GuestRow = { id: number; name: string; claimed: boolean }
 export type PlateRow = { id: number; number: number; label: string | null; authorIds: number[] }
 export type ContestData = { guests: GuestRow[]; plates: PlateRow[]; ballots: Ballot[] }
@@ -31,12 +32,16 @@ export type GuestView = {
   me: { id: number; name: string } | null
   guests: { id: number; name: string; taken: boolean }[]
   plates: { id: number; number: number; label: string | null }[]
+  // Ligne de coupure du classement sur le téléphone ; null = « tout ».
+  topK: number | null
   myBallot: number[]
   results: { rows: ResultRow[]; agreement: number | null; myPlates: ResultRow[] } | null
 }
 
-// `ballot` : numéros des assiettes classées, meilleur d'abord (affiché à la demande).
-export type AdminGuest = { id: number; name: string; claimed: boolean; ranked: number; rankable: number; ballot: number[] }
+// `ballot` : numéros des cookies classés, meilleur d'abord (affiché à la demande).
+// `target` : combien il doit en classer pour que son bulletin compte en entier —
+// son top K, ou moins s'il a moins de cookies à classer.
+export type AdminGuest = { id: number; name: string; claimed: boolean; ranked: number; rankable: number; target: number; ballot: number[] }
 
 export type AdminView = {
   contest: Contest
@@ -44,23 +49,21 @@ export type AdminView = {
   plates: PlateRow[]
   rows: ResultRow[]
   steps: RevealStep[]
-  complete: number
 }
 
-export function resultRows(data: ContestData): ResultRow[] {
+export function resultRows(data: ContestData, topK: number | null): ResultRow[] {
   const nameOf = new Map(data.guests.map((g) => [g.id, g.name]))
   const plateOf = new Map(data.plates.map((p) => [p.id, p]))
   // Bulletins relus à travers `ballotOf` : une assiette dont l'invité est devenu
   // auteur après avoir voté sort de son bulletin, comme dans son compteur admin.
   const ballots = data.ballots.map((b) => ({ ...b, plateIds: ballotOf(data, b.guestId) }))
-  return computeResults(data.plates, ballots).map((r) => {
+  return computeResults(data.plates, ballots, topK).map((r) => {
     const p = plateOf.get(r.plateId)!
     return {
       ...r,
       number: p.number,
       label: p.label,
       authors: p.authorIds.map((id) => nameOf.get(id)).filter((n): n is string => !!n).sort(),
-      score: r.score === null ? null : Math.round(r.score * 100),
     }
   })
 }
@@ -77,7 +80,7 @@ function ballotOf(data: ContestData, guestId: number): number[] {
 
 export function buildGuestView(contest: Contest, data: ContestData, meId: number | null): GuestView {
   const me = data.guests.find((g) => g.id === meId) ?? null
-  const rows = resultRows(data)
+  const rows = resultRows(data, contest.topK)
   const final = contest.phase === 'reveal' && isFinalStep(contest.revealStep, buildRevealSteps(rows))
   const myBallot = me ? ballotOf(data, me.id) : []
   const finalOrder = rows.filter((r) => r.position !== null).map((r) => r.plateId)
@@ -88,6 +91,7 @@ export function buildGuestView(contest: Contest, data: ContestData, meId: number
     me: me && { id: me.id, name: me.name },
     guests: data.guests.map((g) => ({ id: g.id, name: g.name, taken: g.claimed && g.id !== me?.id })),
     plates: (me ? rankableFor(data, me.id) : data.plates).map(({ id, number, label }) => ({ id, number, label })),
+    topK: contest.topK,
     myBallot,
     results: final
       ? {
@@ -100,14 +104,16 @@ export function buildGuestView(contest: Contest, data: ContestData, meId: number
 }
 
 export function buildAdminView(contest: Contest, data: ContestData): AdminView {
-  const rows = resultRows(data)
+  const rows = resultRows(data, contest.topK)
   const numberOf = new Map(data.plates.map((p) => [p.id, p.number]))
   const guests = data.guests.map((g) => {
     const ballot = ballotOf(data, g.id)
+    const rankable = rankableFor(data, g.id).length
     return {
       ...g,
       ranked: ballot.length,
-      rankable: rankableFor(data, g.id).length,
+      rankable,
+      target: Math.min(contest.topK ?? rankable, rankable),
       ballot: ballot.map((id) => numberOf.get(id)!),
     }
   })
@@ -117,6 +123,5 @@ export function buildAdminView(contest: Contest, data: ContestData): AdminView {
     plates: data.plates,
     rows,
     steps: buildRevealSteps(rows),
-    complete: guests.filter((g) => g.rankable > 0 && g.ranked === g.rankable).length,
   }
 }

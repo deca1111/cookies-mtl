@@ -1,16 +1,23 @@
-// Calcul du concours (spec 2026-09-25 §2). Pur : aucune dépendance à la base, pour
-// que chaque règle — normalisation, bulletins partiels, ex æquo — soit testable seule.
+// Calcul du concours (spec 2026-09-25 §2, revu après l'UAT : « top K »). Pur :
+// aucune dépendance à la base, pour que chaque règle soit testable seule.
+//
+// Chaque invité classe ses cookies ; seuls ses K premiers rapportent des points :
+// K au 1er, K-1 au 2e… 1 au K-ième, rien au-delà. Chaque bulletin distribue donc
+// les mêmes points, qu'il cite 5 cookies ou 20 — l'ancienne normalisation par
+// bulletin donnait 0 au 5e d'un top 5, comme au pire d'un classement complet.
+// K = null : mode « tout », K vaut le nombre de cookies du concours.
 
 export type PlateRef = { id: number; number: number }
-// Bulletin ordonné, meilleure assiette en premier.
+// Bulletin ordonné, meilleur cookie en premier.
 export type Ballot = { guestId: number; plateIds: number[] }
 
 export type PlateResult = {
   plateId: number
-  // Rang de compétition (1, 2, 2, 4). null = assiette qui n'a reçu aucune voix.
+  // Rang de compétition (1, 1, 3). null = cookie cité dans aucun top : « au menu ».
   position: number | null
-  // Moyenne des scores normalisés reçus, dans [0, 1]. L'affichage multiplie par 100.
+  // Total des points reçus ; null si aucun top ne le cite.
   score: number | null
+  // Statistiques sur les seules citations dans un top K.
   avgRank: number | null
   votes: number
   bestRank: number | null
@@ -18,36 +25,28 @@ export type PlateResult = {
   firsts: number
 }
 
-// Les scores sont des fractions : deux moyennes « égales » peuvent différer au
-// dernier bit selon l'ordre des additions. On compare avec une tolérance.
-const EPS = 1e-9
-
 const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
 
-export function computeResults(plates: PlateRef[], ballots: Ballot[]): PlateResult[] {
-  const acc = new Map(plates.map((p) => [p.id, { scores: [] as number[], ranks: [] as number[] }]))
+export function computeResults(plates: PlateRef[], ballots: Ballot[], topK: number | null): PlateResult[] {
+  const k = topK ?? plates.length
+  const ranksOf = new Map(plates.map((p) => [p.id, [] as number[]]))
   for (const b of ballots) {
-    // Une assiette supprimée entre-temps disparaît du bulletin : le rang des
-    // suivantes remonte d'autant, ce qui revient au recompactage de la spec.
-    const ids = b.plateIds.filter((id) => acc.has(id))
-    const n = ids.length
-    // Un bulletin d'une seule assiette ne compare rien : il ne compte pas.
-    if (n < 2) continue
-    ids.forEach((id, i) => {
-      const a = acc.get(id)!
-      a.scores.push((n - 1 - i) / (n - 1))
-      a.ranks.push(i + 1)
-    })
+    // Un cookie supprimé entre-temps disparaît du bulletin : les suivants
+    // remontent d'une place (recompactage de la spec).
+    b.plateIds.filter((id) => ranksOf.has(id)).slice(0, k).forEach((id, i) => ranksOf.get(id)!.push(i + 1))
   }
 
+  // Places obtenues, de la 1re à la K-ième : départage à total égal (plus de
+  // 1res places d'abord, puis de 2es…). Égales aussi : vrais ex æquo.
+  const placesOf = new Map([...ranksOf].map(([id, ranks]) => [id, Array.from({ length: k }, (_, i) => ranks.filter((r) => r === i + 1).length)]))
   const numberOf = new Map(plates.map((p) => [p.id, p.number]))
   const rows: PlateResult[] = plates.map((p) => {
-    const { scores, ranks } = acc.get(p.id)!
-    const votes = scores.length
+    const ranks = ranksOf.get(p.id)!
+    const votes = ranks.length
     return {
       plateId: p.id,
       position: null,
-      score: votes ? mean(scores) : null,
+      score: votes ? ranks.reduce((s, r) => s + k + 1 - r, 0) : null,
       avgRank: votes ? mean(ranks) : null,
       votes,
       bestRank: votes ? Math.min(...ranks) : null,
@@ -56,20 +55,20 @@ export function computeResults(plates: PlateRef[], ballots: Ballot[]): PlateResu
     }
   })
 
-  rows.sort((x, y) => {
-    if (x.score === null || y.score === null) {
-      if (x.score !== y.score) return x.score === null ? 1 : -1
-    } else {
-      if (Math.abs(x.score - y.score) > EPS) return y.score - x.score
-      if (Math.abs(x.avgRank! - y.avgRank!) > EPS) return x.avgRank! - y.avgRank!
-    }
-    return numberOf.get(x.plateId)! - numberOf.get(y.plateId)!
-  })
+  // < 0 : x devant y. 0 : ex æquo.
+  const compare = (x: PlateResult, y: PlateResult) => {
+    if (x.score !== y.score) return (y.score ?? -1) - (x.score ?? -1)
+    const px = placesOf.get(x.plateId)!
+    const py = placesOf.get(y.plateId)!
+    const i = px.findIndex((n, j) => n !== py[j])
+    return i < 0 ? 0 : py[i] - px[i]
+  }
+  rows.sort((x, y) => compare(x, y) || numberOf.get(x.plateId)! - numberOf.get(y.plateId)!)
 
   rows.forEach((r, i) => {
     if (r.score === null) return
     const prev = rows[i - 1]
-    r.position = prev && prev.score !== null && Math.abs(prev.score - r.score) <= EPS ? prev.position : i + 1
+    r.position = prev && compare(prev, r) === 0 ? prev.position : i + 1
   })
   return rows
 }

@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { addGuestAction, deleteGuestAction, releaseAllGuestsAction, releaseGuestAction, renameGuestAction } from '@/app/actions/contest-admin'
-import { IconEye, IconEyeOff } from '@/components/icons'
+import { IconCheck, IconEye, IconEyeOff } from '@/components/icons'
 import type { AdminGuest } from '@/lib/contest-state'
 import type { Phase } from '@/lib/contest-rules'
 import { runAction, UNEXPECTED_ERROR } from './runAction'
 import { useConfirmDelete } from './useConfirmDelete'
+import { guestState, STATE_BADGE } from './guest-state'
 
 const ERR: Record<string, string> = { name: 'Nom vide ou trop long (40 max).', 'name-taken': 'Ce nom existe déjà.', locked: 'Votes clos : les noms ne se libèrent plus.', unexpected: UNEXPECTED_ERROR }
 
@@ -35,8 +36,10 @@ export function GuestPanel({ contestId, phase, guests, onDone }: { contestId: nu
     return res.ok
   }
 
+  // Avancement vers son top K (ou vers tout, en mode « tout ») : au-delà, les
+  // cookies classés ne rapportent rien, inutile de les compter ici.
   const status = (g: AdminGuest) =>
-    !g.claimed ? 'libre' : g.rankable === 0 ? 'connecté' : `${g.ranked}/${g.rankable} classées`
+    !g.claimed ? 'libre' : g.target === 0 ? 'connecté' : `${Math.min(g.ranked, g.target)}/${g.target} classés`
 
   return (
     <section className="flex flex-col gap-3">
@@ -91,9 +94,10 @@ export function GuestPanel({ contestId, phase, guests, onDone }: { contestId: nu
                   {g.name}
                 </button>
               )}
-              <span className={`rounded-full px-2 py-0.5 text-[11px] ${g.claimed
-                ? 'bg-[color:var(--accent-wash)] text-[color:var(--accent-ink)]'
-                : 'border border-[color:var(--border)] text-[color:var(--text-muted)]'}`}>{status(g)}</span>
+              <span data-state={guestState(g)} className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${STATE_BADGE[guestState(g)]}`}>
+                {guestState(g) === 'complete' && <IconCheck size={11} />}
+                {status(g)}
+              </span>
               {g.ranked > 0 && (
                 <button
                   type="button"
