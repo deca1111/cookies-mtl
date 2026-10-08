@@ -214,9 +214,10 @@ export function ContestGuestApp({ secret, initial }: { secret: string; initial: 
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col gap-4 bg-[color:var(--bg)] px-4 pb-10 pt-4">
-      <header className="flex items-center gap-2">
+      <header className="flex items-center gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- SVG de marque statique */}
-        <img src="/brand/logo.svg" alt="" className="h-7 w-7" />
+        {/* 56 px : en dessous, l'arc « COOKIES CLUB » du logo devient illisible (retour d'UAT). */}
+        <img src="/brand/logo.svg" alt="" className="h-14 w-14 flex-none" />
         {/* Nom long : sur deux lignes plutôt que coupé (retour d'UAT), au-delà seulement des points de suspension. */}
         <span className="font-display line-clamp-2 min-w-0 flex-1 break-words text-[15px] leading-tight text-[color:var(--text-strong)]">{view.name}</span>
         {lang && view.me && (canChangeName ? (
